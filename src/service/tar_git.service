@@ -1,0 +1,21 @@
+<service name="tar_git">
+  <summary>Create a tar ball from a git repository</summary>
+  <description>This service checksout or updates from a git.</description>
+  <parameter name="url">
+    <description>Checkout url</description>
+    <required/>
+  </parameter>
+  <parameter name="branch">
+    <description>Branch name</description>
+  </parameter>
+  <parameter name="revision">
+    <description>Revision sha1sum or tag name</description>
+  </parameter>
+  <parameter name="token">
+    <description>Token used to differentiate tags and changelog entries to be handled from upstream ones</description>
+  </parameter>
+  <parameter name="debian">
+    <description>Also generate debian packaging from a debian subdir if available (Y/N)</description>
+  </parameter>
+</service>
+

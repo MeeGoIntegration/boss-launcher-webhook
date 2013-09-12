@@ -1,0 +1,144 @@
+BOSS Webhook launcher for bitbucket and github.
+
+Web Services : boss-launcher-webhook rpm
+========================================
+
+The web application is django-based. It provides both an admin UI and
+a destination for post events from git webservices such as github,
+bitbucket and others.
+
+It is monitored by supervisor and controlled by skynet
+
+Typically it will need nginx installing and presents an interface on
+/webhook/ for POST requests and on /webhook/admin for administration.
+
+
+Setup
+-----
+Go through the settings below.
+
+When setting up you must create an admin user and login as that user
+to make a 'Build service' entry before users can add any hooks.
+
+Config files
+------------
+
+/etc/supervisor/conf.d/webhook.conf
+ Controls the fastcgi detailed setup
+
+/etc/skynet/webhook.conf
+ Controls the webui setup (eg LDAP)
+ Needs at least the secret_key setting
+ Note that db_name is a path for sqlite3. so /var/lib/webhook/webhook
+ may be suitable
+
+/etc/skynet/skynet.conf
+ Basic skynet setup - should points to the right boss instance
+
+/etc/supervisor/conf.d/delete_webhook.conf
+ The delete_webhook process
+
+Install/ Setup
+==============
+
+LDAP
+----
+For ldap support:
+ zypper in python-django-auth-ldap python-ldap
+
+Supervisor
+----------
+supervisord *doesn't actually look* in supervisor/conf.d/ by default
+
+cat <<EOF >> /etc/supervisord.conf
+[include]
+files = /etc/supervisor/conf.d/*.conf
+EOF
+supervisorctl reload
+
+Logs
+----
+/var/log/messages
+/var/log/supervisor/*
+/var/log/supervisord/*
+/var/log/nginx/*
+
+tail -f /var/log/messages /var/log/supervisor/* /var/log/supervisord/* /var/log/nginx/* &
+
+django
+------
+
+django settings.py are found here but should not be needed:
+/usr/lib/python2.7/site-packages/webhook_launcher/settings.py
+
+Put this secret key in /etc/skynet/webhook.conf
+ django-admin generate_secret_key --settings=webhook_launcher.settings
+
+You may need to set these vars before runnyin syncdb
+  LC_ALL=en_US.UTF-8
+  LANG=en_US.UTF-8
+
+django-admin syncdb --settings=webhook_launcher.settings
+yes, make admin
+
+Prepare the static
+django-admin collectstatic --settings=webhook_launcher.settings
+
+nginx
+-----
+Needs line in http section:
+http {
+   server_names_hash_bucket_size 128;
+}
+Also needs the default server {} on port 80 removing
+
+Setup (use your own server_name)
+
+mkdir /etc/nginx/vhosts.d/
+cat <<'EOF' > /etc/nginx/vhosts.d/webhook.conf
+upstream webhook {
+  server 127.0.0.1:9300;
+}
+
+server {
+   listen 80;
+   access_log  /var/log/nginx/webhook.log;
+
+   server_name webhook.example.com;
+
+   location /webhook/site_media {
+       root   /var/www/;
+   }
+
+   location /webhook {
+       include /etc/nginx/fastcgi_params;
+       fastcgi_param  SCRIPT_NAME "";
+       fastcgi_pass  webhook;
+   }
+
+   # Redirect / to the admin UI
+   location / {
+       rewrite_log on;
+       rewrite  ^/$  /webhook/admin/ permanent;
+   }
+ }
+EOF
+
+
+boss participants
+-----------------
+
+delete_webhook lets any boss process delete any webhooks for a prj/pkg
+pair.
+
+The participant is installed and setup with skynet; to complete installation:
+  skynet apply
+  skynet register delete_webhook
+
+
+The trigger_service participant should usually be installed with other
+OBS participants. Then:
+
+  skynet apply
+  skynet register trigger_service
+

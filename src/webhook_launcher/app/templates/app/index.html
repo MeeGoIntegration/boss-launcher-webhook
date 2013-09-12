@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Webhook Mappings</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<style type="text/css">
+   body {margin: 0; padding: 0;}
+   table {
+        width: 95%;
+        margin-left: auto;
+        margin-right: auto;
+        border: 0 solid #DDCCEE;
+        border-collapse: collapse;
+    }
+    table th, table td {
+        background-color: #EEDDEE;
+        border-top: 1px solid #CCAACC;
+        border-left: 0 none;
+        padding: 2px 5px;
+        text-align: left;
+    }
+    table td {
+        background-color: #EEEEFF;
+        border-top: 0px;
+    }
+
+    div#header h2 {
+        background-color: #F2F2F2;
+        color: #20435C;
+        padding: 3px 0 3px 10px;
+        border-bottom: 1px solid #CCCCCC;
+        margin-top: 0;
+        font-size: 200%;
+        font-family: 'Trebuchet MS',sans-serif;
+        text-align: center;
+    }
+    p {
+        width: 70%;
+        line-height: 130%;
+        text-align: justify;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+</head>
+<body>
+<body>
+<div id="header">
+<h2>Webhook Mappings</h2>
+</div>
+{% for server, maps in mappings.items %}
+<div>
+<h3 align="center">{{ server }}</h3>
+<table id="list">
+  <thead>
+    <tr>
+        <th>Repository</th>
+        <th>Branch</th>
+        <th>Project</th>
+        <th>Package</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for map in maps|dictsort:"project" %}
+    <tr>
+      <td>{{ map.path }}</td><td>{{ map.branch }}</td><td>{{ map.project }}</td><td>{{ map.package }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endfor %}
+</body>
+</html>
+

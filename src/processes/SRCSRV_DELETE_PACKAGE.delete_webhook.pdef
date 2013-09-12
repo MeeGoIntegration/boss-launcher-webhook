@@ -1,0 +1,15 @@
+# This process is part of BOSS
+#
+# It should be linked to projects where webhooks should
+# be removed on package deletion
+
+Ruote.process_definition 'do_delete_webhook' do
+  sequence do
+    set 'debug_trace' => 'True'
+    set  'debug_dump' => 'True'
+
+    delete_webhook
+    notify_irc :irc_channel => '${irc.req_channel}', :msg => "package ${ev.package} in project ${ev.project} and any associated webhook mappings were deleted"
+
+  end
+end

@@ -1,0 +1,45 @@
+# Copyright (C) 2013 Jolla Ltd.
+# Contact: Islam Amer <islam.amer@jollamobile.com>
+# All rights reserved.
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+Ruote.process_definition 'vcscommit' do
+
+  sequence do
+    set :f => 'debug_dump', :value => 'true'
+    set :f => 'log_channel', :value => '#mer-boss'
+    set :f => 'highlight', :value => ' '
+
+    # Any error will get notified by this flanked suprocess
+    do_log_error :flank => true
+
+    trigger_service
+  end
+
+  define 'do_log_error' do
+    cursor do
+      listen :to => :errors
+      echo 'process ${wfid}: SR#${ev.id} ERROR'
+      notify_irc :if => '"${log_channel}" != ""',
+                 :msg => '${highlight} process ${wfid} ERROR',
+                 :irc_channel => '${log_channel}'
+      #notify :template => '${template.error}', :mail_to => "$f:admin_emails",
+      #       :subject => '[${pname}] ${wfid} SR#${req.id} ERROR'
+      rewind
+    end
+  end
+
+end
