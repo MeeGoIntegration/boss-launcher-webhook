@@ -457,6 +457,14 @@ get_tagmsg () {
   fi
 }
 
+dash_trim () {
+  sed -e 's/"/\\"/g' -e 's/^/- /' -e '/^\s*$/d' -e '/^$/d'
+}
+
+grep_entry () {
+  grep -Po '^\[.+\].*$'
+}
+
 generate_changes () {
 
   pushd $CLONE_NAME >/dev/null
@@ -491,7 +499,7 @@ generate_changes () {
         fi
 
         refrange="$tag"'..'"$prev_valid_tag"
-        ENTRIES="$(git log --pretty="%s%n%b" $refrange | grep -Po '^\[.+\].*$' | grep -F "$TOKEN" | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
+        ENTRIES="$(git log --pretty="%s%n%b" $refrange | grep_entry | grep -F "$TOKEN" | dash_trim)"
 
         tagmsg=""
         prevtagmsg=""
@@ -499,13 +507,13 @@ generate_changes () {
         prevtagged_entry=""
         # get a message from the tag if it is annotated
         if [ x"$first" = x"yes" ]; then
-          prevtagmsg="$(get_tagmsg $tag | grep -Po '^\[.+\].*$' | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
-          prevtagged_entry="$(git log --pretty="%s%n%b" --no-walk $tag | grep -Po '^\[.+\].*$' | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
+          prevtagmsg="$(get_tagmsg $tag | grep_entry | dash_trim)"
+          prevtagged_entry="$(git log --pretty="%s%n%b" --no-walk $tag | grep_entry | dash_trim)"
           first="no"
 	fi
         # get the tagged entry regardless of the token, it will be deduplicated further downwards
-        tagged_entry="$(git log --pretty="%s%n%b" --no-walk $prev_valid_tag | grep -Po '^\[.+\].*$' | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
-        tagmsg="$(get_tagmsg $prev_valid_tag | grep -Po '^\[.+\].*$' | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
+        tagged_entry="$(git log --pretty="%s%n%b" --no-walk $prev_valid_tag | grep_entry | dash_trim)"
+        tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
         
 
         if [ ! x"$tagged_entry" = "x" ] ; then
@@ -546,11 +554,11 @@ generate_changes () {
 
   if [ ! "x$prev_valid_tagver" = "x" ]; then
 
-    ENTRIES="$(git log --pretty="%s%n%b" $prev_valid_tag | grep -Po '^\[.+\].+$' | grep -Po "$TOKENCHRE" | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
+    ENTRIES="$(git log --pretty="%s%n%b" $prev_valid_tag | grep_entry | grep -Po "$TOKENCHRE" | dash_trim)"
 
     tagmsg=""
     # get a message from the tag if it is annotated
-    tagmsg="$(get_tagmsg $prev_valid_tag | grep -Po '^\[.+\].*$' | sed -e 's/"/\\"/g' -e '/^$/d' -e 's/^/- /')"
+    tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
 
     if [ ! x"$tagmsg" = "x" ] ; then
       ENTRIES="$tagmsg"'\n'"$ENTRIES"
@@ -593,7 +601,7 @@ generate_changes () {
     # select header lines with their line number then copy the version of each to the beginning of the line
     # the reason we copy the version is the name can be 1, 2 or 3 words which means the version field number changes
     # then sort by year , month , day, version
-    SORTED_HEADERS="$(grep -n '\*.*-.*' "$CHANGESFILE" | awk '{print $NF" :"$0}' | sort -k6nr -k4Mr -k5nr $EXTRA_SORT_OPTIONS)"
+    SORTED_HEADERS="$(grep -n '\*.* - .*' "$CHANGESFILE" | awk '{print $NF " :"$0}' | sort -k6nr -k4Mr -k5nr $EXTRA_SORT_OPTIONS)"
 
     if [ ! -z "$SORTED_HEADERS" ]; then
       # for each header
@@ -830,7 +838,9 @@ rpm_pkg () {
       # Guard against multiple tags of the same commit. git uses the "closest" tag it finds and in our
       # case it is not what we want since it might be completely different from the version tag we selected
       # therefore consider using the version full tag if their revisions are equivalent
-      version_fulltag_sha1sum=".$(git rev-list --max-count=1 --abbrev-commit $VERSION_FULLTAG)"
+      if [ ! -z "$VERSION_FULLTAG" ]; then
+        version_fulltag_sha1sum=".$(git rev-list --max-count=1 --abbrev-commit $VERSION_FULLTAG)"
+      fi
       sha1sum=".$(git rev-list --max-count=1 --abbrev-commit $TAG_NAME)"
 
       if [ "x$version_fulltag_sha1sum" = "x$sha1sum" ]; then
