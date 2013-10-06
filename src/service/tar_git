@@ -41,6 +41,7 @@ set_default_params () {
   TOKENCHRE="^.*$"
   DEBIAN="N"
   FILESERVER=""
+  DUMB="N"
 }
 
 get_config_options () {
@@ -63,6 +64,7 @@ usage () {
     echo '	--token		a token that should exist in tag names and changelog entry headers to enable handling them'
     echo '	--debian	Y/N switch to turn on debian packaging support (defaults to N)'
     echo '      --fileserver    baseurl of a location for fetching files listed in a _sources file in the rpm subdir'
+    echo '      --dumb          Y/N switch to take content of revision as-is without automatic processing'
     echo 'If your git repo has multiple spec files in the rpm subdirectory set the env variable OBS_SERVICE_PACKAGE '
     echo 'to the name of the one you want to use (without .spec suffix)'
     echo 'The _sources file is expected to contain lines of <sha1sum> <subdir>/<filename>'
@@ -90,6 +92,10 @@ parse_params () {
       ;;
       *-token)
         TOKEN="$2"
+        shift
+      ;;
+      *-dumb)
+        DUMB="$2"
         shift
       ;;
       *-debian)
@@ -174,6 +180,13 @@ sanitise_params () {
   local regex="[Y|N]"
   if [ ! -z "$DEBIAN" ] && [[ ! "$DEBIAN" =~ $regex ]]; then
     echo "invalid debian switch"
+    usage
+    exit 1
+  fi
+
+  local regex="[Y|N]"
+  if [ ! -z "$DUMB" ] && [[ ! "$DUMB" =~ $regex ]]; then
+    echo "invalid dumb switch"
     usage
     exit 1
   fi
@@ -1046,11 +1059,16 @@ main () {
   cd "$MYOUTDIR"
 
   clone
-  rpm_pkg
-  generate_changes
-  download_files
-  try_debian_packaging
-  source_checks
+  if [ ! x"$DUMB" = "xY" ]; then
+	rpm_pkg
+	generate_changes
+	download_files
+	try_debian_packaging
+	source_checks
+  else
+        # Dumb mode is simple - take the content of the checkout and drop it in out dir
+        cp -ar $CLONE_NAME/* $MYOUTDIR/
+  fi
 }
 
 main "$@"
