@@ -66,14 +66,16 @@ class WebHookMapping(models.Model):
             fields['debian'] = self.debian
         return fields
         
-    repourl = models.CharField(max_length=200)
-    branch = models.CharField(max_length=100, default="master")
-    project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT)
-    package = models.CharField(max_length=250)
-    token = models.CharField(max_length=100, default="", blank=True)
-    debian = models.CharField(max_length=2, default="", blank=True, choices = (('N','N'),('Y','Y')))
-    notify = models.BooleanField(default=True)
-    build = models.BooleanField(default=False)
+    repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
+    branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
+    project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
+    package = models.CharField(max_length=250, help_text="name of the package to create or update in OBS")
+    token = models.CharField(max_length=100, default="", blank=True, help_text="a token that should exist in tag names and changelog entry headers to enable handling them")
+    debian = models.CharField(max_length=2, default="", blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
+    dumb = models.CharField(max_length=2, default="", blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
+    notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
+    build = models.BooleanField(default=False, help_text="Enable OBS build triggering")
+    comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User)
     obs = models.ForeignKey(BuildService)
 

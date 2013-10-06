@@ -27,8 +27,8 @@
       Package name to be rebuilt
    :project (string):
       OBS project in which the package lives
-
-
+   
+   
 :term:`Workitem` params IN
 
 :Parameters:
@@ -57,6 +57,7 @@ tar_git_service = """
     <param name="revision">%(revision)s</param>
     <param name="token">%(token)s</param>
     <param name="debian">%(debian)s</param>
+    <param name="dumb">%(dumb)s</param>
   </service>
 </services>
 """
@@ -79,13 +80,14 @@ def find_service_repo(url):
     if url.endswith(".git"):
         url = url[:-4]
     u = urlparse(url)
+    print u
     if u.netloc.endswith("github.com"):  # github
-        return "github", "/".join(u.path.split("/")[0:2])
+        return "github", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("gitorious.org"):  # gitorious
-        return "gitorious", "/".join(u.path.split("/")[0:2])
+        return "gitorious", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("merproject.org"):  # Mer
-        return "Mer", "/".join(u.path.split("/")[0:2])
-
+        return "Mer", "/".join(u.path.split("/")[1:3])
+    
     return None, None
 
 class ParticipantHandler(BuildServiceParticipant):
@@ -124,10 +126,16 @@ class ParticipantHandler(BuildServiceParticipant):
         if not f.repourl and not p.repourl:
            raise RuntimeError("Missing mandatory field or parameter: repourl")
 
-        params = { "url" : f.repourl }
+        params = {}
+
+        if f.repourl:
+            params["url"] = f.repourl
 
         if p.repourl:
             params["url"] = p.repourl
+
+        params["service"], params["repo"] = find_service_repo(params["url"])
+            
         if f.branch:
             params["branch"] = f.branch
         if p.branch:
@@ -138,6 +146,7 @@ class ParticipantHandler(BuildServiceParticipant):
             params["revision"] = p.revision
         params["token"] = ""
         params["debian"] = ""
+        params["dumb"] = ""
         if f.token:
             params["token"] = f.token
         if p.token:
@@ -147,19 +156,22 @@ class ParticipantHandler(BuildServiceParticipant):
         if f.debian:
             params["debian"] = f.debian
 
-        params["service"], params["repo"] = find_service_repo(params["url"])
+        if p.dumb:
+            params["dumb"] = p.dumb
+        if f.dumb:
+            params["dumb"] = f.dumb
 
         if "branch" in params and params["branch"].startswith("pkg-"):
-            if not params["service"] or not params["repo"]:
+            if not "service" in params or not "repo" in params:
                 raise RuntimeError("Service/Repo not found in repourl %s " % p.repourl)
             service = git_pkg_service
         else:
             service = tar_git_service
-
+        
         if self.obs.isNewPackage(project, package):
             x = self.obs.getCreatePackage(str(project), str(package))
             print x.read()
-
+        
         self.obs.setupService(project, package, service % params)
 
         wid.result = True
