@@ -9,12 +9,22 @@ License: GPLv2+
 URL: http://www.meego.com
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp, python-django, python-mysql
-Requires: python-django, python-flup, python-mysql
+BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp, python-django
+%if 0%{?fedora}
+BuildRequires: MySQL-python
+%else
+BuildRequires: python-mysql
+%endif
+Requires: python-django, python-flup
+%if 0%{?fedora}
+Requires: MySQL-python
+%else
+Requires: python-mysql
+%endif
 Requires: python >= 2.5.0
 Requires: python-xml
 Requires: python-boss-skynet
-Requires: python-South
+Requires: python-django-south
 Requires: python-django-extensions
 Requires(post): python-boss-skynet
 BuildArch: noarch
@@ -78,15 +88,14 @@ fi
 %dir /etc/supervisor
 %dir /etc/supervisor/conf.d
 %dir /usr/share/boss-skynet
-%{_datadir}/boss-skynet/delete_webhook.py
+%{_datadir}/boss-skynet/delete_webhook.py*
 
 %files -n boss-participant-trigger_service
 %defattr(-,root,root,-)
 %config(noreplace) %{svdir}/trigger_service.conf
-%{_datadir}/boss-skynet/trigger_service.py
+%{_datadir}/boss-skynet/trigger_service.py*
 
 %files -n obs-service-tar-git
 %defattr(-,root,root,-)
-/usr/lib/obs/service/*
 /usr/lib/obs/service
 /usr/lib/obs
