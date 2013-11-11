@@ -70,6 +70,8 @@ class WebHookMapping(models.Model):
             fields['token'] = self.token
         if self.debian:
             fields['debian'] = self.debian
+        if self.dumb:
+            fields['dumb'] = self.dumb
         return fields
         
     repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")

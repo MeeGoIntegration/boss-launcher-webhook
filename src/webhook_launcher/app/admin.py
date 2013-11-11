@@ -19,12 +19,12 @@
 from django.http import HttpResponseRedirect
 from django.db import models
 from django.contrib.auth.models import User
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.forms import TextInput
 from django.core.urlresolvers import reverse
 
-from models import LastSeenRevision, WebHookMapping, BuildService
-from utils import rev_or_head, handle_tag
+from webhook_launcher.app.models import LastSeenRevision, WebHookMapping, BuildService
+from webhook_launcher.app.utils import rev_or_head, handle_tag
 
 class LastSeenRevisionInline(admin.StackedInline):
     model = LastSeenRevision 
@@ -84,6 +84,13 @@ class WebHookMappingAdmin(admin.ModelAdmin):
             if bss.count():
                 kwargs['initial'] = bss[0]
         return super(WebHookMappingAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        mapping = WebHookMapping.objects.get(pk__exact = object_id)
+        if mapping.comment:
+            messages.warning(request, mapping.comment)
+        return super(WebHookMappingAdmin, self).change_view(request, object_id,
+            form_url, extra_context=extra_context)
 
 class BuildServiceAdmin(admin.ModelAdmin):
     pass
