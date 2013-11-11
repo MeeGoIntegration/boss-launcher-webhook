@@ -39,6 +39,12 @@ class WebHookMapping(models.Model):
     def __unicode__(self):
         return "%s/%s -> %s/%s" % (self.repourl, self.branch, self.project, self.package)
 
+    @property
+    def revision(self):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            return _lsr[0].revision
+
     def clean(self, exclude=None):
         self.repourl = self.repourl.strip()
         self.branch  = self.branch.strip()

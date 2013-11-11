@@ -28,10 +28,24 @@ from utils import rev_or_head, handle_tag
 
 class LastSeenRevisionInline(admin.StackedInline):
     model = LastSeenRevision 
-    extra = 0
+    extra = 1
     max_num = 1
 
+    def formfield_for_dbfield(self, db_field, **kwargs):
+        if db_field.name == "revision":
+            if "request" in kwargs:
+                revision = kwargs["request"].GET.get("revision")
+                if revision:
+                    kwargs['initial'] = revision
+
+        return super(LastSeenRevisionInline, self).formfield_for_dbfield(db_field, **kwargs)
+
 class WebHookMappingAdmin(admin.ModelAdmin):
+    class Media:
+        css = {
+            "all": ("extra.css",)
+        }
+
     list_display = ( 'repourl', 'branch', 'project', 'package', 'notify', 'build', 'user')
     list_display_links = ( 'repourl', )
     list_filter = ( 'project', 'user', 'notify', 'build' )
@@ -39,6 +53,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
     inlines = [LastSeenRevisionInline]
     actions = ['trigger_build']
     formfield_overrides = { models.CharField: {'widget' : TextInput(attrs={ 'size' : '100' })}, }
+    save_on_top = True
 
     def response_change(self, request, obj):
         if "_triggerbuild" in request.POST:
