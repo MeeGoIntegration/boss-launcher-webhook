@@ -379,8 +379,14 @@ get_tagver_from_tag () {
 
 is_valid_tagver () {
 
+  local tagver=$1
+  test -z "$tagver" && return 1 
+
   #valid_tagver="$(echo $tagver | grep -Po '([0-9]+\.+?){1,5}([0-9]+)')"
-  valid_tagver="$(echo $tagver | grep -Po '^([0-9]+\.*?){1,9}[a-zA-Z0-9.~+]*?$')"
+  local valid_tagver="$(echo $tagver | grep -Po '^([0-9]+\.*?){1,9}[a-zA-Z0-9.~+]*?$')"
+
+  test "$tagver" = "$valid_tagver"
+  return $?
 
 }
 
@@ -397,15 +403,7 @@ find_version_tag () {
 
     get_tagver_from_tag
 
-    if [ "x$tagver" = "x" ]; then
-      continue
-    fi
-  
-    valid_tagver=""
-
-    is_valid_tagver
-  
-    if [ "x$tagver" = "x$valid_tagver" ]; then
+    if is_valid_tagver "$tagver" ; then
       break
     else
       tagver=""
@@ -420,7 +418,7 @@ find_version_tag () {
 
 get_changes_header () {
 
-  fmt='
+  local fmt='
     r=%(refname:short)
     t=%(*objecttype)
     d=%(*committerdate:iso8601)
@@ -437,8 +435,10 @@ get_changes_header () {
     echo "* $d $n $e - $CHANGELOGVER"
   '
 
-  eval=`git for-each-ref --shell --format="$fmt" refs/tags/$tag`
-  changes_header=`eval "$eval"`
+  local eval=`git for-each-ref --shell --format="$fmt" refs/tags/$tag`
+  local changes_header=`eval "$eval"`
+  echo "$changes_header"
+
 }
 
 filter_list_of_tags () {
@@ -479,86 +479,64 @@ grep_entry () {
   grep -Po '^\[.+\].*$'
 }
 
+do_changelog_block () {
+
+    refrange="$tag"'..'"$prev_valid_tag"
+    ENTRIES="$(git log --pretty="%s%n%b" $refrange | grep_entry | grep -F "$TOKEN" | dash_trim | sort | uniq)"
+
+    tagmsg=""
+    prevtagmsg=""
+    tagged_entry=""
+    prevtagged_entry=""
+
+    tagged_entry="$(git log --pretty="%s%n%b" --no-walk $prev_valid_tag | grep_entry | dash_trim)"
+    tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
+
+    test -z "$tagged_entry" || ENTRIES="$tagged_entry"'\n'"$ENTRIES"
+
+    test -z "$prevtagged_entry" || ENTRIES="$prevtagged_entry"'\n'"$ENTRIES"
+
+    test -z "$prevtagmsg" || ENTRIES="$prevtagmsg"'\n'"$ENTRIES"
+
+    test -z "$tagmsg" || ENTRIES="$tagmsg"'\n'"$ENTRIES"
+
+    test -z "$ENTRIES" || CHANGES="$CHANGES""$prev_changes_header"'\n'"$ENTRIES"'\n\n'
+
+}
+
 generate_changes () {
 
   pushd $CLONE_NAME >/dev/null
 
   CHANGES=""
+  ENTRIES=""
 
-  first="yes"
   for tag in $list_of_tags; do
     tagver=""
 
     get_tagver_from_tag
 
-    if [ "x$tagver" = "x" ]; then
-      continue
-    fi
-  
-    valid_tagver=""
+    if is_valid_tagver "$tagver"; then
 
-    is_valid_tagver
-  
-    if [ "x$tagver" = "x$valid_tagver" ]; then
-
-      if [ ! "x$prev_changes_header" = "x" ]; then
-      if [ ! "x$prev_valid_tagver" = "x" ]; then
+      if test -n "$prev_changes_header" -a -n "$prev_valid_tagver"; then
 
         tag_sha1="$(git rev-list --max-count=1 --abbrev-commit $tag)"
         prev_valid_tag_sha1="$(git rev-list --max-count=1 --abbrev-commit $prev_valid_tag)"
 
-        if [ "x$tag_sha1" = x"$prev_valid_tag_sha1" ]; then
+        if test "$tag_sha1" = "$prev_valid_tag_sha1"; then
           # if two tags are pointing at the same sha1 use the previous one (first handled is latest)
           continue
         fi
 
-        refrange="$tag"'..'"$prev_valid_tag"
-        ENTRIES="$(git log --pretty="%s%n%b" $refrange | grep_entry | grep -F "$TOKEN" | dash_trim)"
-
-        tagmsg=""
-        prevtagmsg=""
-        tagged_entry=""
-        prevtagged_entry=""
-        # get a message from the tag if it is annotated
-        if [ x"$first" = x"yes" ]; then
-          prevtagmsg="$(get_tagmsg $tag | grep_entry | dash_trim)"
-          prevtagged_entry="$(git log --pretty="%s%n%b" --no-walk $tag | grep_entry | dash_trim)"
-          first="no"
-	fi
-        # get the tagged entry regardless of the token, it will be deduplicated further downwards
-        tagged_entry="$(git log --pretty="%s%n%b" --no-walk $prev_valid_tag | grep_entry | dash_trim)"
-        tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
-        
-
-        if [ ! x"$tagged_entry" = "x" ] ; then
-          ENTRIES="$tagged_entry"'\n'"$ENTRIES"
-        fi
-
-        if [ ! x"$prevtagged_entry" = "x" ] ; then
-          ENTRIES="$prevtagged_entry"'\n'"$ENTRIES"
-        fi
-
-        if [ ! x"$prevtagmsg" = "x" ] ; then
-          ENTRIES="$prevtagmsg"'\n'"$ENTRIES"
-        fi
-
-        if [ ! x"$tagmsg" = "x" ] ; then
-          ENTRIES="$tagmsg"'\n'"$ENTRIES"
-        fi
-
-        if [ ! "x$ENTRIES" = "x" ] ; then
-          CHANGES="$CHANGES""$prev_changes_header"'\n'"$ENTRIES"'\n\n'
-        fi
+        do_changelog_block
 
       fi
-      fi
 
-      changes_header=""
-      get_changes_header
+      changes_header="$(get_changes_header)"
 
       prev_changes_header="$changes_header"
       prev_valid_tag=$tag
-      prev_valid_tagver=$valid_tagver
+      prev_valid_tagver=$tagver
 
     else
       tagver=""
@@ -566,25 +544,11 @@ generate_changes () {
     fi
   done
 
-  if [ ! "x$prev_valid_tagver" = "x" ]; then
+  # handle the first tag, initial point for the ref range is the parent (root) commit
+  tag="$(git rev-list --parents --max-parents=0 $prev_valid_tag)"
+  do_changelog_block
 
-    ENTRIES="$(git log --pretty="%s%n%b" $prev_valid_tag | grep_entry | grep -Po "$TOKENCHRE" | dash_trim)"
-
-    tagmsg=""
-    # get a message from the tag if it is annotated
-    tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
-
-    if [ ! x"$tagmsg" = "x" ] ; then
-      ENTRIES="$tagmsg"'\n'"$ENTRIES"
-    fi
-
-    if [ ! "x$ENTRIES" = "x" ] ; then
-      CHANGES="$CHANGES""$prev_changes_header"'\n'"$ENTRIES"'\n'
-    fi
-
-  fi
-
-  if [[ -z "$CHANGESFILE" ]]; then
+  if test -z "$CHANGESFILE" ; then
     CHANGESFILE=../$PACKAGE_NAME.changes
     OLDCHANGES=""
   else
@@ -593,14 +557,11 @@ generate_changes () {
     rm -f $CHANGESFILE
   fi
 
-  if [ ! "x$CHANGES" = "x" ]; then
-    echo -e "$CHANGES" > "$CHANGESFILE"
-  fi
-  if [ ! "x$OLDCHANGES" = "x" ]; then
-    echo -e "$OLDCHANGES" >> "$CHANGESFILE"
-  fi
+  test -z "$CHANGES" || echo -e "$CHANGES" > "$CHANGESFILE"
 
-  if [ -f "$CHANGESFILE" ] ; then
+  test -z "$OLDCHANGES" || echo -e "$OLDCHANGES" >> "$CHANGESFILE"
+
+  if test -f "$CHANGESFILE" ; then
 
     SORTEDCHANGES="$(mktemp)"
     rm -f "$SORTEDCHANGES"
