@@ -472,7 +472,7 @@ get_tagmsg () {
 }
 
 dash_trim () {
-  sed -e 's/"/\\"/g' -e 's/^/- /' -e '/^\s*$/d' -e '/^$/d'
+  sed -e 's/^/- /' -e '/^\s*$/d' -e '/^$/d'
 }
 
 grep_entry () {
@@ -482,7 +482,7 @@ grep_entry () {
 do_changelog_block () {
 
     refrange="$tag"'..'"$prev_valid_tag"
-    ENTRIES="$(git log --pretty="%s%n%b" $refrange | grep_entry | grep -F "$TOKEN" | dash_trim | sort | uniq)"
+    ENTRIES="$(git log --pretty="%B" $refrange | grep_entry | grep -F "$TOKEN" | dash_trim | sort | uniq)"
 
     tagmsg=""
     prevtagmsg=""
