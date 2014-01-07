@@ -38,7 +38,7 @@ Webhook handler for gitlab, github and bitbucket that receives data as a POST ca
 
 %package -n obs-service-tar-git
 Group: Applications/Engineering
-Requires: git, obs-source_service
+Requires: git
 Summary: OBS source service to generate sources from git
 %description -n obs-service-tar-git
 This package provides the service to generate source from git inside an OBS source service
