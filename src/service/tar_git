@@ -489,7 +489,7 @@ do_changelog_block () {
     tagged_entry=""
     prevtagged_entry=""
 
-    tagged_entry="$(git log --pretty="%s%n%b" --no-walk $prev_valid_tag | grep_entry | dash_trim)"
+    tagged_entry="$(git log --pretty="%B" --no-walk $prev_valid_tag | grep_entry | dash_trim)"
     tagmsg="$(get_tagmsg $prev_valid_tag | grep_entry | dash_trim)"
 
     test -z "$tagged_entry" || ENTRIES="$tagged_entry"'\n'"$ENTRIES"
@@ -545,8 +545,10 @@ generate_changes () {
   done
 
   # handle the first tag, initial point for the ref range is the parent (root) commit
-  tag="$(git rev-list --parents --max-parents=0 $prev_valid_tag)"
-  do_changelog_block
+  if test -n "$prev_valid_tag"; then
+    tag="$(git rev-list --parents --max-parents=0 $prev_valid_tag)"
+    do_changelog_block
+  fi
 
   if test -z "$CHANGESFILE" ; then
     CHANGESFILE=../$PACKAGE_NAME.changes
@@ -649,10 +651,10 @@ changes_to_debian () {
 git_ls_files () {
 
     # generate list of files to include in tarball
-    git ls-files --with-tree=$SEMI_TAG | sed -e '/^rpm\//d'
+    git ls-files -z --with-tree=$SEMI_TAG | sed -z -e '/^rpm\//d'
 
     # include submodules in the list
-    git submodule --quiet foreach --recursive 'git ls-files --with-tree=$sha1 | sed s#^#$toplevel/$path/#' | sed s#^$PWD/##
+    git submodule --quiet foreach --recursive 'git ls-files -z --with-tree=$sha1 | sed -z -e "s#^#$toplevel/$path/#"' | sed -z -e "s#^$PWD/##"
 
     [ -f .tarball-version ] && echo .tarball-version
 
@@ -821,31 +823,34 @@ rpm_pkg () {
       if [ "x$version_fulltag_sha1sum" = "x$sha1sum" ]; then
           SHA=""
       else
-          nbranch="$(echo $BRANCH | sed -e 's/-/\./g')"
-          count=".$(git rev-list --abbrev-commit $TAG_NAME | wc -l)"
-          SHA="+$nbranch$count$sha1sum"
+        nbranch="$(echo $BRANCH | sed -e 's/-/\./g')"
+        #count=".$(git rev-list --abbrev-commit $TAG_NAME | wc -l)"
+        # https://fedoraproject.org/wiki/Packaging:NamingGuidelines#Snapshot_packages
+        # Use YYYYMMDDHHMMSS timestamps which work better in cases or rebasing
+        ts=".$(date --date=@$(git log --max-count=1 --pretty=%ct) +%Y%m%d%H%M%S)"
+        SHA="+$nbranch$ts$sha1sum"
       fi
     else
       # use the unique abbreviation part as it is usually incremental
       # in something like foobar-3-g54ab00b replace - with dot to make a legal rpm version
       sha1sum=$(echo $TAG_NAME | sed -e "s#$CLOSEST_TAG##" -e "s/-/\./g" -e 's#/#.#g' -e 's#^#\.#' -e 's#^\.\.#.#')
       nbranch=$(echo $BRANCH | sed -e 's/-/\./g' -e 's#/#.#g')
-      count=".$(git rev-list --abbrev-commit $BRANCH | wc -l)"
+      #count=".$(git rev-list --abbrev-commit $BRANCH | wc -l)"
+      ts=".$(date --date=@$(git log --max-count=1 --pretty=%ct) +%Y%m%d%H%M%S)"
       # get and append the short revision of the this most recent tag
-      SHA="+$nbranch$count$sha1sum"
+      SHA="+$nbranch$ts$sha1sum"
     fi
 
   fi
  
   # concat version and sha 
   VERSHA="$VERSION$SHA"
-
   # add tarball version file for some packages that use auto foo
   if [ -f git-version-gen ] || [ -f build-aux/git-version-gen ]; then
      echo -n $VERSHA > .tarball-version
   fi 
 
-  git_ls_files | tar --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
+  git_ls_files | tar --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
 
   # add matching version to the spec file
   sed -i -e "s/^Version:.*$/Version:    $VERSHA/g" ../$(basename $SPECFILE)
@@ -971,7 +976,7 @@ try_debian_packaging() {
   find_deb_package_name
 
   # generate "upstream" tarball for dpkg-source to diff against
-  git_ls_files | tar --no-recursion -c --transform "s#^#${DEB_PACKAGE_NAME}-$VERSHA/#S" -T - | gzip -1 > $MYOUTDIR/${DEB_PACKAGE_NAME}_$VERSHA.orig.tar.gz
+  git_ls_files | tar --null --no-recursion -c --transform "s#^#${DEB_PACKAGE_NAME}-$VERSHA/#S" -T - | gzip -1 > $MYOUTDIR/${DEB_PACKAGE_NAME}_$VERSHA.orig.tar.gz
 
   # update debian/changelog from git log
   changes_to_debian "$CHANGESFILE" > debian/changelog.git
