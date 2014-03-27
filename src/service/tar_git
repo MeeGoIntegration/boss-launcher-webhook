@@ -338,11 +338,11 @@ get_list_of_tags () {
   fmt='
     r=%(refname:short)
     t=%(*objecttype)
-    d=%(*committerdate:iso8601)
-  
     if test "z$t" = z
     then
-            d=%(committerdate:iso8601)
+        d=%(committerdate:iso8601)
+    else
+        d=%(taggerdate:iso8601)
     fi
     d=$(date --date="$d" +%s)
     echo "$d $r"
@@ -472,7 +472,9 @@ get_tagmsg () {
 }
 
 dash_trim () {
-  sed -e 's/^/- /' -e '/^\s*$/d' -e '/^$/d'
+  # and workaround for github breaking the subject line with ... automatically
+  # in pull requests
+  sed -e 's/^/- /' -e '/^\s*$/d' -e 's/JB#[0-9]\{1,\}\.\.\.$//'
 }
 
 grep_entry () {
@@ -500,12 +502,13 @@ do_changelog_block () {
 
     test -z "$tagmsg" || ENTRIES="$tagmsg"'\n'"$ENTRIES"
 
+    ENTRIES="$(echo -ne "$ENTRIES" | sort | uniq)"
+
     test -z "$ENTRIES" || CHANGES="$CHANGES""$prev_changes_header"'\n'"$ENTRIES"'\n\n'
 
 }
 
 generate_changes () {
-
   pushd $CLONE_NAME >/dev/null
 
   CHANGES=""
@@ -591,7 +594,7 @@ generate_changes () {
         # also skip the next header and everything after it
         # and skip empty lines
         # effectively we select the entries block matching the current header
-        sed -e "1,${LN}d" -e '/^\*.*-.*$/,$d' -e "/^$/d" "$CHANGESFILE" | sort | uniq >> "$SORTEDCHANGES"
+        sed -e "1,${LN}d" -e '/^\*.*-.*$/,$d' -e '/^\s*$/d' "$CHANGESFILE" >> "$SORTEDCHANGES"
         echo "" >> "$SORTEDCHANGES"
       done
       cp "$SORTEDCHANGES" "$CHANGESFILE"
@@ -602,6 +605,7 @@ generate_changes () {
   fi
 
   popd >/dev/null
+
 }
 
 changes_to_debian () {
