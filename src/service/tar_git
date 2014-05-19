@@ -271,7 +271,7 @@ resolve_spec_macro () {
              # extract the macro name
              macro_name=$(echo $macro | sed -e 's/^%{\(.*\)}$/\1/')
              # extract the macro value from a definition
-             value="$(grep -P "%define\s*$macro_name" $SPECFILE | head -n 1 | gawk '{ print $3 }')"
+             value="$(grep -P "%define\s+$macro_name\s+" $SPECFILE | head -n 1 | gawk '{ print $3 }')"
              # some macros are implicitly defined, these are the most common
              if [ -z "$value" ] ; then
                  if [ x"$macro_name" = x"version" ]; then
