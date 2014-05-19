@@ -48,6 +48,8 @@
 from boss.obs import BuildServiceParticipant
 import osc
 from urlparse import urlparse
+from osc import core
+from StringIO import StringIO
 
 tar_git_service = """
 <services>
@@ -167,10 +169,18 @@ class ParticipantHandler(BuildServiceParticipant):
             service = git_pkg_service
         else:
             service = tar_git_service
-        
-        if self.obs.isNewPackage(project, package):
-            x = self.obs.getCreatePackage(str(project), str(package))
-            print x.read()
+
+        # the simple approach doesn't work with project links
+        #if self.obs.isNewPackage(project, package):
+            #self.obs.getCreatePackage(str(project), str(package))
+        #else:
+        try:
+            core.show_files_meta(self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+        except Exception, exc:
+            data = core.metatypes['pkg']['template']
+            data = StringIO(data % { "name" : str(package), "user" : self.obs.getUserName() }).readlines()
+            u = core.makeurl(self.obs.apiurl, ['source', str(project), str(package), "_meta"])
+            x = core.http_PUT(u, data="".join(data))
         
         self.obs.setupService(project, package, service % params)
 
