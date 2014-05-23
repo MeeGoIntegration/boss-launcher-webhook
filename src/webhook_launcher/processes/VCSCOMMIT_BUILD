@@ -26,6 +26,7 @@ Ruote.process_definition 'vcscommit' do
     # Any error will get notified by this flanked suprocess
     do_log_error :flank => true
 
+    create_project
     trigger_service
   end
 

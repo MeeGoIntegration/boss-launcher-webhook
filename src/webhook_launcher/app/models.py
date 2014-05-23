@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import urlparse
+import datetime
+import os
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -26,13 +28,41 @@ from django.contrib.auth.models import Permission
 from django.db.models.signals import post_save
 from django.contrib.auth.backends import RemoteUserBackend
 
+def get_or_none(model, **kwargs):
+    try:
+        return model.objects.get(**kwargs)
+    except model.DoesNotExist:
+        return None
+
 class BuildService(models.Model):
 
     namespace = models.CharField(max_length=50, unique=True)
     apiurl = models.CharField(max_length=250, unique=True)
+    weburl = models.CharField(max_length=250, unique=True)
 
     def __unicode__(self):
         return self.apiurl
+
+class VCSService(models.Model):
+
+    name = models.CharField(max_length=50, unique=True)
+    netloc = models.CharField(max_length=200, unique=True)
+    ips = models.TextField(blank=True, null=True)
+
+class VCSNameSpace(models.Model):
+
+    service = models.ForeignKey(VCSService)
+    path = models.CharField(max_length=200)
+
+class Project(models.Model):
+
+    class Meta:
+        unique_together = (("name", "obs"),)
+
+    name = models.CharField(max_length=250)
+    obs = models.ForeignKey(BuildService)
+    official = models.BooleanField(default=True)
+    allowed = models.BooleanField(default=True)
 
 class WebHookMapping(models.Model):    
 
@@ -53,10 +83,24 @@ class WebHookMapping(models.Model):
 
         if WebHookMapping.objects.exclude(pk=self.pk).filter(project=self.project, package=self.package).count():
             raise ValidationError('A mapping object with the same parameters already exists')
+
+        repourl = urlparse.urlparse(self.repourl)
+        service = get_or_none(VCSService, netloc = repourl.netloc)
+
         if settings.SERVICE_WHITELIST:
-            service = urlparse.urlparse(self.repourl).netloc
-            if service not in settings.SERVICE_WHITELIST:
-                raise ValidationError('%s is not an allowed service' % service)
+            if not service:
+                raise ValidationError('%s is not an allowed service' % repourl.netloc)
+
+        project = get_or_none(Project, name = self.project)
+
+        if project and not project.allowed:
+            raise ValidationError('Project %s does not allow mappings' % project)
+
+        namespace = get_or_none(VCSNameSpace, path = os.path.dirname(repourl.path))
+
+        if project and project.official:
+            if not service or not namespace:
+                raise ValidationError('Official project %s allows mapping from known service namespaces only' % project)
 
     def to_fields(self):
         fields = {}
@@ -94,6 +138,18 @@ class LastSeenRevision(models.Model):
 
     mapping = models.ForeignKey(WebHookMapping)
     revision = models.CharField(max_length=250)
+    tag = models.CharField(max_length=50, blank=True, null=True)
+    handled = models.BooleanField(default=False)
+
+class QueuePeriod(models.Model):
+
+    start_time = models.TimeField(default=datetime.datetime.now())
+    end_time = models.TimeField(default=datetime.datetime.now())
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
+    recurring = models.BooleanField(default=False)
+    comment = models.TextField(blank=True, null=True)
+    projects = models.ManyToManyField(Project)
 
 def default_perms(sender, **kwargs):
     if kwargs['created']:

@@ -44,6 +44,7 @@ def index(request):
             return HttpResponseForbidden()
 
         mappings = defaultdict(list)
+        #TODO: filter with privileged projects
         maps = WebHookMapping.objects.all().exclude(package="")
         for mapobj in maps:
             repourl = urlparse.urlparse(mapobj.repourl)
@@ -55,6 +56,7 @@ def index(request):
                                   context_instance=RequestContext(request))
 
     if request.method == 'POST':
+        #TODO: Move to database ip filter list
         # Use the ip_filter to decide whether to accept a post
         if settings.POST_IP_FILTER:
             # If behind a rev-proxy then use XFF header
@@ -117,10 +119,12 @@ def index(request):
                         url = url + ".git"
                     func = github_webhook_launch
 
+        #TODO: support more payload types
         if not url or not func:
             print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
             return HttpResponseBadRequest()
 
+        #TODO: move to DB based service whitelist
         if ((not settings.SERVICE_WHITELIST) or
             (settings.SERVICE_WHITELIST and
              urlparse.urlparse(url).netloc in settings.SERVICE_WHITELIST)):
