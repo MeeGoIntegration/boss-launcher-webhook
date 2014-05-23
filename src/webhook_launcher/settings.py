@@ -75,7 +75,7 @@ if config.has_option('web', 'post_ip_filter'):
 OUTGOING_PROXY = None
 if config.has_option('web', 'outgoing_proxy'):
     OUTGOING_PROXY = config.get('web', 'outgoing_proxy')
-    OUTGOING_PROXY_PORT = config.get('web', 'outgoing_proxy_port')
+    OUTGOING_PROXY_PORT = int(config.get('web', 'outgoing_proxy_port'))
 
 BOSS_HOST = config.get('boss', 'boss_host')
 BOSS_USER = config.get('boss', 'boss_user')

@@ -1,6 +1,7 @@
 from django import template
 from django.forms.models import model_to_dict
 from django.contrib.admin.templatetags.admin_modify import *
+from webhook_launcher.app.models import WebHookMapping
 
 @register.inclusion_tag('admin/submit_line.html', takes_context=True)
 def submit_row(context):
@@ -9,9 +10,9 @@ def submit_row(context):
     """
     prefill = ""
     original = context.get('original')
-    if original:
+    if original and isinstance(original, WebHookMapping):
         prefill = "?"
-        data = model_to_dict(context.get('original'), fields=[], exclude=[])
+        data = model_to_dict(original, fields=[], exclude=[])
         for key, value in data.items():
             if value == False:
                 value=""
