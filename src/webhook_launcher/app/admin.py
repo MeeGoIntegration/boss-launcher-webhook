@@ -23,7 +23,10 @@ from django.contrib import admin, messages
 from django.forms import TextInput
 from django.core.urlresolvers import reverse
 
-from webhook_launcher.app.models import LastSeenRevision, WebHookMapping, BuildService
+from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping, 
+                                          BuildService, Project, VCSService,
+                                          VCSNameSpace, QueuePeriod )
+
 from webhook_launcher.app.utils import rev_or_head, handle_tag
 
 class LastSeenRevisionInline(admin.StackedInline):
@@ -101,3 +104,7 @@ class LastSeenRevisionAdmin(admin.ModelAdmin):
 admin.site.register(WebHookMapping, WebHookMappingAdmin)
 admin.site.register(BuildService, BuildServiceAdmin)
 admin.site.register(LastSeenRevision, LastSeenRevisionAdmin)
+admin.site.register(Project)
+admin.site.register(VCSNameSpace)
+admin.site.register(VCSService)
+admin.site.register(QueuePeriod)
