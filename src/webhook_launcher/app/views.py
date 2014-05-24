@@ -27,7 +27,7 @@ from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
 from utils import bitbucket_webhook_launch, github_webhook_launch
-from models import WebHookMapping
+from models import WebHookMapping, get_or_none
 from pprint import pprint
 import struct, socket
 
@@ -45,7 +45,7 @@ def index(request):
 
         mappings = defaultdict(list)
         #TODO: filter with privileged projects
-        maps = WebHookMapping.objects.all().exclude(package="")
+        maps = WebHookMapping.objects.exclude(package="")
         for mapobj in maps:
             repourl = urlparse.urlparse(mapobj.repourl)
             mappings[repourl.netloc].append({ "path" : repourl.path,
@@ -121,8 +121,13 @@ def index(request):
 
         #TODO: support more payload types
         if not url or not func:
-            print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
-            return HttpResponseBadRequest()
+            if data.get('zen', None) and data.get('hook_id', None):
+                # Github ping event, just say Hi
+                return HttpResponse()
+
+            else:
+                print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
+                return HttpResponseBadRequest()
 
         #TODO: move to DB based service whitelist
         if ((not settings.SERVICE_WHITELIST) or
