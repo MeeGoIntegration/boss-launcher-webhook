@@ -250,13 +250,13 @@ def bitbucket_webhook_launch(repourl, payload):
                 print tag
                 if tag['changeset'] == branch['changeset']:
                     print "found tagged branch"
-                    tips[(branch['name'], tag['name'])] = [branch['changeset']]
+                    tips[branch['name']] = ([branch['changeset']], tag['name'])
 
     print tips
 
-    for bt, commits in tips.items():
-        branch = bt[0]
-        tag = bt[1]
+    for branch, ct in tips.items():
+        commits = ct[0]
+        tag = ct[1]
 
         mapobjs = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
