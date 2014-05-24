@@ -124,7 +124,12 @@ def create_placeholder(repourl, branch):
 
 def github_webhook_launch(repourl, payload):
     # github performs one POST per ref (tag/branch) touched even if they are pushed together
-    reftype, refname = payload['ref'].split("/", 2)[1:]
+    refsplit = payload['ref'].split("/", 2)
+    if len(refsplit) > 1:
+        reftype, refname = refsplit[1:]
+    else:
+        print "Couldn't figure out reftype or refname"
+        return
 
     if reftype == "tags":
     # tag
@@ -143,6 +148,9 @@ def github_webhook_launch(repourl, payload):
     elif reftype == "heads":
     # commit to branch
         branches = [refname]
+    else:
+        print "Couldn't use payload"
+        return
 
     print repourl
     print branches

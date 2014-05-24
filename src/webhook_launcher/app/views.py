@@ -97,7 +97,15 @@ def index(request):
         url = None
         func = None
         repo = data.get('repository', None)
-        if repo:
+        gh_pull_request = data.get('pull_request', None)
+
+        #TODO: support more payload types
+        if gh_pull_request:
+            # Github pull request event
+            func = github_pull_request
+            url = data['pull_request']['html']
+
+        elif repo:
             if repo.get('absolute_url', None):
                 # bitbucket type payload
                 url = repo.get('absolute_url', None)
@@ -119,12 +127,7 @@ def index(request):
                         url = url + ".git"
                     func = github_webhook_launch
 
-        #TODO: support more payload types
         if not url or not func:
-            if data.get('pull_request', None):
-                # Github pull request event
-                func = github_pull_request
-                url = data['pull_request']['html']
 
             if data.get('zen', None) and data.get('hook_id', None):
                 # Github ping event, just say Hi
