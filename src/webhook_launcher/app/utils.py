@@ -81,6 +81,12 @@ def handle_tag(mapobj, user, payload, tag, web=False):
                         mapobj.project, mapobj.package, mapobj.obs.weburl,
                         mapobj.package, mapobj.project))
 
+        if mapobj.handled or mapbobj.tag == tag:
+            if web:
+                message = "Forced %s" % message
+            else:
+                message = "%s, which was already handled; skipping" % message
+
         fields = mapobj.to_fields()
         fields['msg'] = message
         fields['payload'] = payload
