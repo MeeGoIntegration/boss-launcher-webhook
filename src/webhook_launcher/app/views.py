@@ -103,7 +103,7 @@ def index(request):
         if gh_pull_request:
             # Github pull request event
             func = github_pull_request
-            url = data['pull_request']['html']
+            url = data['pull_request']['html_url']
 
         elif repo:
             if repo.get('absolute_url', None):

@@ -303,4 +303,16 @@ def github_pull_request(pr_url, payload):
     branch = payload['base']['ref']
     mapobj = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
-    print "Pull request #%s for %s %s (%s)" % (payload['number'], mapobj, payload['action'], pr_url)
+    if mapobj.count():
+        handle_pr(mapobj, pr_url, payload)
+
+def handle_pr(mapobj,):
+    message = "Pull request #%s by %s for %s %s (%s)" % (payload['number'], payload['user'], mapobj, payload['action'], pr_url)
+
+    if mapobj.notify:
+
+        fields = mapobj.to_fields()
+        fields['msg'] = message
+        fields['payload'] = payload
+        print message
+        launch_notify(fields)
