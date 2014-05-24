@@ -60,24 +60,22 @@ def handle_commit(mapobj, user, payload):
     print message
     launch_notify(fields)
 
-def rev_or_head(mapobj):
-    lsr = mapobj.lastseenrevision_set.all()
-    if len(lsr):
-        return lsr[0].revision
-    else:
-        return "HEAD"
+    mapobj.untag()
 
-def handle_tag(mapobj, user, payload, web=False):
-    message = "Tag(s)"
+def rev_or_head(mapobj):
+    return mapobj.revision or mapobj.branch
+
+def handle_tag(mapobj, user, payload, tag, web=False):
+    message = "Tag %s" % tag
     if web:
-        message = "Build triggered"
+        message = "Build triggered for %s" % tag
 
     if mapobj.notify:
         message = "%s by %s in %s branch of %s" % (message, user, mapobj.branch,
                                                    mapobj.repourl)
         if not mapobj.project or not mapobj.package:
             message = "%s, which is not mapped yet. Please map it." % message
-        elif mapobj.project and mapobj.package and mapobj.build:
+        elif mapobj.project and mapobj.package and mapobj.build and (web or not mapobj.handled or not mapobj.tag == tag):
             message = ("%s, which will trigger build in project %s package "
                        "%s (%s/package/show?package=%s&project=%s)" % (message,
                         mapobj.project, mapobj.package, mapobj.obs.weburl,
@@ -90,12 +88,18 @@ def handle_tag(mapobj, user, payload, web=False):
         launch_notify(fields)
         
     if mapobj.build and mapobj.project and mapobj.package:
+        if not web:
+            if mapobj.handled and mapobj.tag == tag:
+                print "build already handled, skipping"
+                return
+
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
         fields['revision'] = rev_or_head(mapobj)
         fields['payload'] = payload
         print "build"
         launch_build(fields)
+        mapobj.tag = tag
 
 def create_placeholder(repourl, branch):
 
@@ -193,7 +197,7 @@ def github_webhook_launch(repourl, payload):
 
             elif reftype == "tags":
                 print "Tag %s for %s in %s/%s, notify and build it if enabled" % (refname, revision, repourl, mapobj.branch)
-                handle_tag(mapobj, name, payload)
+                handle_tag(mapobj, name, payload, refname)
 
 class bbAPIcall(object):
     def __init__(self, slug):
@@ -246,11 +250,13 @@ def bitbucket_webhook_launch(repourl, payload):
                 print tag
                 if tag['changeset'] == branch['changeset']:
                     print "found tagged branch"
-                    tips[branch['name']] = [branch['changeset']] 
+                    tips[(branch['name'], tag['name'])] = [branch['changeset']]
 
     print tips
 
-    for branch, commits in tips.items():
+    for bt, commits in tips.items():
+        branch = bt[0]
+        tag = bt[1]
 
         mapobjs = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
@@ -275,4 +281,4 @@ def bitbucket_webhook_launch(repourl, payload):
 
             else:
                 print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
-                handle_tag(mapobj, payload["user"], payload)
+                handle_tag(mapobj, payload["user"], payload, tag)

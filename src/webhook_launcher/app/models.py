@@ -105,6 +105,40 @@ class WebHookMapping(models.Model):
         return "%s/%s -> %s/%s" % (self.repourl, self.branch, self.project, self.package)
 
     @property
+    def tag(self):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            return _lsr.tag
+
+    @tag.setter
+    def tag(self, x):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            _lsr.tag = x
+            _lsr.handled = True
+            _lsr.save()
+
+    def untag(self):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            _lsr.tag = ""
+            _lsr.handled = False
+            _lsr.save()
+
+    @property
+    def handled(self):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            return _lsr.handled
+
+    @handled.setter
+    def handled(self, x):
+        _lsr = self.lastseenrevision_set.all()
+        if _lsr:
+            _lsr.handled = x
+            _lsr.save()
+
+    @property
     def revision(self):
         _lsr = self.lastseenrevision_set.all()
         if _lsr:

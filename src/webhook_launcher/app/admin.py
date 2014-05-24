@@ -99,7 +99,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
 
     def trigger_build(self, request, mappings):
         for mapobj in mappings:
-            handle_tag(mapobj, request.user, {}, web=True)
+            handle_tag(mapobj, request.user, {}, mapobj.tag, web=True)
             msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': rev_or_head(mapobj)}
             self.message_user(request, msg)
 
