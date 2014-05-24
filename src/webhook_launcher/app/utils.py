@@ -299,7 +299,7 @@ def bitbucket_webhook_launch(repourl, payload):
 
 def github_pull_request(pr_url, payload):
     
-    repourl = payload['pull_request']['base']['clone_url']
+    repourl = payload['pull_request']['base']['repo']['clone_url']
     branch = payload['pull_request']['base']['ref']
     mapobj = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
@@ -308,7 +308,7 @@ def github_pull_request(pr_url, payload):
 
 def handle_pr(mapobj,pr_url, payload):
 
-    target_repourl = payload['pull_request']['head']['clone_url']
+    target_repourl = payload['pull_request']['head']['repo']['clone_url']
     target_branch = payload['pull_request']['head']['ref']
 
     message = "Pull request #%s by %s from %s to %s %s (%s)" % (payload['number'], payload['user'], mapobj, payload['action'], pr_url)
