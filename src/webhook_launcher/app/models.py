@@ -23,7 +23,7 @@ import os
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.auth.models import Permission
 from django.db.models.signals import post_save
 from django.contrib.auth.backends import RemoteUserBackend
@@ -36,14 +36,18 @@ def get_or_none(model, **kwargs):
 
 class BuildService(models.Model):
 
+    def __unicode__(self):
+        return self.apiurl
+
     namespace = models.CharField(max_length=50, unique=True)
     apiurl = models.CharField(max_length=250, unique=True)
     weburl = models.CharField(max_length=250, unique=True)
 
-    def __unicode__(self):
-        return self.apiurl
 
 class VCSService(models.Model):
+
+    def __unicode__(self):
+        return self.name
 
     name = models.CharField(max_length=50, unique=True)
     netloc = models.CharField(max_length=200, unique=True)
@@ -51,18 +55,49 @@ class VCSService(models.Model):
 
 class VCSNameSpace(models.Model):
 
+    def __unicode__(self):
+        return "%s/%s" % (self.service, self.path)
+
     service = models.ForeignKey(VCSService)
     path = models.CharField(max_length=200)
 
 class Project(models.Model):
 
+    def __unicode__(self):
+        return "%s on %s" % (self.name, obs)
+
     class Meta:
         unique_together = (("name", "obs"),)
+
+    def is_repourl_allowed(self, repourl):
+
+        # handle SSH git URLs
+        if "@" in repourl and ":" in repourl:
+            repourl = repourl.replace(":", "/").replace("@", "://")
+
+        repourl = urlparse(repourl)
+        netloc = repourl.netloc
+        path = repourl.path.rsplit("/", 1)
+        if self.vcsnamespaces.count():
+            return self.vcsnamespaces.filter(path=path, service__netloc=netloc).count()
+        else:
+            return True
+
+    def is_user_allowed(self, user):
+
+        user_groups = set(user.groups.all())
+        groups = set(self.groups.all())
+        if groups and (user_groups & groups):
+            return True
+        else:
+            return False
 
     name = models.CharField(max_length=250)
     obs = models.ForeignKey(BuildService)
     official = models.BooleanField(default=True)
     allowed = models.BooleanField(default=True)
+    groups = model.ManyToManyField(Group, blank=True, null=True)
+    vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
 
 class WebHookMapping(models.Model):    
 
@@ -96,9 +131,8 @@ class WebHookMapping(models.Model):
         if project and not project.allowed:
             raise ValidationError('Project %s does not allow mappings' % project)
 
-        namespace = get_or_none(VCSNameSpace, path = os.path.dirname(repourl.path))
-
         if project and project.official:
+            namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
             if not service or not namespace:
                 raise ValidationError('Official project %s allows mapping from known service namespaces only' % project)
 

@@ -121,6 +121,10 @@ elif USE_REMOTE_AUTH:
 
 SECRET_KEY = config.get('web', 'secret_key')
 
+STRICT_MAPPINGS = False
+if config.has_option('web', 'strict_mappings'):
+    STRICT_MAPPINGS = config.getboolean('web', 'strict_mappings')
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 

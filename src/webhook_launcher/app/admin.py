@@ -22,10 +22,11 @@ from django.contrib.auth.models import User
 from django.contrib import admin, messages
 from django.forms import TextInput
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping, 
                                           BuildService, Project, VCSService,
-                                          VCSNameSpace, QueuePeriod )
+                                          VCSNameSpace, QueuePeriod, get_or_none )
 
 from webhook_launcher.app.utils import rev_or_head, handle_tag
 
@@ -57,6 +58,30 @@ class WebHookMappingAdmin(admin.ModelAdmin):
     actions = ['trigger_build']
     formfield_overrides = { models.CharField: {'widget' : TextInput(attrs={ 'size' : '100' })}, }
     save_on_top = True
+
+    def save_form(self, request, form, change):
+
+        user = request.user
+        project = form.cleaned_data["project"]
+        prj_obj = get_or_none(Project, name=project)
+        # deny by default
+        ok = False
+
+        if not settings.STRICT_MAPPINGS or user.is_superuser:
+            ok = True
+        elif project.startswith("home:%s" % user.username):
+            ok = True
+
+        if settings.STRICT_MAPPINGS and prj_obj:
+
+            repourl = form.cleaned_data["repourl"]
+            ok = prj_obj.is_repourl_allowed(repourl)
+            ok = prj_obj.is_user_allowed(user)
+
+        if not ok:
+            raise ValueError("This webhook mapping is not allowed by strict rules")
+
+        return super(WebHookMappingAdmin, self).response_change(request, obj)
 
     def response_change(self, request, obj):
         if "_triggerbuild" in request.POST:
