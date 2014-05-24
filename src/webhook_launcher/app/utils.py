@@ -314,7 +314,7 @@ def github_pull_request(repourl, payload):
          }
 
     for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
-        handle_pr(payload, data, payload)
+        handle_pr(mapobj, data, payload)
 
 def bitbucket_pull_request(repourl, payload):
     bburl = "https://bitbucket.org"
@@ -330,7 +330,7 @@ def bitbucket_pull_request(repourl, payload):
              }
 
     for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
-        handle_pr(payload, data, payload)
+        handle_pr(mapobj, data, payload)
 
 def handle_pr(mapobj, data, payload):
 
