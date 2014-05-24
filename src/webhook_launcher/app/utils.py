@@ -67,12 +67,14 @@ def rev_or_head(mapobj):
     else:
         return "HEAD"
 
-def handle_tag(mapobj, user, payload):
+def handle_tag(mapobj, user, payload, web=False):
+    message = "Tag(s)"
+    if web:
+        message = "Build triggered"
 
     if mapobj.notify:
-
-        message = "Tag(s) by %s in %s branch of %s" % (user, mapobj.branch,
-                                                       mapobj.repourl)
+        message = "%s by %s in %s branch of %s" % (message, user, mapobj.branch,
+                                                   mapobj.repourl)
         if not mapobj.project or not mapobj.package:
             message = "%s, which is not mapped yet. Please map it." % message
         elif mapobj.project and mapobj.package and mapobj.build:
