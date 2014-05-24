@@ -297,22 +297,41 @@ def bitbucket_webhook_launch(repourl, payload):
                 print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
                 handle_tag(mapobj, payload["user"], payload, tag)
 
-def github_pull_request(pr_url, payload):
-    
-    repourl = payload['pull_request']['base']['repo']['clone_url']
+def github_pull_request(repourl, payload):
+
     branch = payload['pull_request']['base']['ref']
+    data = { "url" : payload['pull_request']['html_url'],
+             "source_repourl" : payload['pull_request']['head']['repo']['clone_url'],
+             "source_branch" : payload['pull_request']['head']['ref'],
+             "username" : payload['pull_request']['user']['login'],
+             "action" : payload['action'],
+             "id" : payload['number'],
+         }
+
     for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
-        handle_pr(mapobj, pr_url, payload)
+        handle_pr(payload, data, payload)
 
-def handle_pr(mapobj,pr_url, payload):
+def bitbucket_pull_request(repourl, payload):
+    bburl = "https://bitbucket.org"
 
-    target_repourl = payload['pull_request']['head']['repo']['clone_url']
-    target_branch = payload['pull_request']['head']['ref']
-    username = payload['pull_request']['user']['login']
+    for key, values in payload.items():
+        branch = values['destination']['branch']['name']
+        data = { "url" : values['links']['html']['href'],
+                 "source_repourl" : urlparse.urljoin(bburl, values['source']['repository']['full_name']) + ".git",
+                 "source_branch" : values['source']['branch']['name'],
+                 "username" : values['author']['username'],
+                 "action" : key.replace("pullrequest_",""),
+                 "id" : values['id'],
+             }
+
+    for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
+        handle_pr(payload, data, payload)
+
+def handle_pr(mapobj, data, payload):
 
     message = "Pull request #%s by %s from %s / %s to %s %s (%s)" % (
-        payload['number'], username, target_repourl,
-        target_branch, mapobj, payload['action'], pr_url)
+        data['id'], data['username'], data['source_repourl'],
+        data['source_branch'], mapobj, data['action'], data['url'])
 
     if mapobj.notify:
 

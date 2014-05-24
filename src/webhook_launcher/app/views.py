@@ -98,12 +98,25 @@ def index(request):
         func = None
         repo = data.get('repository', None)
         gh_pull_request = data.get('pull_request', None)
+        bb_pr_keys = ["pullrequest_created"]
+        bburl = "https://bitbucket.org"
+        # https://bitbucket.org/site/master/issue/8340/pull-request-post-hook-does-not-include
+        # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
 
         #TODO: support more payload types
-        if gh_pull_request:
+        for key in bb_pr_keys:
+            bb_pull_request = data.get(key, None)
+            if bb_pull_request:
+                break
+
+        if bb_pull_request:
+            func = bitbucket_pull_request
+            url = urlparse.urljoin(bburl, data[key]['destination']['repository']['full_name']) + '.git'
+
+        elif gh_pull_request:
             # Github pull request event
             func = github_pull_request
-            url = data['pull_request']['html_url']
+            url = payload['pull_request']['base']['repo']['clone_url']
 
         elif repo:
             if repo.get('absolute_url', None):
