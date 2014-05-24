@@ -269,8 +269,12 @@ def bitbucket_webhook_launch(repourl, payload):
     print tips
 
     for branch, ct in tips.items():
-        commits = ct[0]
-        tag = ct[1]
+        if isinstance(ct, tuple):
+            commits = ct[0]
+            tag = ct[1]
+        else:
+            commits = ct
+            tag = None
 
         mapobjs = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
