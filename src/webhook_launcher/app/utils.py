@@ -20,6 +20,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from RuoteAMQP import Launcher
 
+import urlparse
 import pycurl
 import json
 
