@@ -310,8 +310,9 @@ def handle_pr(mapobj,pr_url, payload):
 
     target_repourl = payload['pull_request']['head']['repo']['clone_url']
     target_branch = payload['pull_request']['head']['ref']
+    username = payload['pull_request']['user']['login']
 
-    message = "Pull request #%s by %s from %s to %s %s (%s)" % (payload['number'], payload['user'], mapobj, payload['action'], pr_url)
+    message = "Pull request #%s by %s from %s to %s %s (%s)" % (payload['number'], username, mapobj, payload['action'], pr_url)
 
     if mapobj.notify:
 
