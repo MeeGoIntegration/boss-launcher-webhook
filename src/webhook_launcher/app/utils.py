@@ -301,9 +301,7 @@ def github_pull_request(pr_url, payload):
     
     repourl = payload['pull_request']['base']['repo']['clone_url']
     branch = payload['pull_request']['base']['ref']
-    mapobj = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
-
-    if mapobj.count():
+    for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
         handle_pr(mapobj, pr_url, payload)
 
 def handle_pr(mapobj,pr_url, payload):
