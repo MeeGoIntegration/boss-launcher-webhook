@@ -106,43 +106,49 @@ class WebHookMapping(models.Model):
 
     @property
     def tag(self):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            return _lsr.tag
+        lsr = self.lsr
+        if lsr:
+            return lsr.tag
 
     @tag.setter
     def tag(self, x):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            _lsr.tag = x
-            _lsr.handled = True
-            _lsr.save()
+        lsr = self.lsr
+        if lsr:
+            lsr.tag = x
+            lsr.handled = True
+            lsr.save()
 
     def untag(self):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            _lsr.tag = ""
-            _lsr.handled = False
-            _lsr.save()
+        lsr = self.lsr
+        if lsr:
+            lsr.tag = ""
+            lsr.handled = False
+            lsr.save()
 
     @property
     def handled(self):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            return _lsr.handled
+        lsr = self.lsr
+        if lsr:
+            return lsr.handled
 
     @handled.setter
     def handled(self, x):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            _lsr.handled = x
-            _lsr.save()
+        lsr = self.lsr
+        if lsr:
+            lsr.handled = x
+            lsr.save()
 
     @property
     def revision(self):
+        lsr = self.lsr
+        if lsr:
+            return lsr.revision
+
+    @property
+    def lsr(self):
         _lsr = self.lastseenrevision_set.all()
         if _lsr:
-            return _lsr[0].revision
+            return _lsr[0]
 
     def clean(self, exclude=None):
         self.repourl = self.repourl.strip()
@@ -185,7 +191,7 @@ class WebHookMapping(models.Model):
         if self.dumb:
             fields['dumb'] = self.dumb
         return fields
-        
+
     repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
     branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
     project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
