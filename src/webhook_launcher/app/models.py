@@ -214,8 +214,14 @@ class LastSeenRevision(models.Model):
     revision = models.CharField(max_length=250)
     tag = models.CharField(max_length=50, blank=True, null=True)
     handled = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now=True)
 
 class QueuePeriod(models.Model):
+
+    def __unicode__(self):
+        return "Queue period from %s %s to %s %s for %s" % ( self.start_date, self.start_time,
+                                                             self.end_date, self.end_time,
+                                                             ",".join(self.projects))
 
     start_time = models.TimeField(default=datetime.datetime.now())
     end_time = models.TimeField(default=datetime.datetime.now())

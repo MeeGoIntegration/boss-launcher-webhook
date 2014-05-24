@@ -23,8 +23,9 @@ from RuoteAMQP import Launcher
 import urlparse
 import pycurl
 import json
+import datetime
 
-from models import WebHookMapping, BuildService, LastSeenRevision
+from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod
 
 def launch(process, fields):
     """ BOSS process launcher
@@ -98,6 +99,24 @@ def handle_tag(mapobj, user, payload, tag, web=False):
         if not web:
             if mapobj.handled and mapobj.tag == tag:
                 print "build already handled, skipping"
+                return
+
+        # Find possible queue period objects
+        now = datetime.datetime.now()
+        qps = QueuePeriod.objects.filter(start_time__lte=now.time(),
+                                         end_time__gte=now.time(),
+                                         projects__name = mapobj.project)
+        for qp in qps:
+            within = False
+            if qp.start_date and qp.end_date:
+                within = qp.start_date <= now.date()
+                within = within and (qp.end_date >= now.date())
+
+            if within or qp.recurring:
+                print "Build trigger for %s delayed by %s" % (mapobj, qp)
+                print qp.comment
+                mapobj.tag = tag
+                mapobj.handled = False
                 return
 
         fields = mapobj.to_fields()
