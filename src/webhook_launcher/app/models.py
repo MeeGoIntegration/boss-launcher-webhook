@@ -37,7 +37,7 @@ def get_or_none(model, **kwargs):
 class BuildService(models.Model):
 
     def __unicode__(self):
-        return self.apiurl
+        return self.weburl
 
     namespace = models.CharField(max_length=50, unique=True)
     apiurl = models.CharField(max_length=250, unique=True)
