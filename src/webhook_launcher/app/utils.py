@@ -321,7 +321,7 @@ def bitbucket_pull_request(repourl, payload):
 
     for key, values in payload.items():
         branch = values['destination']['branch']['name']
-        data = { "url" : values['links']['html']['href'],
+        data = { "url" : urlparse.urljoin(bburl, values['source']['repository']['full_name'], "/pull-request/%s" % values['id']),
                  "source_repourl" : urlparse.urljoin(bburl, values['source']['repository']['full_name']) + ".git",
                  "source_branch" : values['source']['branch']['name'],
                  "username" : values['author']['username'],
