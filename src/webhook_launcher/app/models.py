@@ -96,7 +96,7 @@ class Project(models.Model):
     obs = models.ForeignKey(BuildService)
     official = models.BooleanField(default=True)
     allowed = models.BooleanField(default=True)
-    groups = model.ManyToManyField(Group, blank=True, null=True)
+    groups = models.ManyToManyField(Group, blank=True, null=True)
     vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
 
 class WebHookMapping(models.Model):    

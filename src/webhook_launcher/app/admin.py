@@ -81,7 +81,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
         if not ok:
             raise ValueError("This webhook mapping is not allowed by strict rules")
 
-        return super(WebHookMappingAdmin, self).response_change(request, obj)
+        return super(WebHookMappingAdmin, self).save_form(request, form, change)
 
     def response_change(self, request, obj):
         if "_triggerbuild" in request.POST:
@@ -126,10 +126,13 @@ class BuildServiceAdmin(admin.ModelAdmin):
 class LastSeenRevisionAdmin(admin.ModelAdmin):
     pass
 
+class ProjectAdmin(admin.ModelAdmin):
+    filter_horizontal = ("groups", "vcsnamespaces",)
+
 admin.site.register(WebHookMapping, WebHookMappingAdmin)
 admin.site.register(BuildService, BuildServiceAdmin)
 admin.site.register(LastSeenRevision, LastSeenRevisionAdmin)
-admin.site.register(Project)
+admin.site.register(Project, ProjectAdmin)
 admin.site.register(VCSNameSpace)
 admin.site.register(VCSService)
 admin.site.register(QueuePeriod)
