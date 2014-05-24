@@ -323,7 +323,7 @@ def bitbucket_pull_request(repourl, payload):
         branch = values['destination']['branch']['name']
         source = urlparse.urljoin(bburl, values['source']['repository']['full_name'])
 
-        data = { "url" : urlparse.urljoin(source, "pull-request/%s" % values['id']),
+        data = { "url" : urlparse.urljoin(source + '/', "pull-request/%s" % values['id']),
                  "source_repourl" : source + ".git",
                  "source_branch" : values['source']['branch']['name'],
                  "username" : values['author']['username'],
