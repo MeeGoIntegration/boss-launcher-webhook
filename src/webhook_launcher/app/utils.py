@@ -288,3 +288,11 @@ def bitbucket_webhook_launch(repourl, payload):
             else:
                 print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
                 handle_tag(mapobj, payload["user"], payload, tag)
+
+def github_pull_request(pr_url, payload):
+    
+    repourl = payload['base']['repo']['clone_url']
+    branch = payload['base']['ref']
+    mapobj = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
+
+    print "Pull request #%s for %s %s (%s)" % (payload['number'], mapobj, payload['action'], pr_url)

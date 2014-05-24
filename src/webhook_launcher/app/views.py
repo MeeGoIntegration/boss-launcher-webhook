@@ -26,7 +26,7 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
-from utils import bitbucket_webhook_launch, github_webhook_launch
+from utils import bitbucket_webhook_launch, github_webhook_launch, github_pull_request
 from models import WebHookMapping, get_or_none
 from pprint import pprint
 import struct, socket
@@ -121,6 +121,11 @@ def index(request):
 
         #TODO: support more payload types
         if not url or not func:
+            if data.get('pull_request', None):
+                # Github pull request event
+                func = github_pull_request
+                url = data['pull_request']['html']
+
             if data.get('zen', None) and data.get('hook_id', None):
                 # Github ping event, just say Hi
                 return HttpResponse()
