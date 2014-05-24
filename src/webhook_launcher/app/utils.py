@@ -78,10 +78,10 @@ def handle_tag(mapobj, user, payload, web=False):
         if not mapobj.project or not mapobj.package:
             message = "%s, which is not mapped yet. Please map it." % message
         elif mapobj.project and mapobj.package and mapobj.build:
-            message = "%s, which will trigger build in project %s package %s \
-            (%s/package/show?package=%s&project=%s)" % (message, mapobj.project, mapobj.package,
-                                                        mapobj.obs.weburl, mapobj.package,
-                                                        mapobj.project)
+            message = ("%s, which will trigger build in project %s package "
+                       "%s (%s/package/show?package=%s&project=%s)" % (message,
+                        mapobj.project, mapobj.package, mapobj.obs.weburl,
+                        mapobj.package, mapobj.project))
 
         fields = mapobj.to_fields()
         fields['msg'] = message
