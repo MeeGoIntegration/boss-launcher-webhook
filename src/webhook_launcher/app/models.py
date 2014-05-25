@@ -27,6 +27,7 @@ from django.contrib.auth.models import User, Group
 from django.contrib.auth.models import Permission
 from django.db.models.signals import post_save
 from django.contrib.auth.backends import RemoteUserBackend
+from django.utils import timezone
 
 def get_or_none(model, **kwargs):
     try:
@@ -64,7 +65,7 @@ class VCSNameSpace(models.Model):
 class Project(models.Model):
 
     def __unicode__(self):
-        return "%s on %s" % (self.name, obs)
+        return "%s on %s" % (self.name, self.obs)
 
     class Meta:
         unique_together = (("name", "obs"),)
@@ -75,7 +76,7 @@ class Project(models.Model):
         if "@" in repourl and ":" in repourl:
             repourl = repourl.replace(":", "/").replace("@", "://")
 
-        repourl = urlparse(repourl)
+        repourl = urlparse.urlparse(repourl)
         netloc = repourl.netloc
         path = repourl.path.rsplit("/", 1)
         if self.vcsnamespaces.count():
@@ -150,6 +151,14 @@ class WebHookMapping(models.Model):
         if _lsr:
             return _lsr[0]
 
+    @property
+    def mapped(self):
+        return self.project and self.package
+
+    @property
+    def rev_or_head(self):
+        return self.revision or self.branch
+
     def clean(self, exclude=None):
         self.repourl = self.repourl.strip()
         self.branch  = self.branch.strip()
@@ -219,9 +228,43 @@ class LastSeenRevision(models.Model):
 class QueuePeriod(models.Model):
 
     def __unicode__(self):
-        return "Queue period from %s %s to %s %s for %s" % ( self.start_date, self.start_time,
-                                                             self.end_date, self.end_time,
-                                                             ",".join(self.projects))
+        return "Queue period from %s %s to %s %s for %s" % ( self.start_date or "", self.start_time,
+                                                             self.end_date or "", self.end_time,
+                                                             ",".join([str(prj) for prj in self.projects.all()]))
+
+    class Meta:
+        permissions = (("can_override_queueperiod", "Can override queue periods"),)
+
+
+    def override(self, user):
+        if not user:
+            return False
+
+        if user.has_perm("app.can_override_queueperiod"):
+            return True
+
+    def delay(self, dto=timezone.now()):
+        within = True
+        # check first if we are in the time range
+        if self.start_time <= dto.time() and self.end_time >= dto.time():
+            # then check if we have a start date
+            if self.start_date:
+                # are we after the start date
+                if self.start_date <= dto.date():
+                    # check for and end date
+                    if self.end_date:
+                        # are we before the end date
+                        within = self.end_date >= dto.date()
+
+                    else:
+                        # are we recurring
+                        within = self.recurring
+                else:
+                    within = False
+        else:
+            within = False
+
+        return within
 
     start_time = models.TimeField(default=datetime.datetime.now())
     end_time = models.TimeField(default=datetime.datetime.now())

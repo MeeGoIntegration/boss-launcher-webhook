@@ -23,7 +23,6 @@ from RuoteAMQP import Launcher
 import urlparse
 import pycurl
 import json
-import datetime
 
 from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod
 
@@ -53,7 +52,7 @@ def launch_build(fields):
 
 def handle_commit(mapobj, user, payload):
     message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
-    if not mapobj.project or not mapobj.package:
+    if not mapobj.mapped:
         message = "%s, which is not mapped yet. Please map it." % message
 
     fields = mapobj.to_fields()
@@ -64,30 +63,54 @@ def handle_commit(mapobj, user, payload):
 
     mapobj.untag()
 
-def rev_or_head(mapobj):
-    return mapobj.revision or mapobj.branch
+def handle_tag(mapobj, user, payload, tag, webuser=None):
 
-def handle_tag(mapobj, user, payload, tag, web=False):
-    message = "Tag %s" % tag
-    if web:
-        message = "Build triggered for %s" % tag
+    build = mapobj.build and mapobj.mapped
+    delayed = False
+    skipped = False
+
+    if build:
+        if not webuser:
+            if mapobj.handled and mapobj.tag == tag:
+                print "build already handled, skipping"
+                build = False
+                skipped = True
+
+        # Find possible queue period objects
+        qps = QueuePeriod.objects.filter(projects__name = mapobj.project,
+                                         projects__obs__pk = mapobj.obs.pk)
+        for qp in qps:
+            if qp.delay() and not qp.override(webuser=webuser):
+                print "Build trigger for %s delayed by %s" % (mapobj, qp)
+                print qp.comment
+                mapobj.tag = tag
+                mapobj.handled = False
+                build = False
+                delayed = True
+                break
 
     if mapobj.notify:
+
+        message = "Tag %s" % tag
+        if webuser:
+            message = "Forced build trigger for %s" % tag
+
         message = "%s by %s in %s branch of %s" % (message, user, mapobj.branch,
                                                    mapobj.repourl)
-        if not mapobj.project or not mapobj.package:
+        if not mapobj.mapped:
             message = "%s, which is not mapped yet. Please map it." % message
-        elif mapobj.project and mapobj.package and mapobj.build and (web or not mapobj.handled or not mapobj.tag == tag):
+        elif build:
             message = ("%s, which will trigger build in project %s package "
                        "%s (%s/package/show?package=%s&project=%s)" % (message,
                         mapobj.project, mapobj.package, mapobj.obs.weburl,
                         mapobj.package, mapobj.project))
 
-        if mapobj.handled or mapbobj.tag == tag:
-            if web:
-                message = "Forced %s" % message
-            else:
-                message = "%s, which was already handled; skipping" % message
+        elif skipped:
+            message = "%s, which was already handled; skipping" % message
+        elif delayed:
+            message = "%s, which will be delayed by %s" % (message, qp)
+            if qp.comment:
+                message = "%s\n%s" % (message, qp.comment)
 
         fields = mapobj.to_fields()
         fields['msg'] = message
@@ -95,33 +118,10 @@ def handle_tag(mapobj, user, payload, tag, web=False):
         print message
         launch_notify(fields)
         
-    if mapobj.build and mapobj.project and mapobj.package:
-        if not web:
-            if mapobj.handled and mapobj.tag == tag:
-                print "build already handled, skipping"
-                return
-
-        # Find possible queue period objects
-        now = datetime.datetime.now()
-        qps = QueuePeriod.objects.filter(start_time__lte=now.time(),
-                                         end_time__gte=now.time(),
-                                         projects__name = mapobj.project)
-        for qp in qps:
-            within = False
-            if qp.start_date and qp.end_date:
-                within = qp.start_date <= now.date()
-                within = within and (qp.end_date >= now.date())
-
-            if within or qp.recurring:
-                print "Build trigger for %s delayed by %s" % (mapobj, qp)
-                print qp.comment
-                mapobj.tag = tag
-                mapobj.handled = False
-                return
-
+    if build:
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
-        fields['revision'] = rev_or_head(mapobj)
+        fields['revision'] = mapobj.rev_or_head
         fields['payload'] = payload
         print "build"
         launch_build(fields)

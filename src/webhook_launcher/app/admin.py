@@ -28,7 +28,7 @@ from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping,
                                           BuildService, Project, VCSService,
                                           VCSNameSpace, QueuePeriod, get_or_none )
 
-from webhook_launcher.app.utils import rev_or_head, handle_tag
+from webhook_launcher.app.utils import handle_tag
 
 class LastSeenRevisionInline(admin.StackedInline):
     model = LastSeenRevision 
@@ -99,8 +99,8 @@ class WebHookMappingAdmin(admin.ModelAdmin):
 
     def trigger_build(self, request, mappings):
         for mapobj in mappings:
-            handle_tag(mapobj, request.user, {}, mapobj.tag, web=True)
-            msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': rev_or_head(mapobj)}
+            handle_tag(mapobj, request.user.username, {}, mapobj.tag, webuser=request.user)
+            msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': mapobj.rev_or_head}
             self.message_user(request, msg)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -124,10 +124,13 @@ class BuildServiceAdmin(admin.ModelAdmin):
     pass
 
 class LastSeenRevisionAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields = ("timestamp",)
 
 class ProjectAdmin(admin.ModelAdmin):
     filter_horizontal = ("groups", "vcsnamespaces",)
+
+class QueuePeriodAdmin(admin.ModelAdmin):
+    pass
 
 admin.site.register(WebHookMapping, WebHookMappingAdmin)
 admin.site.register(BuildService, BuildServiceAdmin)
@@ -135,4 +138,4 @@ admin.site.register(LastSeenRevision, LastSeenRevisionAdmin)
 admin.site.register(Project, ProjectAdmin)
 admin.site.register(VCSNameSpace)
 admin.site.register(VCSService)
-admin.site.register(QueuePeriod)
+admin.site.register(QueuePeriod, QueuePeriodAdmin)
