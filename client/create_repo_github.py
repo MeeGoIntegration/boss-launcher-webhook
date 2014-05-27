@@ -27,7 +27,8 @@ import subprocess
 import time
 
 WEBHOOK_TARGETS = [
-    'https://webhook.merproject.org/webhook/',
+#    'https://webhook.merproject.org/webhook/',
+    'http://webhook.jollamobile.com/webhook/',
 ]
 
 if len(sys.argv) != 3:
@@ -37,37 +38,49 @@ if len(sys.argv) != 3:
 orga, repository = sys.argv[1:]
 url = ''
 
+# GitHub API imposes a rate limit
+# https://developer.github.com/v3/#rate-limiting
 wait = lambda: time.sleep(2)
-curl = lambda *args: ['curl', '--netrc', '--silent'] + list(args)
+curl = lambda *args: ['curl', '--show-error', '--fail', '--netrc', '--silent'] + list(args)
 fmt = lambda x: x.format(orga=orga, repository=repository, url=url)
 
-cmd = lambda *args: json.loads(subprocess.check_output(*args))
+cmd = lambda *args: json.loads(subprocess.check_output(*args, stderr=subprocess.STDOUT))
 get = lambda url: cmd(curl(fmt(url)))
 post = lambda url, data: cmd(curl('--request', 'POST', '--data', json.dumps(data), fmt(url)))
+patch = lambda url, data: cmd(curl('--request', 'PATCH', '--data', json.dumps(data), fmt(url)))
 
-# Get list of existing repositories
-repos = get('https://api.github.com/orgs/{orga}/repos')
-existing_repos = [repo['name'] for repo in repos]
-
-# Create repository if it doesn't exist yet
-if repository not in existing_repos:
-    print fmt('Creating repository: {repository}')
-    post('https://api.github.com/orgs/{orga}/repos', {'name': repository})
-    wait()
-else:
+# GitHub API uses paginated lists so we can't get a full list "quickly"
+# https://developer.github.com/v3/#pagination
+try:
+    repo = get('https://api.github.com/repos/{orga}/{repository}')
     print fmt('Repository exists: {repository}')
+except subprocess.CalledProcessError, exc:
+    if "404 Not Found" in exc.output:
+        print fmt('Creating repository: {repository}')
+        post('https://api.github.com/orgs/{orga}/repos', {'name': repository})
+    else:
+        print exc.output
+        sys.exit(1)
+
+wait()
 
 # Get list of existing web hooks for that repository
 hooks = get('https://api.github.com/repos/{orga}/{repository}/hooks')
-existing_hooks = [hook['config']['url'] for hook in hooks if hook['name'] == 'web']
+existing_hooks = {}
+for hook in hooks:
+    if hook['name'] == 'web':
+        existing_hooks[hook['config']['url']] = hook['id']
 
 # Create all required web hooks if they don't exist yet
 for url in WEBHOOK_TARGETS:
+    config = {'name': 'web', 'active': True, 
+              'config': {'url': url, 'content_type': 'json', },
+              'events': ['push', 'pull_request'], }
     if url not in existing_hooks:
         print fmt('Adding hook: {url}')
-        config = {'name': 'web', 'active': True, 'config': {'url': url}}
         post('https://api.github.com/repos/{orga}/{repository}/hooks', config)
         wait()
     else:
-        print fmt('Hook exists: {url}')
-
+        print fmt('Updating existing hook: {url}')
+        patch('https://api.github.com/repos/{orga}/{repository}/hooks/%s' % existing_hooks[url], config)
+        wait()
