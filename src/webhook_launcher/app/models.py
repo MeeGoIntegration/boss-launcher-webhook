@@ -244,27 +244,21 @@ class QueuePeriod(models.Model):
             return True
 
     def delay(self, dto=timezone.now()):
-        within = True
-        # check first if we are in the time range
-        if self.start_time <= dto.time() and self.end_time >= dto.time():
-            # then check if we have a start date
-            if self.start_date:
-                # are we after the start date
-                if self.start_date <= dto.date():
-                    # check for and end date
-                    if self.end_date:
-                        # are we before the end date
-                        within = self.end_date >= dto.date()
+        if self.start_time <= self.end_time:
+            if not (self.start_time <= dto.time() <= self.end_time):
+                return False # wrong time of day
 
-                    else:
-                        # are we recurring
-                        within = self.recurring
-                else:
-                    within = False
-        else:
-            within = False
+        if self.start_time >= self.end_time:
+            if self.start_time >= dto.time() >= self.end_time):
+                return False # wrong time of day
+        
+        if self.start_date and (dto.date() < self.start_date):
+            return False # not started yet
 
-        return within
+        if self.end_date and (dto.date() > self.end_date):
+            return False # already ended
+
+        return True
 
     start_time = models.TimeField(default=datetime.datetime.now())
     end_time = models.TimeField(default=datetime.datetime.now())
