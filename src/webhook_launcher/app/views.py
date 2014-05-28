@@ -163,6 +163,6 @@ def index(request):
 
     return HttpResponseNotAllowed(['GET', 'POST'])
 
-class WebHooMappingViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = WebHookMapping.objects.all()
+class WebHookMappingViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
