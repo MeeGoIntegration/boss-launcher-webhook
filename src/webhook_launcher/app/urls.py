@@ -23,10 +23,10 @@ from rest_framework import routers
 from  webhook_launcher.app import views
 
 router = routers.DefaultRouter()
-router.register(r'webhookmappings', views.WebHookMappingsViewSet)
+router.register(r'webhookmappings', views.WebHookMappingViewSet)
 
 urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),
     url(r'^api/', include(router.urls)),
-    url(r'$', 'app.views.index', name='index'),
+    url(r'$', 'webhook_launcher.app.views.index', name='index'),
 )

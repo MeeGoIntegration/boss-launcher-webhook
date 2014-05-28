@@ -249,7 +249,7 @@ class QueuePeriod(models.Model):
                 return False # wrong time of day
 
         if self.start_time >= self.end_time:
-            if self.start_time >= dto.time() >= self.end_time):
+            if (self.start_time >= dto.time() >= self.end_time):
                 return False # wrong time of day
         
         if self.start_date and (dto.date() < self.start_date):

@@ -26,9 +26,11 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
+from rest_framework import viewsets
 from utils import (bitbucket_webhook_launch, bitbucket_pull_request,
                    github_webhook_launch, github_pull_request)
 from models import WebHookMapping, get_or_none
+from serializers import WebHookMappingSerializer
 from pprint import pprint
 import struct, socket
 
@@ -160,3 +162,7 @@ def index(request):
         return HttpResponse()
 
     return HttpResponseNotAllowed(['GET', 'POST'])
+
+class WebHooMappingViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = WebHookMapping.objects.all()
+    serializer_class = WebHookMappingSerializer
