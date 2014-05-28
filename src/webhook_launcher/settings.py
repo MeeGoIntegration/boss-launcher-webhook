@@ -229,6 +229,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'south',
     'django_extensions',
+    'rest_framework',
 )
 
 FORCE_SCRIPT_NAME = ''

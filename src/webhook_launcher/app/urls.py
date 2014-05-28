@@ -19,8 +19,14 @@
 from django.conf.urls.defaults import *
 from django.contrib import admin
 admin.autodiscover()
+from rest_framework import routers
+from  webhook_launcher.app import views
+
+router = routers.DefaultRouter()
+router.register(r'webhookmappings', views.WebHookMappingsViewSet)
 
 urlpatterns = patterns('',
-    (r'^admin/', include(admin.site.urls)), 
+    (r'^admin/', include(admin.site.urls)),
+    url(r'^api/', include(router.urls)),
     url(r'$', 'app.views.index', name='index'),
 )
