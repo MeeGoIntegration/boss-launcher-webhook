@@ -268,6 +268,16 @@ class QueuePeriod(models.Model):
     comment = models.TextField(blank=True, null=True)
     projects = models.ManyToManyField(Project)
 
+class RelayTarget(models.Model):
+
+    def __unicode__(self):
+        return "%s webhook relay" % self.name
+
+    active = models.BooleanField(default=True)
+    name = models.CharField(max_length=50)
+    url = models.CharField(max_length=200)
+    sources = models.ManyToManyField(VCSNameSpace)
+
 def default_perms(sender, **kwargs):
     if kwargs['created']:
         user = kwargs['instance']

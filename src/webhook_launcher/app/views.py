@@ -41,7 +41,6 @@ def index(request):
     """
 
     if request.method == 'GET':
-        print "GET from %s" % request.META.get("REMOTE_HOST", None)
         if not settings.PUBLIC_LANDING_PAGE and not request.user.is_authenticated():
             return HttpResponseForbidden()
 
@@ -84,8 +83,7 @@ def index(request):
         elif ctype == "application/x-www-form-urlencoded":
             payload = request.POST.get("payload", None)
         else:
-            print "POST with unknown content type %s from %s" % ( ctype , request.META.get("REMOTE_HOST", None))
-            print request
+            print "POST with unknown content type %s" % (ctype)
             return HttpResponseBadRequest()
 
         try:
