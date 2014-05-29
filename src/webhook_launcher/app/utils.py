@@ -50,6 +50,67 @@ def launch_build(fields):
         process = process_file.read()
     launch(process, fields)
 
+def handle_payload(data):
+    url = None
+    func = None
+    repo = data.get('repository', None)
+    gh_pull_request = data.get('pull_request', None)
+    bb_pr_keys = ["pullrequest_created"]
+    bburl = "https://bitbucket.org"
+    # https://bitbucket.org/site/master/issue/8340/pull-request-post-hook-does-not-include
+    # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
+
+    #TODO: support more payload types
+    for key in bb_pr_keys:
+        bb_pull_request = data.get(key, None)
+        if bb_pull_request:
+            break
+
+    if bb_pull_request:
+        func = bitbucket_pull_request
+        url = urlparse.urljoin(bburl, data[key]['destination']['repository']['full_name']) + '.git'
+
+    elif gh_pull_request:
+        # Github pull request event
+        func = github_pull_request
+        url = data['pull_request']['base']['repo']['clone_url']
+
+    elif repo:
+        if repo.get('absolute_url', None):
+            # bitbucket type payload
+            url = repo.get('absolute_url', None)
+            canon_url = data.get('canon_url', None)
+            if canon_url and url:
+                print "bitbucket payload from %s" % request.META.get("REMOTE_HOST", None)
+                if url.endswith('/'):
+                    url = url[:-1]
+                url = urlparse.urljoin(canon_url, url)
+                if not url.endswith(".git"):
+                    url = url + ".git"
+                func = bitbucket_webhook_launch
+        elif repo.get('url', None):
+            # github type payload
+            url = repo.get('url', None)
+            if url:
+                print "github payload from %s" % request.META.get("REMOTE_HOST", None)
+                if not url.endswith(".git"):
+                    url = url + ".git"
+                func = github_webhook_launch
+
+    if not url or not func:
+
+        if data.get('zen', None) and data.get('hook_id', None):
+            # Github ping event, do nothing
+            print "Github says hi!"
+        else:
+            print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
+
+        #TODO: move to DB based service whitelist
+    if ((not settings.SERVICE_WHITELIST) or
+        (settings.SERVICE_WHITELIST and
+         urlparse.urlparse(url).netloc in settings.SERVICE_WHITELIST)):
+        func(url, data)
+
 def handle_commit(mapobj, user, payload):
     message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
     if not mapobj.mapped:

@@ -27,8 +27,7 @@ from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
-from utils import (bitbucket_webhook_launch, bitbucket_pull_request,
-                   github_webhook_launch, github_pull_request)
+from utils import handle_payload
 from models import WebHookMapping, get_or_none
 from serializers import WebHookMappingSerializer
 from pprint import pprint
@@ -58,7 +57,7 @@ def index(request):
         return render_to_response('app/index.html', {'mappings' : dict(mappings)},
                                   context_instance=RequestContext(request))
 
-    if request.method == 'POST':
+    elif request.method == 'POST':
         #TODO: Move to database ip filter list
         # Use the ip_filter to decide whether to accept a post
         if settings.POST_IP_FILTER:
@@ -81,7 +80,7 @@ def index(request):
 
         ctype = request.META.get("CONTENT_TYPE", None)
         if ctype == "application/json":
-            payload = request.raw_post_data
+            payload = request.body
         elif ctype == "application/x-www-form-urlencoded":
             payload = request.POST.get("payload", None)
         else:
@@ -91,77 +90,18 @@ def index(request):
 
         try:
             data = simplejson.loads(payload)
+            pprint(data, indent=2, width=80, depth=6)
+            handle_payload(data)
+
         except Exception as e:
-            print "POST with invalid JSON payload from %s" % request.META.get("REMOTE_HOST", None)
+            print exc
+            print "POST with invalid payload from %s" % request.META.get("REMOTE_HOST", None)
             return HttpResponseBadRequest()
-
-        pprint(data, indent=2, width=80, depth=6)
-
-        url = None
-        func = None
-        repo = data.get('repository', None)
-        gh_pull_request = data.get('pull_request', None)
-        bb_pr_keys = ["pullrequest_created"]
-        bburl = "https://bitbucket.org"
-        # https://bitbucket.org/site/master/issue/8340/pull-request-post-hook-does-not-include
-        # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
-
-        #TODO: support more payload types
-        for key in bb_pr_keys:
-            bb_pull_request = data.get(key, None)
-            if bb_pull_request:
-                break
-
-        if bb_pull_request:
-            func = bitbucket_pull_request
-            url = urlparse.urljoin(bburl, data[key]['destination']['repository']['full_name']) + '.git'
-
-        elif gh_pull_request:
-            # Github pull request event
-            func = github_pull_request
-            url = payload['pull_request']['base']['repo']['clone_url']
-
-        elif repo:
-            if repo.get('absolute_url', None):
-                # bitbucket type payload
-                url = repo.get('absolute_url', None)
-                canon_url = data.get('canon_url', None)
-                if canon_url and url:
-                    print "bitbucket payload from %s" % request.META.get("REMOTE_HOST", None)
-                    if url.endswith('/'):
-                        url = url[:-1]
-                    url = urlparse.urljoin(canon_url, url)
-                    if not url.endswith(".git"):
-                        url = url + ".git"
-                    func = bitbucket_webhook_launch
-            elif repo.get('url', None):
-                # github type payload
-                url = repo.get('url', None)
-                if url:
-                    print "github payload from %s" % request.META.get("REMOTE_HOST", None)
-                    if not url.endswith(".git"):
-                        url = url + ".git"
-                    func = github_webhook_launch
-
-        if not url or not func:
-
-            if data.get('zen', None) and data.get('hook_id', None):
-                # Github ping event, just say Hi
-                return HttpResponse()
-
-            else:
-                print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
-                return HttpResponseBadRequest()
-
-        #TODO: move to DB based service whitelist
-        if ((not settings.SERVICE_WHITELIST) or
-            (settings.SERVICE_WHITELIST and
-             urlparse.urlparse(url).netloc in settings.SERVICE_WHITELIST)):
-            func(url, data)
 
         return HttpResponse()
 
-    return HttpResponseNotAllowed(['GET', 'POST'])
+    else:
+        return HttpResponseNotAllowed(['GET', 'POST'])
 
 class WebHookMappingViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
