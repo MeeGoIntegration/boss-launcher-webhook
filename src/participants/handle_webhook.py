@@ -57,6 +57,6 @@ class ParticipantHandler(object):
         if not payload:
            raise RuntimeError("Missing mandatory field: payload")
 
-        handle_payload(payload)
+        handle_payload(payload.as_dict())
 
         wid.result = True
