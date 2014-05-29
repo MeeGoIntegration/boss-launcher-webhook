@@ -81,7 +81,7 @@ def handle_payload(data):
             url = repo.get('absolute_url', None)
             canon_url = data.get('canon_url', None)
             if canon_url and url:
-                print "bitbucket payload from %s" % request.META.get("REMOTE_HOST", None)
+                print "bitbucket payload"
                 if url.endswith('/'):
                     url = url[:-1]
                 url = urlparse.urljoin(canon_url, url)
@@ -92,7 +92,7 @@ def handle_payload(data):
             # github type payload
             url = repo.get('url', None)
             if url:
-                print "github payload from %s" % request.META.get("REMOTE_HOST", None)
+                print "github payload"
                 if not url.endswith(".git"):
                     url = url + ".git"
                 func = github_webhook_launch
@@ -103,7 +103,7 @@ def handle_payload(data):
             # Github ping event, do nothing
             print "Github says hi!"
         else:
-            print "unknown payload from %s" % request.META.get("REMOTE_HOST", None)
+            print "unknown payload"
 
         #TODO: move to DB based service whitelist
     if ((not settings.SERVICE_WHITELIST) or

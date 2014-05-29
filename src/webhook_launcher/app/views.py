@@ -28,7 +28,7 @@ from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
 from utils import handle_payload
-from models import WebHookMapping, get_or_none
+from models import WebHookMapping
 from serializers import WebHookMappingSerializer
 from pprint import pprint
 import struct, socket
@@ -94,7 +94,7 @@ def index(request):
             handle_payload(data)
 
         except Exception as e:
-            print exc
+            print e
             print "POST with invalid payload from %s" % request.META.get("REMOTE_HOST", None)
             return HttpResponseBadRequest()
 
