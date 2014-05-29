@@ -27,7 +27,7 @@ from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
-from utils import handle_payload
+from utils import launch_queue
 from models import WebHookMapping
 from serializers import WebHookMappingSerializer
 from pprint import pprint
@@ -91,7 +91,7 @@ def index(request):
         try:
             data = simplejson.loads(payload)
             pprint(data, indent=2, width=80, depth=6)
-            handle_payload(data)
+            launch_queue({"payload" : data})
 
         except Exception as e:
             print e

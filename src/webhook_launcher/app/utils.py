@@ -32,23 +32,24 @@ def launch(process, fields):
     :param process: process definition
     :param fields: dict of workitem fields
     """
+    with open(process, mode='r') as process_file:
+        pdef = process_file.read()
 
     launcher = Launcher(amqp_host = settings.BOSS_HOST,
                         amqp_user = settings.BOSS_USER,
                         amqp_pass = settings.BOSS_PASS,
                         amqp_vhost = settings.BOSS_VHOST)
 
-    launcher.launch(process, fields)
+    launcher.launch(pdef, fields)
+
+def launch_queue(fields):
+    launch(settings.VCSCOMMIT_QUEUE, fields)
 
 def launch_notify(fields):
-    with open(settings.VCSCOMMIT_NOTIFY, mode='r') as process_file:
-        process = process_file.read()
-    launch(process, fields)
+    launch(settings.VCSCOMMIT_NOTIFY, fields)
 
 def launch_build(fields):
-    with open(settings.VCSCOMMIT_BUILD, mode='r') as process_file:
-        process = process_file.read()
-    launch(process, fields)
+    launch(settings.VCSCOMMIT_BUILD, fields)
 
 def handle_payload(data):
     url = None

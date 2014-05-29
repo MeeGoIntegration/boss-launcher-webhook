@@ -88,6 +88,7 @@ db_user = config.get('db', 'db_user')
 db_pass = config.get('db', 'db_pass')
 db_host = config.get('db', 'db_host')
 
+VCSCOMMIT_QUEUE = config.get('processes', 'vcscommit_queue')
 VCSCOMMIT_NOTIFY = config.get('processes', 'vcscommit_notify')
 VCSCOMMIT_BUILD = config.get('processes', 'vcscommit_build')
 
