@@ -55,26 +55,31 @@ def launch_build(fields):
 
 class bbAPIcall(object):
     def __init__(self, slug):
+        self.contents = ''
         self.base = "https://api.bitbucket.org/1.0"
         self.slug = slug
 
-    def api_call(self, base, endpoint, call):
-        url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//", "/")
-        url = base + url
+    def body_callback(self, buf):
+        self.contents += buf
 
-        proxies = {}
+    def api_call(self, endpoint, call):
+        c = pycurl.Curl()
+        c.setopt(pycurl.SSL_VERIFYPEER, 0)
+        c.setopt(pycurl.SSL_VERIFYHOST, 0)
         if settings.OUTGOING_PROXY:
-            proxy = "%s:%s" % (settings.OUTGOING_PROXY, settings.OUTGOING_PROXY_PORT)
-            proxies = {"http" : proxy, "https": proxy}
-
-        response = requests.get(url, verify=False, proxies=proxies)
-        if response.status_code != requests.codes.ok:
-            response.raise_for_status()
-        else:
-            return response.json()
+            c.setopt(pycurl.PROXY, settings.OUTGOING_PROXY)
+            c.setopt(pycurl.PROXYPORT, settings.OUTGOING_PROXY_PORT)
+        c.setopt(pycurl.NETRC, 1)
+        url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//", "/")
+        url = self.base + url
+        c.setopt(pycurl.URL, url)
+        c.setopt(c.WRITEFUNCTION, self.body_callback)
+        c.perform()
+        c.close()
 
     def branches_tags(self):
-        return self.api_call(self.base, 'repositories', 'branches-tags')
+        self.api_call('repositories', 'branches-tags')
+        return json.loads(self.contents)
 
 class Payload(object):
 
@@ -91,7 +96,6 @@ class Payload(object):
         # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
 
         #TODO: support more payload types
-        #FIXME: possible to make this less ugly ( without using separate hook urls )?
         key = None
         for key in bb_pr_keys:
             bb_pull_request = data.get(key, None)
@@ -344,8 +348,7 @@ class Payload(object):
 
         parsed_url = urlparse.urlparse(self.url)
         service_path = os.path.dirname(parsed_url.path)
-        relays = RelayTarget.objects.filter(active=True, services__path=service_path,
-                                            services__service__netloc=parsed_url.netloc)
+        relays = RelayTarget.objects.filter(active=True, services__path=service_path, services__service__netloc=parsed_url.netloc)
         headers = {'content-type': 'application/json'}
         proxies = {}
 
@@ -359,7 +362,7 @@ class Payload(object):
             response = requests.post(relay.url, data=json.dumps(self.data), headers=headers, proxies=proxies, verify=relay.verify_SSL)
             if response.status_code != requests.codes.ok:
                 raise RuntimeError("%s returned %s" % (relay, response.status_code))
-
+        
 def relay_payload(data):
 
     payload = Payload(data)
