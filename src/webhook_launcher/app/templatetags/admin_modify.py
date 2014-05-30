@@ -10,7 +10,9 @@ def submit_row(context):
     """
     prefill = ""
     original = context.get('original')
+    show_trigger_build = False
     if original and isinstance(original, WebHookMapping):
+        show_trigger_build = True
         prefill = "?"
         data = model_to_dict(original, fields=[], exclude=[])
         for key, value in data.items():
@@ -32,6 +34,7 @@ def submit_row(context):
         'show_save_as_new': not is_popup and change and save_as,
         'show_save_and_add_another': context['has_add_permission'] and
                             not is_popup and (not save_as or context['add']),
+        'show_trigger_build': show_trigger_build,
         'show_save_and_continue': not is_popup and context['has_change_permission'],
         'is_popup': is_popup,
         'show_save': True,
