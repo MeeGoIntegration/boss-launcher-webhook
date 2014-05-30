@@ -24,8 +24,9 @@ import urlparse
 import pycurl
 import json
 import requests
+import os
 
-from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod
+from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod, RelayTarget
 
 def launch(process, fields):
     """ BOSS process launcher
@@ -69,7 +70,7 @@ class bbAPIcall(object):
             c.setopt(pycurl.PROXY, settings.OUTGOING_PROXY)
             c.setopt(pycurl.PROXYPORT, settings.OUTGOING_PROXY_PORT)
         c.setopt(pycurl.NETRC, 1)
-        url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//","/")
+        url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//", "/")
         url = self.base + url
         c.setopt(pycurl.URL, url)
         c.setopt(c.WRITEFUNCTION, self.body_callback)
@@ -95,12 +96,13 @@ class Payload(object):
         # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
 
         #TODO: support more payload types
+        key = None
         for key in bb_pr_keys:
             bb_pull_request = data.get(key, None)
             if bb_pull_request:
                 break
 
-        if bb_pull_request:
+        if key and bb_pull_request:
             func = self.bitbucket_pull_request
             url = urlparse.urljoin(self.bburl, data[key]['destination']['repository']['full_name']) + '.git'
 
@@ -137,9 +139,6 @@ class Payload(object):
             self.handle = self.noop()
         else:
             self.handle = func
-
-    def self.handle(self):
-        pass
 
     def noop(self):
 
@@ -179,7 +178,7 @@ class Payload(object):
                      "source_repourl" : source + ".git",
                      "source_branch" : values['source']['branch']['name'],
                      "username" : values['author']['username'],
-                     "action" : key.replace("pullrequest_",""),
+                     "action" : key.replace("pullrequest_", ""),
                      "id" : values['id'],
                  }
 
@@ -204,7 +203,7 @@ class Payload(object):
             if 'base_refs' in payload:
                 branches = payload['base_refs']
             elif 'base_ref' in payload:
-                branches =  [payload['base_ref'].split("/")[2]]
+                branches = [payload['base_ref'].split("/")[2]]
             else:
                 # unfortunately github doesn't send info about the branch that an annotated tag is in
                 # nor the commit sha1 it points at. The tag itself is enough to tell what to pull and build
@@ -245,10 +244,10 @@ class Payload(object):
             name = None
             if 'head_commit' in payload:
                 revision = payload['head_commit']['id']
-                name =  payload["pusher"]["name"]
+                name = payload["pusher"]["name"]
             else:
                 revision = payload['after']
-                name =  payload["user_name"]
+                name = payload["user_name"]
 
             if not revision or not name:
                 return
@@ -349,7 +348,7 @@ class Payload(object):
 
         parsed_url = urlparse.urlparse(self.url)
         service_path = os.path.dirname(parsed_url.path)
-        relays = RelayTarget.objects.filter(active=True, services__path=service_path, services__service__netloc = parsed_url.netloc)
+        relays = RelayTarget.objects.filter(active=True, services__path=service_path, services__service__netloc=parsed_url.netloc)
         headers = {'content-type': 'application/json'}
         proxies = {}
 
@@ -358,9 +357,11 @@ class Payload(object):
             proxies = {"http" : proxy, "https": proxy}
 
         for relay in relays:
+            #TODO: allow uploading self signed certificates and client certificates
             print "Relaying event from %s to %s" % (self.url, relay)
-            response = requests.post(relay.url, data=json.dumps(self.data), headers=headers, proxies=proxies)
-            #TODO: check response code
+            response = requests.post(relay.url, data=json.dumps(self.data), headers=headers, proxies=proxies, verify=relay.verify_SSL)
+            if response.status_code != requests.codes.ok:
+                raise RuntimeError("%s returned %s" % (relay, response.status_code))
         
 def relay_payload(data):
 
@@ -404,8 +405,9 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
                 skipped = True
 
         # Find possible queue period objects
-        qps = QueuePeriod.objects.filter(projects__name = mapobj.project,
-                                         projects__obs__pk = mapobj.obs.pk)
+        qps = QueuePeriod.objects.filter(projects__name=mapobj.project,
+                                         projects__obs__pk=mapobj.obs.pk)
+        qp = None
         for qp in qps:
             if qp.delay() and not qp.override(webuser=webuser):
                 print "Build trigger for %s delayed by %s" % (mapobj, qp)
@@ -434,7 +436,7 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
 
         elif skipped:
             message = "%s, which was already handled; skipping" % message
-        elif delayed:
+        elif qp and delayed:
             message = "%s, which will be delayed by %s" % (message, qp)
             if qp.comment:
                 message = "%s\n%s" % (message, qp.comment)

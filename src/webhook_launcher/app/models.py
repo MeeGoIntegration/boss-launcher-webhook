@@ -276,6 +276,7 @@ class RelayTarget(models.Model):
     active = models.BooleanField(default=True)
     name = models.CharField(max_length=50)
     url = models.CharField(max_length=200)
+    verify_SSL = models.BooleanField(default=True)
     sources = models.ManyToManyField(VCSNameSpace)
 
 def default_perms(sender, **kwargs):
