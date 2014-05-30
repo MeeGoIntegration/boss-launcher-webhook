@@ -348,7 +348,8 @@ class Payload(object):
 
         parsed_url = urlparse.urlparse(self.url)
         service_path = os.path.dirname(parsed_url.path)
-        relays = RelayTarget.objects.filter(active=True, services__path=service_path, services__service__netloc=parsed_url.netloc)
+        relays = RelayTarget.objects.filter(active=True, sources__path=service_path,
+                                            sources__service__netloc=parsed_url.netloc)
         headers = {'content-type': 'application/json'}
         proxies = {}
 
@@ -359,7 +360,9 @@ class Payload(object):
         for relay in relays:
             #TODO: allow uploading self signed certificates and client certificates
             print "Relaying event from %s to %s" % (self.url, relay)
-            response = requests.post(relay.url, data=json.dumps(self.data), headers=headers, proxies=proxies, verify=relay.verify_SSL)
+            response = requests.post(relay.url, data=json.dumps(self.data),
+                                     headers=headers, proxies=proxies,
+                                     verify=relay.verify_SSL)
             if response.status_code != requests.codes.ok:
                 raise RuntimeError("%s returned %s" % (relay, response.status_code))
         
@@ -412,7 +415,8 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
             if qp.delay() and not qp.override(webuser=webuser):
                 print "Build trigger for %s delayed by %s" % (mapobj, qp)
                 print qp.comment
-                mapobj.tag = tag
+                if tag:
+                    mapobj.tag = tag
                 mapobj.handled = False
                 build = False
                 delayed = True
@@ -420,9 +424,14 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
 
     if mapobj.notify:
 
-        message = "Tag %s" % tag
-        if webuser:
-            message = "Forced build trigger for %s" % tag
+        if tag:
+            message = "Tag %s" % tag
+            if webuser:
+                message = "Forced build trigger for %s" % tag
+        else:
+            message = "%s" % mapobj.rev_or_head
+            if webuser:
+                message = "Forced build trigger for %s" % mapobj.rev_or_head
 
         message = "%s by %s in %s branch of %s" % (message, user, mapobj.branch,
                                                    mapobj.repourl)
@@ -454,7 +463,8 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
         fields['payload'] = payload
         print "build"
         launch_build(fields)
-        mapobj.tag = tag
+        if tag:
+            mapobj.tag = tag
 
 def create_placeholder(repourl, branch):
 
