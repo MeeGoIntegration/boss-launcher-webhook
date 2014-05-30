@@ -26,7 +26,8 @@ from django.conf import settings
 
 from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping, 
                                           BuildService, Project, VCSService,
-                                          VCSNameSpace, QueuePeriod, get_or_none )
+                                          VCSNameSpace, QueuePeriod,
+                                          RelayTarget, get_or_none )
 
 from webhook_launcher.app.utils import handle_tag
 
@@ -139,3 +140,4 @@ admin.site.register(Project, ProjectAdmin)
 admin.site.register(VCSNameSpace)
 admin.site.register(VCSService)
 admin.site.register(QueuePeriod, QueuePeriodAdmin)
+admin.site.register(RelayTarget)
