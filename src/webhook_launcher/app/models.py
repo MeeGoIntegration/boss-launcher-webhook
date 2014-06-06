@@ -48,7 +48,7 @@ class BuildService(models.Model):
 class VCSService(models.Model):
 
     def __unicode__(self):
-        return self.name
+        return self.netloc
 
     name = models.CharField(max_length=50, unique=True)
     netloc = models.CharField(max_length=200, unique=True)
@@ -57,10 +57,17 @@ class VCSService(models.Model):
 class VCSNameSpace(models.Model):
 
     def __unicode__(self):
-        return "%s/%s" % (self.service, self.path)
+        return "%s%s" % (self.service, self.path)
+
+    @staticmethod
+    def find(repourl):
+        url = urlparse.urlparse(repourl)
+        return get_or_none(VCSNameSpace, service__netloc = url.netloc,
+                           path=os.path.basename(url.path))
 
     service = models.ForeignKey(VCSService)
     path = models.CharField(max_length=200)
+    default_project = models.ForeignKey(Project, blank=True, null=True)
 
 class Project(models.Model):
 
@@ -104,40 +111,6 @@ class WebHookMapping(models.Model):
 
     def __unicode__(self):
         return "%s/%s -> %s/%s" % (self.repourl, self.branch, self.project, self.package)
-
-    @property
-    def tag(self):
-        lsr = self.lsr
-        if lsr:
-            return lsr.tag
-
-    @tag.setter
-    def tag(self, x):
-        lsr = self.lsr
-        if lsr:
-            lsr.tag = x
-            lsr.handled = True
-            lsr.save()
-
-    def untag(self):
-        lsr = self.lsr
-        if lsr:
-            lsr.tag = ""
-            lsr.handled = False
-            lsr.save()
-
-    @property
-    def handled(self):
-        lsr = self.lsr
-        if lsr:
-            return lsr.handled
-
-    @handled.setter
-    def handled(self, x):
-        lsr = self.lsr
-        if lsr:
-            lsr.handled = x
-            lsr.save()
 
     @property
     def revision(self):
@@ -222,8 +195,9 @@ class LastSeenRevision(models.Model):
     mapping = models.ForeignKey(WebHookMapping)
     revision = models.CharField(max_length=250)
     tag = models.CharField(max_length=50, blank=True, null=True)
-    handled = models.BooleanField(default=False)
+    handled = models.BooleanField(default=False, editable=False)
     timestamp = models.DateTimeField(auto_now=True)
+    payload = models.TextField(blank=True, null=True, editable=False)
 
 class QueuePeriod(models.Model):
 

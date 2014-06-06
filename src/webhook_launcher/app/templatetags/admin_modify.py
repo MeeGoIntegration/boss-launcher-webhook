@@ -1,7 +1,7 @@
 from django import template
 from django.forms.models import model_to_dict
 from django.contrib.admin.templatetags.admin_modify import *
-from webhook_launcher.app.models import WebHookMapping
+from webhook_launcher.app.models import WebHookMapping, RelayTarget
 
 @register.inclusion_tag('admin/submit_line.html', takes_context=True)
 def submit_row(context):
@@ -11,6 +11,7 @@ def submit_row(context):
     prefill = ""
     original = context.get('original')
     show_trigger_build = False
+    show_trigger_relay = False
     if original and isinstance(original, WebHookMapping):
         show_trigger_build = True
         prefill = "?"
@@ -21,6 +22,8 @@ def submit_row(context):
             prefill += "%s=%s&" % (key, value)
         if original.revision:
             prefill += "revision=%s" % (original.revision)
+    elif original and isinstance(original, RelayTarget):
+        show_trigger_relay = True
 
     opts = context['opts']
     change = context['change']
@@ -35,6 +38,7 @@ def submit_row(context):
         'show_save_and_add_another': context['has_add_permission'] and
                             not is_popup and (not save_as or context['add']),
         'show_trigger_build': show_trigger_build,
+        'show_trigger_relay': show_trigger_relay,
         'show_save_and_continue': not is_popup and context['has_change_permission'],
         'is_popup': is_popup,
         'show_save': True,

@@ -31,7 +31,7 @@ from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod, 
 def launch(process, fields):
     """ BOSS process launcher
 
-    :param process: process definition
+    :param process: process definition file
     :param fields: dict of workitem fields
     """
     with open(process, mode='r') as process_file:
@@ -89,6 +89,7 @@ class Payload(object):
 
         url = None
         func = None
+        self.params = data.get('webhook_parameters', {})
         repo = data.get('repository', None)
         gh_pull_request = data.get('pull_request', None)
         bb_pr_keys = ["pullrequest_created"]
@@ -136,7 +137,7 @@ class Payload(object):
         self.url = url
 
         if func is None:
-            self.handle = self.noop()
+            self.handle = self.noop
         else:
             self.handle = func
 
@@ -254,16 +255,19 @@ class Payload(object):
 
             if not len(mapobjs):
                 mapobjs = []
+                packages = self.params.get("packages", None)
                 for branch in branches:
-                    mapobjs.extend(list(create_placeholder(repourl, branch)))
+                    mapobjs.extend(create_placeholder(repourl, branch,
+                                                      packages=packages))
 
             for mapobj in mapobjs:
                 seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
+
                 if created or seenrev.revision != revision:
                     if branches:
                         print "%s in %s was not seen before, notify it if enabled" % (revision, mapobj.branch)
                         seenrev.revision = revision
-                        seenrev.save()
+
                     else:
                         # annotated tag. only continue if we already had a mapping with a matching
                         # revision
@@ -273,12 +277,12 @@ class Payload(object):
                 if reftype == "heads":
                     notified = False
                     if mapobj.notify and not notified:
-                        handle_commit(mapobj, name, payload)
+                        handle_commit(mapobj, seenrev, name, payload)
                         notified = True
 
                 elif reftype == "tags":
                     print "Tag %s for %s in %s/%s, notify and build it if enabled" % (refname, revision, repourl, mapobj.branch)
-                    handle_tag(mapobj, name, payload, refname)
+                    handle_tag(mapobj, seenrev, name, payload, refname)
 
     def bitbucket_webhook_launch(self):
 
@@ -322,7 +326,9 @@ class Payload(object):
             mapobjs = WebHookMapping.objects.filter(repourl=repourl, branch=branch)
 
             if not len(mapobjs):
-                mapobjs = create_placeholder(repourl, branch)
+                packages = self.params.get("packages", None)
+                mapobjs = create_placeholder(repourl, branch,
+                                             packages=packages)
 
             notified = False
             for mapobj in mapobjs:
@@ -334,22 +340,34 @@ class Payload(object):
 
                     print "%s in %s was not seen before, notify it if enabled" % (commits[-1], branch)
                     seenrev.revision = commits[-1]
-                    seenrev.save()
 
                     if mapobj.notify and not notified:
-                        handle_commit(mapobj, payload["user"], payload)
+                        handle_commit(mapobj, seenrev, payload["user"], payload)
                         notified = True
 
                 else:
                     print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
-                    handle_tag(mapobj, payload["user"], payload, tag)
+                    handle_tag(mapobj, seenrev, payload["user"], payload, tag)
 
-    def relay(self):
+    def relay(self, relays=None):
+
+        if not self.url:
+            return
 
         parsed_url = urlparse.urlparse(self.url)
+        official_projects = set(prj.name for prj in Project.objects.filter(official=True, allowed=True))
+        official_packages = set(mapobj.package for mapobj in 
+                                WebHookMapping.objects.filter(repourl=self.url,
+                                project__in=official_projects).exclude(package=""))
+
         service_path = os.path.dirname(parsed_url.path)
-        relays = RelayTarget.objects.filter(active=True, sources__path=service_path,
-                                            sources__service__netloc=parsed_url.netloc)
+        if not relays:
+            relays = list(RelayTarget.objects.filter(active=True,
+                                    sources__path=service_path,
+                                    sources__service__netloc=parsed_url.netloc))
+            if not relays:
+                return
+
         headers = {'content-type': 'application/json'}
         proxies = {}
 
@@ -357,10 +375,13 @@ class Payload(object):
             proxy = "%s:%s" % (settings.OUTGOING_PROXY, settings.OUTGOING_PROXY_PORT)
             proxies = {"http" : proxy, "https": proxy}
 
+        payload = self.data
+        payload["webhook_parameters"]["packages"] = official_packages
+        data = json.dumps(payload)
         for relay in relays:
             #TODO: allow uploading self signed certificates and client certificates
             print "Relaying event from %s to %s" % (self.url, relay)
-            response = requests.post(relay.url, data=json.dumps(self.data),
+            response = requests.post(relay.url, data=data,
                                      headers=headers, proxies=proxies,
                                      verify=relay.verify_SSL)
             if response.status_code != requests.codes.ok:
@@ -381,7 +402,8 @@ def handle_payload(data):
          urlparse.urlparse(payload.url).netloc in settings.SERVICE_WHITELIST)):
         payload.handle()
 
-def handle_commit(mapobj, user, payload):
+def handle_commit(mapobj, lsr, user, payload):
+
     message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
     if not mapobj.mapped:
         message = "%s, which is not mapped yet. Please map it." % message
@@ -392,17 +414,21 @@ def handle_commit(mapobj, user, payload):
     print message
     launch_notify(fields)
 
-    mapobj.untag()
+    lsr.tag = ""
+    lsr.handled = False
+    lsr.payload = payload
+    lsr.save()
 
-def handle_tag(mapobj, user, payload, tag, webuser=None):
+def handle_tag(mapobj, lsr, user, payload, tag, webuser=None):
 
     build = mapobj.build and mapobj.mapped
     delayed = False
     skipped = False
+    lsr.payload = payload
 
     if build:
         if not webuser:
-            if mapobj.handled and mapobj.tag == tag:
+            if lsr.handled and lsr.tag == tag:
                 print "build already handled, skipping"
                 build = False
                 skipped = True
@@ -416,8 +442,8 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
                 print "Build trigger for %s delayed by %s" % (mapobj, qp)
                 print qp.comment
                 if tag:
-                    mapobj.tag = tag
-                mapobj.handled = False
+                    lsr.tag = tag
+                lsr.handled = False
                 build = False
                 delayed = True
                 break
@@ -464,22 +490,37 @@ def handle_tag(mapobj, user, payload, tag, webuser=None):
         print "build"
         launch_build(fields)
         if tag:
-            mapobj.tag = tag
+            lsr.tag = tag
 
-def create_placeholder(repourl, branch):
+    lsr.save()
 
-    if not settings.DEFAULT_PROJECT:
+def create_placeholder(repourl, branch, packages=None):
+
+    vcsns = VCSNameSpace.find(repourl)
+
+    if vcsns and vcsns.default_project:
+        project = vcsns.default_project.name
+    elif settings.DEFAULT_PROJECT:
+        project = settings.DEFAULT_PROJECT
+
+    if not project
         return []
 
-    print "no mapping, create placeholder"
-    mapobj = WebHookMapping()
-    mapobj.repourl = repourl
-    mapobj.branch = branch
-    mapobj.user = User.objects.get(id=1)
-    mapobj.obs = BuildService.objects.all()[0]
-    mapobj.notify = False
-    mapobj.save()
-    return WebHookMapping.objects.filter(repourl=repourl, branch=branch)
+    if not packages:
+        packages = [""]
+
+    print "no mappings, create placeholders"
+    mapobjs = []
+    for package in packages:
+        mapobj = WebHookMapping(repourl=repourl, branch=branch,
+                                user=User.objects.get(id=1),
+                                obs=BuildService.objects.all()[0],
+                                notify=False, build=False,
+                                project=project, package=package)
+        mapobj.save()
+        mapobjs.append(mapobj)
+
+    return mapobjs
 
 def handle_pr(mapobj, data, payload):
 

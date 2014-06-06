@@ -88,6 +88,12 @@ def index(request):
 
         try:
             data = simplejson.loads(payload)
+            # merge in GET params
+            get = {}
+            for key, values in request.GET.lists():
+                get[key] = values
+            data['webhook_parameters'] = get
+
             pprint(data, indent=2, width=80, depth=6)
             launch_queue({"payload" : data})
 

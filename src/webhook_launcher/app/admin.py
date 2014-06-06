@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import operator
 from django.http import HttpResponseRedirect
 from django.db import models
 from django.contrib.auth.models import User
@@ -133,6 +134,37 @@ class ProjectAdmin(admin.ModelAdmin):
 class QueuePeriodAdmin(admin.ModelAdmin):
     pass
 
+class RelayTargetAdmin(admin.ModelAdmin):
+
+    def trigger_relay(self, request, relaytargets):
+        payloads = []
+        for rt in relaytargets:
+            urls=set([str(src) for src in rt.sources])
+            mapobjs = WebHookMapping.objects.filter(reduce(operator.or_,
+                                                (models.Q(repourl__contains=u)
+                                                 for u in urls)))
+            for mapobj in mapobjs:
+                lsr = mapobj.lsr
+                if lsr and lsr.payload:
+                    payloads.append(Payload(lsr.payload))
+
+        for pld in payloads:
+            pld.relay(relays=relaytargets)
+
+    def response_change(self, request, obj):
+        if "_triggerrelay" in request.POST:
+            opts = obj._meta
+            module_name = opts.module_name
+            pk_value = obj._get_pk_val()
+
+            self.trigger_relay(request, [obj])
+            return HttpResponseRedirect(reverse('admin:%s_%s_change' %
+                                        (opts.app_label, module_name),
+                                        args=(pk_value,),
+                                        current_app=self.admin_site.name))
+        else:
+            return super(RelayTargetAdmin, self).response_change(request, obj)
+
 admin.site.register(WebHookMapping, WebHookMappingAdmin)
 admin.site.register(BuildService, BuildServiceAdmin)
 admin.site.register(LastSeenRevision, LastSeenRevisionAdmin)
@@ -140,4 +172,4 @@ admin.site.register(Project, ProjectAdmin)
 admin.site.register(VCSNameSpace)
 admin.site.register(VCSService)
 admin.site.register(QueuePeriod, QueuePeriodAdmin)
-admin.site.register(RelayTarget)
+admin.site.register(RelayTarget, RelayTargetAdmin)
