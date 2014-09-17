@@ -503,7 +503,7 @@ def create_placeholder(repourl, branch, packages=None):
     elif settings.DEFAULT_PROJECT:
         project = settings.DEFAULT_PROJECT
 
-    if not project
+    if not project:
         return []
 
     if not packages:

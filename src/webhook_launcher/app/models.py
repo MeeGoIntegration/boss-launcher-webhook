@@ -67,7 +67,7 @@ class VCSNameSpace(models.Model):
 
     service = models.ForeignKey(VCSService)
     path = models.CharField(max_length=200)
-    default_project = models.ForeignKey(Project, blank=True, null=True)
+    default_project = models.ForeignKey('Project', blank=True, null=True)
 
 class Project(models.Model):
 
