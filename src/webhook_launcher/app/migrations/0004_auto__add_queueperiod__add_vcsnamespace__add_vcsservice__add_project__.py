@@ -21,7 +21,7 @@ class Migration(SchemaMigration):
         db.send_create_signal('app', ['QueuePeriod'])
 
         # Adding M2M table for field projects on 'QueuePeriod'
-        m2m_table_name = db.shorten_name('app_queueperiod_projects')
+        m2m_table_name = 'app_queueperiod_projects'
         db.create_table(m2m_table_name, (
             ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
             ('queueperiod', models.ForeignKey(orm['app.queueperiod'], null=False)),
@@ -83,7 +83,7 @@ class Migration(SchemaMigration):
         db.delete_table('app_queueperiod')
 
         # Removing M2M table for field projects on 'QueuePeriod'
-        db.delete_table(db.shorten_name('app_queueperiod_projects'))
+        db.delete_table('app_queueperiod_projects')
 
         # Deleting model 'VCSNameSpace'
         db.delete_table('app_vcsnamespace')

@@ -9,7 +9,7 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
         # Adding M2M table for field groups on 'Project'
-        m2m_table_name = db.shorten_name('app_project_groups')
+        m2m_table_name = 'app_project_groups'
         db.create_table(m2m_table_name, (
             ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
             ('project', models.ForeignKey(orm['app.project'], null=False)),
@@ -18,7 +18,7 @@ class Migration(SchemaMigration):
         db.create_unique(m2m_table_name, ['project_id', 'group_id'])
 
         # Adding M2M table for field vcsnamespaces on 'Project'
-        m2m_table_name = db.shorten_name('app_project_vcsnamespaces')
+        m2m_table_name = 'app_project_vcsnamespaces'
         db.create_table(m2m_table_name, (
             ('id', models.AutoField(verbose_name='ID', primary_key=True, auto_created=True)),
             ('project', models.ForeignKey(orm['app.project'], null=False)),
@@ -29,10 +29,10 @@ class Migration(SchemaMigration):
 
     def backwards(self, orm):
         # Removing M2M table for field groups on 'Project'
-        db.delete_table(db.shorten_name('app_project_groups'))
+        db.delete_table('app_project_groups')
 
         # Removing M2M table for field vcsnamespaces on 'Project'
-        db.delete_table(db.shorten_name('app_project_vcsnamespaces'))
+        db.delete_table('app_project_vcsnamespaces')
 
 
     models = {
