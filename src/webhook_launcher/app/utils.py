@@ -26,7 +26,8 @@ import json
 import requests
 import os
 
-from models import WebHookMapping, BuildService, LastSeenRevision, QueuePeriod, RelayTarget
+from models import (WebHookMapping, BuildService, LastSeenRevision, QueuePeriod,
+                    RelayTarget, Project)
 
 def launch(process, fields):
     """ BOSS process launcher
@@ -172,6 +173,8 @@ class Payload(object):
         repourl = self.url
 
         for key, values in payload.items():
+            if not "destination" in values:
+                continue
             branch = values['destination']['branch']['name']
             source = urlparse.urljoin(self.bburl, values['source']['repository']['full_name'])
 
@@ -351,6 +354,7 @@ class Payload(object):
 
     def relay(self, relays=None):
 
+
         if not self.url:
             return
 
@@ -424,7 +428,9 @@ def handle_tag(mapobj, lsr, user, payload, tag, webuser=None):
     build = mapobj.build and mapobj.mapped
     delayed = False
     skipped = False
-    lsr.payload = payload
+    qp = None
+    if payload:
+        lsr.payload = payload
 
     if build:
         if not webuser:
@@ -436,7 +442,6 @@ def handle_tag(mapobj, lsr, user, payload, tag, webuser=None):
         # Find possible queue period objects
         qps = QueuePeriod.objects.filter(projects__name=mapobj.project,
                                          projects__obs__pk=mapobj.obs.pk)
-        qp = None
         for qp in qps:
             if qp.delay() and not qp.override(webuser=webuser):
                 print "Build trigger for %s delayed by %s" % (mapobj, qp)
@@ -485,7 +490,7 @@ def handle_tag(mapobj, lsr, user, payload, tag, webuser=None):
     if build:
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
-        fields['revision'] = mapobj.rev_or_head
+        fields['revision'] = lsr.revision
         fields['payload'] = payload
         print "build"
         launch_build(fields)

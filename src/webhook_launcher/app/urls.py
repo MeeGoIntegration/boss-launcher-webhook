@@ -28,6 +28,7 @@ router.register(r'lastseenrevisions', views.LastSeenRevisionViewSet)
 
 # The find_list view supports an alternate pk lookup
 find_list = views.WebHookMappingViewSet.as_view({'get': 'find'})
+router.register(r'buildservices', views.BuildServiceViewSet)
 
 urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),

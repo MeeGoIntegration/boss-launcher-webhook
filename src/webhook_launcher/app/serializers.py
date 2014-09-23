@@ -7,12 +7,11 @@ from rest_framework.parsers import JSONParser
 class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BuildService
-        fields = ('apiurl', 'weburl')
 
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
-        exclude = ('id', 'handled', 'payload', 'timestamp',)
+#        exclude = ('id', 'handled', 'payload', 'timestamp',)
 
 class BuildServiceField(serializers.WritableField):
     """
@@ -58,11 +57,18 @@ class LSRField(serializers.WritableField):
         lsr.save()
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
-
+# Alternate approach is to report lsr and accept revision
+#    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
+#    revision = serializers.CharField(source="lsr.revision", write_only=True)
     lsr = LSRField()
     obs = BuildServiceField()
     user = UserField()
 
+# Alternate approach is to link to User
+#    user = serializers.RelatedField(many=False, read_only=True)
+
     class Meta:
         model = WebHookMapping
-        exclude = ('id',)
+        exclude = ('id',) # don't want/need to expose internal pk
+        depth = 2 # Not sure what this does
+

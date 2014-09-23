@@ -30,8 +30,8 @@ from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import list_route, detail_route
 from utils import launch_queue
-from models import WebHookMapping, LastSeenRevision
-from serializers import WebHookMappingSerializer, LastSeenRevisionSerializer
+from models import WebHookMapping, BuildService, LastSeenRevision
+from serializers import WebHookMappingSerializer, LastSeenRevisionSerializer, BuildServiceSerializer
 from pprint import pprint
 import struct, socket
 
@@ -121,6 +121,23 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
         return Response(ser.data)
         
 
+    # def pre_save(self, obj):
+    #     obj.user = self.request.user
+
+    # def post_save(self, obj, created=False):
+    #     request = self.get_renderer_context()['request']
+    #     revision = request.DATA.get('revision', None)
+    #     if revision is None:
+    #         return
+
+    #     if created:
+    #         lsr = LastSeenRevision(mapping = obj, revision = revision)
+    #     else:
+    #         lsr = obj.lsr
+    #         lsr.revision = revision
+
+    #     lsr.save()
+
 class LastSeenRevisionViewSet(viewsets.ModelViewSet):
     queryset = LastSeenRevision.objects.all()
     serializer_class = LastSeenRevisionSerializer
@@ -145,3 +162,7 @@ def trigger(request, format=None, pk=None):
         content = { 'status': 'Webhook not found' }
             
     return Response(content)
+
+class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = BuildService.objects.all()
+    serializer_class = BuildServiceSerializer
