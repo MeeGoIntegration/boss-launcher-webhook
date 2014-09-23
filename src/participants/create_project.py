@@ -46,6 +46,9 @@ from urlparse import urlparse
 import os
 from lxml import etree
 
+from boss.bz.config import parse_bz_config
+from boss.bz.rest import BugzillaError
+
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
 from webhook_launcher.app.models import WebHookMapping
@@ -60,7 +63,17 @@ class ParticipantHandler(BuildServiceParticipant):
     @BuildServiceParticipant.get_oscrc
     def handle_lifecycle_control(self, ctrl):
         """ participant control thread """
-        pass
+        if ctrl.message == "start":
+            self.setup_config(ctrl.config)
+
+    def setup_config(self, config):
+        """
+        :param config: ConfigParser instance with the bugzilla configuration
+        """
+        self.bzs = parse_bz_config(config)
+        # If there are any auth errors in the config, find out now.
+        for bzconfig in self.bzs.values():
+            bzconfig['interface'].login()
 
     def get_repolinks(self, wid, project):
         """Get a description of the repositories to link to.
@@ -112,18 +125,36 @@ class ParticipantHandler(BuildServiceParticipant):
                 maintainers.append(project.split(":")[1])
                 #TODO: construct repos and build paths for a devel build
 
+            link = None
+            summary = ""
+            desc = ""
             # support "updateX" subprojects by creating a link to the parent
             if prj_parts[-1].startswith("update"):
                 link = ":".join(prj_parts[0:-1])
-                if link in project_list:
-                    links.append(link)
-                    repolinks.update(self.get_repolinks(wid, link))
-                    #TODO: append link maintaianers ?
+
+            if prj_parts[-3] == "feature":
+                link = ":".join(prj_parts[0:-3])
+                fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
+                # Go through each bugzilla we support
+                for (bugzillaname, bugzilla) in self.bzs.iteritems():
+                    for match in bugzilla['compiled_re'].finditer(fea):
+                        try:
+                            summary = bugzilla['interface'].bug_get(match.group('key'), 0)['summary']
+                            desc = bugzilla['interface'].comment_get(match.group('key'), 0)['text']
+                        except BugzillaError, error:
+                            if error.code == 101:
+                                print "Bug %s not found" % bugnum
+                            else:
+                                raise
+
+            if link and link in project_list:
+                links.append(link)
+                repolinks.update(self.get_repolinks(wid, link))
 
         #else:
         #TODO: deduce project name from "official" mappings of the same repo
 
-        result = self.obs.createProject(project, repolinks, 
+        result = self.obs.createProject(project, repolinks, desc=desc, summary=summary,
                                         links=links, maintainers=maintainers)
 
         if not result:

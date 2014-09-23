@@ -28,8 +28,8 @@ from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
 from utils import launch_queue
-from models import WebHookMapping
-from serializers import WebHookMappingSerializer
+from models import WebHookMapping, BuildService, LastSeenRevision
+from serializers import WebHookMappingSerializer, BuildServiceSerializer
 from pprint import pprint
 import struct, socket
 
@@ -107,6 +107,28 @@ def index(request):
     else:
         return HttpResponseNotAllowed(['GET', 'POST'])
 
-class WebHookMappingViewSet(viewsets.ReadOnlyModelViewSet):
+class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
+
+    def pre_save(self, obj):
+        obj.user = self.request.user
+
+    def post_save(self, obj, created=False):
+        request = self.get_renderer_context()['request']
+        revision = request.DATA.get('revision', None)
+        if revision is None:
+            return
+
+        if created:
+            lsr = LastSeenRevision(mapping = obj, revision = revision)
+        else:
+            lsr = obj.lsr
+            lsr.revision = revision
+
+        lsr.save()
+
+class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = BuildService.objects.all()
+    serializer_class = BuildServiceSerializer
+

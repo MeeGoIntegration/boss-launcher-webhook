@@ -1,20 +1,22 @@
 from models import WebHookMapping, LastSeenRevision, BuildService
 from rest_framework import serializers
 
-class BuildService(serializers.ModelSerializer):
+class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BuildService
-        fields = ('apiurl', 'weburl')
 
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
-        fields = ('revision', 'tag', 'timestamp')
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
-    lsr = LastSeenRevisionSerializer()
+    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
+    revision = serializers.CharField(source="lsr.revision", write_only=True)
+    obs = BuildServiceSerializer(many=False, read_only=True)
+    obs_id = serializers.IntegerField(source="obs.pk", write_only=True)
+    user = serializers.RelatedField(many=False, read_only=True)
 
     class Meta:
         model = WebHookMapping
-        fields = ('repourl', 'branch', 'project', 'package', 'obs', 'lsr')
         depth = 2
+

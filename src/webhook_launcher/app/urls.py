@@ -24,6 +24,7 @@ from  webhook_launcher.app import views
 
 router = routers.DefaultRouter()
 router.register(r'webhookmappings', views.WebHookMappingViewSet)
+router.register(r'buildservices', views.BuildServiceViewSet)
 
 urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),
