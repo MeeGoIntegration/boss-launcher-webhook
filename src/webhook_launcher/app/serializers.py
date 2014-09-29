@@ -1,7 +1,7 @@
 from models import WebHookMapping, LastSeenRevision, BuildService
 from rest_framework import serializers
 
-class BuildService(serializers.ModelSerializer):
+class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BuildService
         fields = ('apiurl', 'weburl')
