@@ -231,6 +231,9 @@ class WebHookMapping(models.Model):
     user = models.ForeignKey(User, editable=False)
     obs = models.ForeignKey(BuildService)
 
+    class Meta:
+        unique_together = (("project", "package"),)
+    
 class LastSeenRevision(models.Model):
 
     def __unicode__(self):
