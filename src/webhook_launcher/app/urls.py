@@ -29,6 +29,7 @@ router.register(r'buildservices', views.BuildServiceViewSet)
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/', include(router.urls)),
+    url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^login/', views.remotelogin_redirect, name='redirect'),
     url(r'^landing/$', views.index, name='index'),
     url(r'$', views.index, name='index'),
