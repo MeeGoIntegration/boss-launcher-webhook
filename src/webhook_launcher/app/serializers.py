@@ -1,4 +1,5 @@
 from models import WebHookMapping, LastSeenRevision, BuildService
+from django.contrib.auth.models import User
 from rest_framework import serializers
 
 class BuildServiceSerializer(serializers.ModelSerializer):
@@ -9,14 +10,44 @@ class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
 
-class WebHookMappingSerializer(serializers.ModelSerializer):
-    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
-    revision = serializers.CharField(source="lsr.revision", write_only=True)
-    obs = BuildServiceSerializer(many=False, read_only=True)
-    obs_id = serializers.IntegerField(source="obs.pk", write_only=True)
-    user = serializers.RelatedField(many=False, read_only=True)
+class BuildServiceField(serializers.WritableField):
+    """
+    Handle references to a BuildService object
+    Outputs namespace
+    Takes a namespace as a key
+    """
+    def to_native(self, obj):
+        return obj.namespace
 
+    def from_native(self, data):
+        obs = BuildService.objects.get(namespace=data)
+        return obs
+        
+class UserField(serializers.WritableField):
+    """
+    Handle references to a User object
+    """
+    def to_native(self, obj):
+        return obj.username
+
+
+    def from_native(self, data):
+        user = User.objects.get(username=data)
+        return user
+        
+class LSRField(serializers.Field):
+    """
+    Handle references to a LastSeenRevision object
+    """
+    def to_native(self, obj):
+        return LastSeenRevisionSerializer(obj).to_native(obj)
+
+class WebHookMappingSerializer(serializers.ModelSerializer):
+
+    lsr = LSRField()
+    obs = BuildServiceField()
+    user = UserField()
+    
     class Meta:
         model = WebHookMapping
-        depth = 2
-
+        exclude = ('id',)
