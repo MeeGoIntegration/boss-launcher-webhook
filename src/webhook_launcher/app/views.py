@@ -27,6 +27,7 @@ from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
+from rest_framework import permissions
 from utils import launch_queue
 from models import WebHookMapping
 from serializers import WebHookMappingSerializer
@@ -107,6 +108,7 @@ def index(request):
     else:
         return HttpResponseNotAllowed(['GET', 'POST'])
 
-class WebHookMappingViewSet(viewsets.ReadOnlyModelViewSet):
+class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
