@@ -182,11 +182,14 @@ class WebHookMapping(models.Model):
     debian = models.CharField(max_length=2, default="", blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
     dumb = models.CharField(max_length=2, default="", blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
     notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
-    build = models.BooleanField(default=False, help_text="Enable OBS build triggering")
+    build = models.BooleanField(default=True, help_text="Enable OBS build triggering")
     comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User)
     obs = models.ForeignKey(BuildService)
 
+    class Meta:
+        unique_together = (("project", "package"),)
+    
 class LastSeenRevision(models.Model):
 
     def __unicode__(self):
