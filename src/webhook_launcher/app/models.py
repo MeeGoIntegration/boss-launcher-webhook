@@ -188,7 +188,7 @@ class WebHookMapping(models.Model):
     obs = models.ForeignKey(BuildService)
 
     class Meta:
-        unique_together = (("project", "package"),)
+        unique_together = (("project", "package", "obs"),)
     
 class LastSeenRevision(models.Model):
 
