@@ -26,11 +26,12 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.utils import simplejson
 from django.conf import settings
-from rest_framework import viewsets
-from rest_framework import permissions
+from rest_framework import viewsets, permissions
+from rest_framework.response import Response
+from rest_framework.decorators import list_route, detail_route
 from utils import launch_queue
-from models import WebHookMapping, BuildService, LastSeenRevision
-from serializers import WebHookMappingSerializer, BuildServiceSerializer
+from models import WebHookMapping, LastSeenRevision
+from serializers import WebHookMappingSerializer, LastSeenRevisionSerializer
 from pprint import pprint
 import struct, socket
 
@@ -113,24 +114,34 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
-    def pre_save(self, obj):
-        obj.user = self.request.user
+    @detail_route(methods=['get'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def find(self, request, obsname, project, package):
+        qs = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
+        ser = WebHookMappingSerializer(qs)
+        return Response(ser.data)
+        
 
-    def post_save(self, obj, created=False):
-        request = self.get_renderer_context()['request']
-        revision = request.DATA.get('revision', None)
-        if revision is None:
-            return
+class LastSeenRevisionViewSet(viewsets.ModelViewSet):
+    queryset = LastSeenRevision.objects.all()
+    serializer_class = LastSeenRevisionSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
-        if created:
-            lsr = LastSeenRevision(mapping = obj, revision = revision)
-        else:
-            lsr = obj.lsr
-            lsr.revision = revision
+# Now to add a function access to trigger a webhook
+from rest_framework.decorators import api_view, permission_classes
 
-        lsr.save()
-
-class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = BuildService.objects.all()
-    serializer_class = BuildServiceSerializer
-
+@api_view(['GET'])
+@permission_classes((permissions.IsAuthenticated, ))
+def trigger(request, format=None, pk=None):
+    if pk:
+        hook = WebHookMapping(id=pk)
+        hook.trigger()
+        content = { 'status': 'Webhook was triggered' }
+    elif 'id' in request.DATA:
+        id = request.DATA['id']
+        hook = WebHookMapping(id=id)
+        hook.trigger()
+        content = { 'status': 'Webhook was triggered' }
+    else:
+        content = { 'status': 'Webhook not found' }
+            
+    return Response(content)
