@@ -31,9 +31,9 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.conf import settings
 
-from rest_framework import viewsets
-from rest_framework import permissions
+from rest_framework import viewsets, permissions
 from rest_framework.response import Response
+from rest_framework.decorators import list_route, detail_route
 from rest_framework import status
 import rest_framework_filters as filters
 
@@ -225,6 +225,37 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.data)
+
+    @detail_route(methods=['get'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def find(self, request, obsname, project, package):
+        qs = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
+        ser = WebHookMappingSerializer(qs)
+        return Response(ser.data)
+
+class LastSeenRevisionViewSet(viewsets.ModelViewSet):
+    queryset = LastSeenRevision.objects.all()
+    serializer_class = LastSeenRevisionSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+# Now to add a function access to trigger a webhook
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(['GET'])
+@permission_classes((permissions.IsAuthenticated, ))
+def trigger(request, format=None, pk=None):
+    if pk:
+        hook = WebHookMapping(id=pk)
+        hook.trigger()
+        content = { 'status': 'Webhook was triggered' }
+    elif 'id' in request.DATA:
+        id = request.DATA['id']
+        hook = WebHookMapping(id=id)
+        hook.trigger()
+        content = { 'status': 'Webhook was triggered' }
+    else:
+        content = { 'status': 'Webhook not found' }
+            
+    return Response(content)
 
 class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BuildService.objects.all()
