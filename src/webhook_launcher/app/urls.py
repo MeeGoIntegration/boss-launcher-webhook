@@ -24,7 +24,7 @@ from  webhook_launcher.app import views
 
 router = routers.DefaultRouter()
 router.register(r'webhookmappings', views.WebHookMappingViewSet)
-router.register(r'buildservices', views.BuildServiceViewSet)
+router.register(r'lastseenrevisions', views.LastSeenRevisionViewSet)
 
 # The find_list view supports an alternate pk lookup
 find_list = views.WebHookMappingViewSet.as_view({'get': 'find'})
