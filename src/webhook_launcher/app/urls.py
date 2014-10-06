@@ -26,11 +26,16 @@ router = routers.DefaultRouter()
 router.register(r'webhookmappings', views.WebHookMappingViewSet)
 router.register(r'buildservices', views.BuildServiceViewSet)
 
+# The find_list view supports an alternate pk lookup
+find_list = views.WebHookMappingViewSet.as_view({'get': 'find'})
+
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/', include(router.urls)),
+    url(r'^api/webhookmappings/(?P<obsname>.*)/(?P<project>.*)/(?P<package>.*)/find', find_list),
+    url(r'^api/webhookmappings/(?P<pk>[0-9]+)/trigger/', views.trigger),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^login/', views.remotelogin_redirect, name='redirect'),
     url(r'^landing/$', views.index, name='index'),
-    url(r'$', views.index, name='index'),
+    url(r'^$', views.index, name='index'),
 ]
