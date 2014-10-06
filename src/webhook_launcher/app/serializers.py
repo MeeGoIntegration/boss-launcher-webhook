@@ -2,6 +2,8 @@ from webhook_launcher.app.models import WebHookMapping, LastSeenRevision, BuildS
 from models import WebHookMapping, LastSeenRevision, BuildService
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from StringIO import StringIO
+from rest_framework.parsers import JSONParser
 
 class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,6 +12,7 @@ class BuildServiceSerializer(serializers.ModelSerializer):
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
+        exclude = ('id', 'handled', 'payload', 'timestamp',)
 
 # Commented out pending testing
 # class BuildServiceField(serializers.Field):
@@ -48,7 +51,6 @@ class UserField(serializers.WritableField):
     def to_native(self, obj):
         return obj.username
 
-
     def from_native(self, data):
         user = User.objects.get(username=data)
         return user
@@ -58,7 +60,19 @@ class LSRField(serializers.Field):
     Handle references to a LastSeenRevision object
     """
     def to_native(self, obj):
-        return LastSeenRevisionSerializer(obj).to_native(obj)
+        return LastSeenRevisionSerializer().to_native(obj)
+
+    def field_from_native(self, data, files, field_name, into):
+        mydata = JSONParser().parse(StringIO(data[field_name]))
+        # create a new lsr
+        lsr = LastSeenRevision(mapping = self.parent.object)
+        # update it with the data and ensure it's valid
+        lsr_ = LastSeenRevisionSerializer(lsr, data=mydata, partial=True)
+        if not lsr_.is_valid() :
+            raise Exception(lsr_.errors)
+        # and ensure the mapping is still to us
+        lsr.mapping = self.parent.object
+        lsr.save()
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
 #    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
