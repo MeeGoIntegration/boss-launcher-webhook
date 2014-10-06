@@ -1,17 +1,17 @@
 # Copyright (C) 2013 Jolla Ltd.
 # Contact: Islam Amer <islam.amer@jollamobile.com>
 # All rights reserved.
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -27,8 +27,8 @@
       Package name to be rebuilt
    :project (string):
       OBS project in which the package lives
-   
-   
+
+
 :term:`Workitem` params IN
 
 :Parameters:
@@ -50,28 +50,26 @@ import osc
 from urlparse import urlparse
 from osc import core
 from StringIO import StringIO
+from lxml import etree
+import urllib2
 
 tar_git_service = """
-<services>
-  <service name="tar_git">
-    <param name="url">%(url)s</param>
-    <param name="branch">%(branch)s</param>
-    <param name="revision">%(revision)s</param>
-    <param name="token">%(token)s</param>
-    <param name="debian">%(debian)s</param>
-    <param name="dumb">%(dumb)s</param>
-  </service>
-</services>
+<service name="tar_git">
+  <param name="url">%(url)s</param>
+  <param name="branch">%(branch)s</param>
+  <param name="revision">%(revision)s</param>
+  <param name="token">%(token)s</param>
+  <param name="debian">%(debian)s</param>
+  <param name="dumb">%(dumb)s</param>
+</service>
 """
 
 git_pkg_service = """
-<services>
-  <service name="gitpkg">
+<service name="gitpkg">
   <param name="repo">%(repo)s</param>
   <param name="tag">%(revision)s</param>
   <param name="service">%(service)s</param>
-  </service>
-</services>
+</service>
 """
 
 def find_service_repo(url):
@@ -89,7 +87,7 @@ def find_service_repo(url):
         return "gitorious", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("merproject.org"):  # Mer
         return "Mer", "/".join(u.path.split("/")[1:3])
-    
+
     return None, None
 
 class ParticipantHandler(BuildServiceParticipant):
@@ -137,7 +135,7 @@ class ParticipantHandler(BuildServiceParticipant):
             params["url"] = p.repourl
 
         params["service"], params["repo"] = find_service_repo(params["url"])
-            
+
         if f.branch:
             params["branch"] = f.branch
         if p.branch:
@@ -181,7 +179,39 @@ class ParticipantHandler(BuildServiceParticipant):
             data = StringIO(data % { "name" : str(package), "user" : self.obs.getUserName() }).readlines()
             u = core.makeurl(self.obs.apiurl, ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
-        
-        self.obs.setupService(project, package, service % params)
+
+        # Start with an empty XML doc
+        try: # to get any existing _service file
+            services_xml = self.obs.getFile(project, package, "_service")
+        except urllib2.HTTPError, e:
+            print "Exception %s trying to get _service file for %s/%s" % (e, project, package)
+            if e.code == 404:
+                services_xml = "<services></services>"
+            elif e.code == 400:
+                # HTTP Error 400: service in progress error
+                wid.result = True
+                print "Service in progress, could not get _service file. Not triggering another run."
+                return
+            else:
+                raise e
+
+        # Create our new service (not services anymore)
+        new_service_xml = service % params
+
+        # Replace the matching one:
+        services = etree.fromstring(services_xml)
+        new_service = etree.fromstring(new_service_xml)
+        svcname = new_service.find(".").get("name")
+        old_service = services.find("./service[@name='%s']" % svcname)
+        if old_service:
+            services.replace(old_service, new_service)
+        else:
+            services.append(new_service)
+
+        # print etree.tostring(services, pretty_print=True)
+
+        # And send our new service file
+        self.obs.setupService(project, package,
+                        etree.tostring(services, pretty_print=True))
 
         wid.result = True
