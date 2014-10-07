@@ -1,12 +1,12 @@
 %define svdir %{_sysconfdir}/supervisor/conf.d/
 
 Name: boss-launcher-webhook
-Version: 0.1.0
+Version: 0.2.0
 Release: 1
 
 Group: Applications/Engineering
 License: GPLv2+
-URL: http://www.meego.com
+URL: http://www.merproject.org
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp, python-django
@@ -15,7 +15,7 @@ BuildRequires: MySQL-python
 %else
 BuildRequires: python-mysql
 %endif
-Requires: python-django, python-flup
+Requires: python-django, python-flup, python-djangorestframework, python-pycurl, python-requests
 %if 0%{?fedora}
 Requires: MySQL-python
 %else
@@ -24,7 +24,7 @@ Requires: python-mysql
 Requires: python >= 2.5.0
 Requires: python-xml
 Requires: python-boss-skynet
-Requires: python-django-south
+Requires: python-South
 Requires: python-django-extensions
 Requires(post): python-boss-skynet
 BuildArch: noarch
@@ -40,12 +40,26 @@ Summary: OBS source service to generate sources from git
 %description -n obs-service-tar-git
 This package provides the service to generate source from git inside an OBS source service
 
+%package -n obs-service-webhook
+Group: Applications/Engineering
+Requires: obs-source_service, python-lxml, python-json
+Summary: OBS source service to manage webhooks
+%description -n obs-service-webhook
+This package provides the service to update webhooks from OBS. It ensures that only users who have access to a package can update the webhook for that package.
+
 %package -n boss-participant-trigger_service
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common
+Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-trigger_service
-This package provides the participant that handles creating _service files in OBS, in response to webhook triggers
+This package provides the participant that handles creating and/or triggering  _service files in OBS, in response to webhook triggers
+
+%package -n boss-participant-create_project
+Group: Applications/Engineering
+Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml
+Summary: BOSS participant to handle webhooks
+%description -n boss-participant-create_project
+This package provides the participant that handles creating project files in OBS, in response to webhook triggers
 
 %define python python%{?__python_ver}
 %define __python /usr/bin/%{python}
@@ -67,13 +81,24 @@ make PREFIX=%{_prefix} DESTDIR=%{buildroot} install
 rm -rf %{buildroot}
 
 %post
-if [ "$1" == 0 ]; then
-  skynet reload webhook delete_webhook
+if [ $1 -ge 1 ]; then
+    skynet apply || true
+    skynet reload webhook || true
+    skynet reload delete_webhook || true
+    skynet reload handle_webhook || true
+    skynet reload relay_webhook || true
+fi
+
+%post -n boss-participant-create_project
+if [ $1 -ge 1 ]; then
+    skynet apply || true
+    skynet reload create_project || true
 fi
 
 %post -n boss-participant-trigger_service
-if [ "$1" == 0 ]; then
-  skynet reload trigger_service
+if [ $1 -ge 1 ]; then
+    skynet apply || true
+    skynet reload trigger_service || true
 fi
 
 %files
@@ -84,11 +109,20 @@ fi
 %{_datadir}/webhook_launcher
 %config(noreplace) %{svdir}/webhook.conf
 %config(noreplace) %{svdir}/delete_webhook.conf
+%config(noreplace) %{svdir}/handle_webhook.conf
+%config(noreplace) %{svdir}/relay_webhook.conf
 %dir /etc/skynet
 %dir /etc/supervisor
 %dir /etc/supervisor/conf.d
 %dir /usr/share/boss-skynet
 %{_datadir}/boss-skynet/delete_webhook.py*
+%{_datadir}/boss-skynet/handle_webhook.py*
+%{_datadir}/boss-skynet/relay_webhook.py*
+
+%files -n boss-participant-create_project
+%defattr(-,root,root,-)
+%config(noreplace) %{svdir}/create_project.conf
+%{_datadir}/boss-skynet/create_project.py*
 
 %files -n boss-participant-trigger_service
 %defattr(-,root,root,-)
@@ -97,5 +131,15 @@ fi
 
 %files -n obs-service-tar-git
 %defattr(-,root,root,-)
-/usr/lib/obs/service
-/usr/lib/obs
+%dir /usr/lib/obs
+%dir /usr/lib/obs/service
+/usr/lib/obs/service/tar_git
+/usr/lib/obs/service/tar_git.service
+
+%files -n obs-service-webhook
+%defattr(-,root,root,-)
+%dir /usr/lib/obs
+%dir /usr/lib/obs/service
+/usr/lib/obs/service/webhook
+/usr/lib/obs/service/webhook.service
+/usr/lib/obs/service/webhook_diff.py
