@@ -1,0 +1,250 @@
+#!/bin/bash
+
+# (C) 2014 David Greaves david.greaves@jolla.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# See http://www.gnu.org/licenses/gpl-2.0.html for full license text.
+
+# The service approach uses and trusts OBS_SERVICE_PROJECT
+# OBS_SERVICE_PACKAGE env vars set by OBS
+
+SERVICE="webhook"
+
+STORE=/srv/service/$SERVICE
+OUTDIR=""
+
+jsondiff=/usr/lib/obs/service/json_diff.py
+
+# Defaults
+WH_USER="admin"
+WH_PASSWD="root"
+OBS="mer"
+WEBHOOK_URL=http://127.0.0.1:8000/webhook/api
+LSR=""
+TOKEN=""
+DEBIAN="N"
+DUMB="N"
+NOTIFY="true"
+BUILD="true"
+COMMENT=""
+DEBUG=
+
+get_config_options () {
+  # config options for this host ?
+  if [[ -f /etc/obs/services/$SERVICE ]]; then
+    . /etc/obs/services/$SERVICE
+  fi
+  # config options for this user ?
+  if [[ -f "$HOME"/.obs/$SERVICE ]]; then
+    . "$HOME"/.obs/$SERVICE
+  fi
+}
+
+usage() {
+  cat <<EOF
+
+The webhook service creates and manages a webhook which causes the package to be rebuilt when a tag is pushed to a git service.
+
+Use <param name="name">value</param> 
+
+Required params: 
+  "repourl"  <url>           Which repo is sending events: Eg: "https://github.com/mer-hybris/libhybris.git"
+  "branch"   <branch>        Webhook branch; eg: "pkg-mer"
+
+Optional params:
+  "token"    <token>         Optional webhook filtering token
+  "debian"   <Y|N>           Is this a debian package
+  "dumb"     <Y|N>           Is this a dumb package (eg tarball in git)
+  "build"    <true|false>    "true" to enable this webhook to trigger builds (default:true)
+  "notify"   <true|false>    "true" to send notifications on action  (default:true)
+  "comment"  <comment>       Appears in the webhook list view
+
+Don't forget to make sure the git service webhook settings are set correctly
+
+EOF
+}
+
+fatal() {
+    echo $@
+    usage
+    exit 1
+}
+
+validate() {
+    label=$1
+    val=$2
+    shift;shift
+    args=$@
+    while test $# -gt 0; do
+	[[ $val == $1 ]] && return
+	shift
+    done
+    fatal "$label is '$val' : should be one of : $args"
+}
+
+get_config_options
+
+while test $# -gt 0; do
+  case $1 in
+    *-revision)
+      LSR="$2"
+      shift
+    ;;
+    *-repourl)
+      REPOURL="$2"
+      shift
+    ;;
+    *-branch)
+      BRANCH="$2"
+      shift
+    ;;
+    *-token)
+      TOKEN="$2"
+      shift
+    ;;
+    *-debian)
+      DEBIAN="$2"
+      validate debian "$DEBIAN" Y N
+      shift
+    ;;
+    *-dumb)
+      DUMB="$2"
+      validate dumb "$DUMB" Y N
+      shift
+    ;;
+    *-notify)
+      NOTIFY="$2"
+      validate notify "$NOTIFY" true false
+      shift
+    ;;
+    *-build)
+      BUILD="$2"
+      validate build "$BUILD" true false
+      shift
+    ;;
+    *-comment)
+      COMMENT="$2"
+      shift
+    ;;
+    *-outdir)
+      OUTDIR="$2"
+      shift
+    ;;
+    -h|*-help)
+      usage
+      exit 0
+    ;;
+    *)
+      usage
+      echo Unknown parameter $1.
+      exit 1
+    ;;
+  esac
+  shift
+done
+
+if [ -z "$REPOURL" ]; then
+    fatal "ERROR: no <repourl> parameter"
+fi
+if [ -z "$BRANCH" ]; then
+    fatal "ERROR: no <branch> parameter"
+fi
+if [ -z "$OBS_SERVICE_PROJECT" ]; then
+    fatal "ERROR: no OBS_SERVICE_PROJECT environment var"
+fi
+if [ -z "$OBS_SERVICE_PACKAGE" ]; then
+    fatal "ERROR: no OBS_SERVICE_PACKAGE environment var"
+fi
+# These are optional   REPOURL BRANCH TOKEN DEBIAN DUMB NOTIFY BUILD
+
+#repourl_regexp="^[A-Za-z0-9_-]*/[A-Za-z0-9_-]*$"
+#if ! [[ $REPO =~ $repourl_regexp ]]; then
+#    fatal "ERROR: repo '$REPO'is not in area/repo format (omit .git and any http://.../ part)"
+#fi
+
+#tag_regexp="^[A-Za-z0-9_.-]*$"
+#if ! [[ $TAG =~ $tag_regexp ]]; then
+#    fatal "ERROR: repo '$TAG'is not valid (must match '$tag_regexp')"
+#fi
+
+if [[ ! -d $STORE ]]; then
+    echo "Note: $STORE path not found. Creating a local webhook directory."
+    STORE=./webhook.tmp
+    mkdir -p $STORE || fatal "Could not create $STORE"
+fi
+cd $STORE
+
+mkdir -p $OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE || fatal "couldn't make $STORE/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE dir"
+cd $OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE
+
+# All setup and ready to go:
+
+make_new_webhook() {
+    cat <<EOF > webhook_new.json
+{
+    "obs": "$OBS", 
+    "user": "$WH_USER", 
+    "repourl": "$REPOURL", 
+    "branch": "$BRANCH", 
+    "project": "$OBS_SERVICE_PROJECT", 
+    "package": "$OBS_SERVICE_PACKAGE", 
+    "token": "$TOKEN", 
+    "debian": "$DEBIAN", 
+    "dumb": "$DUMB", 
+    "notify": $NOTIFY, 
+    "build": $BUILD, 
+    "comment": "$COMMENT"
+}
+EOF
+}
+
+CURL() {
+    [[ $DEBUG ]] && echo "curl -s -u WH_USER:WH_PASSWD -H \"Content-Type: application/json\" $@" >&2
+    curl -s -u $WH_USER:$WH_PASSWD -H "Content-Type: application/json" $@
+}
+
+get_old_webhook() {
+    CURL -X GET $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/find/ > webhook_current.json 
+    if [[ $DEBUG ]]; then
+	echo "GOT"; cat webhook_current.json; echo
+    fi
+}
+
+webhook_is_same() {
+    /usr/lib/obs/service/webhook_diff.py webhook_current.json webhook_new.json
+    return $?
+}
+
+put_new_webhook() {
+    if [[ $DEBUG ]]; then
+	echo "PUTting to '/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE'"; cat webhook_new.json; echo
+    fi
+    CURL -X PUT $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/find/ -d @webhook_new.json 
+}
+
+trigger_webhook() {
+    if [[ $DEBUG ]]; then
+	echo "PUTting to '/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/trigger/'"; cat webhook_new.json; echo
+    fi
+    CURL -X PUT $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/trigger/ 
+}
+
+# Check the webhook but don't touch it unless needed
+make_new_webhook
+if get_old_webhook; then
+    if webhook_is_same; then
+	echo not changed
+    else
+	echo changed
+	put_new_webhook
+	trigger_webhook
+    fi
+else
+    echo new
+    put_new_webhook
+    trigger_webhook
+fi
+exit 0
