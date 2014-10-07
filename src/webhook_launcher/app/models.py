@@ -1,17 +1,17 @@
 # Copyright (C) 2013 Jolla Ltd.
 # Contact: Islam Amer <islam.amer@jollamobile.com>
 # All rights reserved.
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
@@ -109,7 +109,7 @@ class Project(models.Model):
     groups = models.ManyToManyField(Group, blank=True, null=True)
     vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
 
-class WebHookMapping(models.Model):    
+class WebHookMapping(models.Model):
 
     def __unicode__(self):
         return "%s/%s -> %s/%s" % (self.repourl, self.branch, self.project, self.package)
@@ -243,6 +243,20 @@ class WebHookMapping(models.Model):
         lsr_in.save()
         return message
 
+    def trigger_build(self):
+        if not self.lsr:
+            mylsr, created = LastSeenRevision.objects.get_or_create(mapping=self)
+        else:
+            mylsr=self.lsr
+        revision_to_build = self.tag
+        if not revision_to_build:
+            revision_to_build = self.branch
+
+        # handle_tag actually launches a build process
+        # setting webuser is a way of doing a forced rebuild
+        msg = self.handle_tag(mylsr, self.user.username, {}, revision_to_build, webuser=self.user.username)
+        return msg
+
     def to_fields(self):
         fields = {}
         fields['repourl'] = self.repourl
@@ -276,7 +290,7 @@ class WebHookMapping(models.Model):
 
     class Meta:
         unique_together = (("project", "package", "obs"),)
-    
+
 class LastSeenRevision(models.Model):
 
     def __unicode__(self):
@@ -315,7 +329,7 @@ class QueuePeriod(models.Model):
         if self.start_time >= self.end_time:
             if (self.start_time >= dto.time() >= self.end_time):
                 return False # wrong time of day
-        
+
         if self.start_date and (dto.date() < self.start_date):
             return False # not started yet
 
