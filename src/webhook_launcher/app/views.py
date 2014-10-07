@@ -31,7 +31,7 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.conf import settings
 
-from rest_framework import viewsets, permissions
+from rest_framework import status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import list_route, detail_route, permission_classes
 from rest_framework import status
@@ -248,30 +248,20 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
         else :
             raise Exception("Invalid method in find()")
 
+    @detail_route(methods=['put'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    def trigger(self, request, obsname, project, package):
+        try:
+            hook = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
+            msg = hook.trigger_build()
+            return Response({ 'WebHookMapping Triggered by API': msg })
+        except WebHookMapping.DoesNotExist:
+            return Response({ 'WebHookMapping': 'Not found' },
+                            status=status.HTTP_404_NOT_FOUND)
+
 class LastSeenRevisionViewSet(viewsets.ModelViewSet):
     queryset = LastSeenRevision.objects.all()
     serializer_class = LastSeenRevisionSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-
-# Now to add a function access to trigger a webhook
-from rest_framework.decorators import api_view, permission_classes
-
-@api_view(['GET'])
-@permission_classes((permissions.IsAuthenticated, ))
-def trigger(request, format=None, pk=None):
-    if pk:
-        hook = WebHookMapping(id=pk)
-        hook.trigger()
-        content = { 'status': 'Webhook was triggered' }
-    elif 'id' in request.DATA:
-        id = request.DATA['id']
-        hook = WebHookMapping(id=id)
-        hook.trigger()
-        content = { 'status': 'Webhook was triggered' }
-    else:
-        content = { 'status': 'Webhook not found' }
-            
-    return Response(content)
 
 class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BuildService.objects.all()
