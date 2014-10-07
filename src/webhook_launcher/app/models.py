@@ -177,6 +177,82 @@ class WebHookMapping(models.Model):
             if not self.project.startswith("home:%s" % self.user.username) and not self.user.is_superuser:
                 raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
 
+    # handle an incoming payload/tag
+    def handle_tag(self, lsr, user, payload, tag, webuser=None):
+
+        build = self.build and self.mapped
+        delayed = False
+        skipped = False
+        qp = None
+        if payload:
+            lsr.payload = payload
+
+        if build:
+            if not webuser:
+                if lsr.handled and lsr.tag == tag:
+                    print "build already handled, skipping"
+                    build = False
+                    skipped = True
+
+            # Find possible queue period objects
+            qps = QueuePeriod.objects.filter(projects__name=self.project,
+                                             projects__obs__pk=self.obs.pk)
+            for qp in qps:
+                if qp.delay() and not qp.override(webuser=webuser):
+                    print "Build trigger for %s delayed by %s" % (self, qp)
+                    print qp.comment
+                    if tag:
+                        lsr.tag = tag
+                    lsr.handled = False
+                    build = False
+                    delayed = True
+                    break
+
+        if self.notify:
+
+            if tag:
+                message = "Tag %s" % tag
+                if webuser:
+                    message = "Forced build trigger for %s" % tag
+            else:
+                message = "%s" % self.rev_or_head
+                if webuser:
+                    message = "Forced build trigger for %s" % self.rev_or_head
+
+            message = "%s by %s in %s branch of %s" % (message, user, self.branch,
+                                                       self.repourl)
+            if not self.mapped:
+                message = "%s, which is not mapped yet. Please map it." % message
+            elif build:
+                message = ("%s, which will trigger build in project %s package "
+                           "%s (%s/package/show?package=%s&project=%s)" % (message,
+                            self.project, self.package, self.obs.weburl,
+                            self.package, self.project))
+
+            elif skipped:
+                message = "%s, which was already handled; skipping" % message
+            elif qp and delayed:
+                message = "%s, which will be delayed by %s" % (message, qp)
+                if qp.comment:
+                    message = "%s\n%s" % (message, qp.comment)
+
+            fields = self.to_fields()
+            fields['msg'] = message
+            fields['payload'] = payload
+            print message
+            launch_notify(fields)
+
+        if build:
+            fields = self.to_fields()
+            fields['branch'] = self.branch
+            fields['revision'] = lsr.revision
+            fields['payload'] = payload
+            print "build"
+            launch_build(fields)
+            if tag:
+                lsr.tag = tag
+
+        lsr.save()
 
     def to_fields(self):
         fields = {}
