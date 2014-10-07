@@ -28,13 +28,14 @@ router.register(r'lastseenrevisions', views.LastSeenRevisionViewSet)
 
 # The .../find view supports an alternate pk lookup
 find = views.WebHookMappingViewSet.as_view({'get': 'find', 'put': 'find'})
+trigger = views.WebHookMappingViewSet.as_view({'put': 'trigger'})
 router.register(r'buildservices', views.BuildServiceViewSet)
 
 urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),
     url(r'^api/', include(router.urls)),
     url(r'^api/webhookmappings/(?P<obsname>.*)/(?P<project>.*)/(?P<package>.*)/find', find),
-    url(r'^api/webhookmappings/(?P<pk>[0-9]+)/trigger/', views.trigger),
+    url(r'^api/webhookmappings/(?P<obsname>.*)/(?P<project>.*)/(?P<package>.*)/trigger', trigger),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^$', 'webhook_launcher.app.views.index', name='index'),
 )
