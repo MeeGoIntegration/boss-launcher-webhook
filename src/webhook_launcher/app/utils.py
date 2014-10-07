@@ -29,30 +29,7 @@ import os
 from models import (WebHookMapping, BuildService, LastSeenRevision, QueuePeriod,
                     RelayTarget, Project)
 
-def launch(process, fields):
-    """ BOSS process launcher
-
-    :param process: process definition file
-    :param fields: dict of workitem fields
-    """
-    with open(process, mode='r') as process_file:
-        pdef = process_file.read()
-
-    launcher = Launcher(amqp_host = settings.BOSS_HOST,
-                        amqp_user = settings.BOSS_USER,
-                        amqp_pass = settings.BOSS_PASS,
-                        amqp_vhost = settings.BOSS_VHOST)
-
-    launcher.launch(pdef, fields)
-
-def launch_queue(fields):
-    launch(settings.VCSCOMMIT_QUEUE, fields)
-
-def launch_notify(fields):
-    launch(settings.VCSCOMMIT_NOTIFY, fields)
-
-def launch_build(fields):
-    launch(settings.VCSCOMMIT_BUILD, fields)
+from boss import launch, launch_queue, launch_notify, launch_build
 
 class bbAPIcall(object):
     def __init__(self, slug):
