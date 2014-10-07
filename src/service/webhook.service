@@ -1,0 +1,31 @@
+<service name="webhook">
+  <summary>Create a webhook to manage this package</summary>
+  <description>This service creates or updates a webhook which will trigger a rebuild when a tag is pushed</description>
+  <parameter name="repourl">
+    <description>Which repo is sending events: Eg: "https://github.com/mer-hybris/libhybris.git"
+</description>
+    <required/>
+  </parameter>
+  <parameter name="branch">
+    <description>Webhook branch for this package; eg: "pkg-mer" (defaults to master)</description>
+  </parameter>
+  <parameter name="comment">
+    <description>A note visible in the webhook overview</description>
+  </parameter>
+  <parameter name="build">
+    <description>Trigger rebuilds when a tag event arrives (defaults to true)</description>
+  </parameter>
+  <parameter name="notify">
+    <description>Send a notify message to the irc bot when a tag arrives (defaults to true)</description>
+  </parameter>
+  <parameter name="token">
+    <description>Token used to differentiate tags and changelog entries to be handled from upstream ones</description>
+  </parameter>
+  <parameter name="debian">
+    <description>Also generate debian packaging from a debian subdir if available (Y/N)</description>
+  </parameter>
+  <parameter name="dumb">
+    <description>Take content of revision as-is without automatic processing (Y/N)</description>
+  </parameter>
+</service>
+
