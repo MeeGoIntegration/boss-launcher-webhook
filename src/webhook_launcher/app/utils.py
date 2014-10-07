@@ -262,7 +262,7 @@ class Payload(object):
 
                 elif reftype == "tags":
                     print "Tag %s for %s in %s/%s, notify and build it if enabled" % (refname, revision, repourl, mapobj.branch)
-                    handle_tag(mapobj, seenrev, name, payload, refname)
+                    mapobj.handle_tag(seenrev, name, payload, refname)
 
     def bitbucket_webhook_launch(self):
 
@@ -327,7 +327,7 @@ class Payload(object):
 
                 else:
                     print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
-                    handle_tag(mapobj, seenrev, payload["user"], payload, tag)
+                    mapobj.handle_tag(seenrev, payload["user"], payload, tag)
 
     def relay(self, relays=None):
 
@@ -400,81 +400,6 @@ def handle_commit(mapobj, lsr, user, payload):
     lsr.payload = payload
     lsr.save()
 
-def handle_tag(mapobj, lsr, user, payload, tag, webuser=None):
-
-    build = mapobj.build and mapobj.mapped
-    delayed = False
-    skipped = False
-    qp = None
-    if payload:
-        lsr.payload = payload
-
-    if build:
-        if not webuser:
-            if lsr.handled and lsr.tag == tag:
-                print "build already handled, skipping"
-                build = False
-                skipped = True
-
-        # Find possible queue period objects
-        qps = QueuePeriod.objects.filter(projects__name=mapobj.project,
-                                         projects__obs__pk=mapobj.obs.pk)
-        for qp in qps:
-            if qp.delay() and not qp.override(webuser=webuser):
-                print "Build trigger for %s delayed by %s" % (mapobj, qp)
-                print qp.comment
-                if tag:
-                    lsr.tag = tag
-                lsr.handled = False
-                build = False
-                delayed = True
-                break
-
-    if mapobj.notify:
-
-        if tag:
-            message = "Tag %s" % tag
-            if webuser:
-                message = "Forced build trigger for %s" % tag
-        else:
-            message = "%s" % mapobj.rev_or_head
-            if webuser:
-                message = "Forced build trigger for %s" % mapobj.rev_or_head
-
-        message = "%s by %s in %s branch of %s" % (message, user, mapobj.branch,
-                                                   mapobj.repourl)
-        if not mapobj.mapped:
-            message = "%s, which is not mapped yet. Please map it." % message
-        elif build:
-            message = ("%s, which will trigger build in project %s package "
-                       "%s (%s/package/show?package=%s&project=%s)" % (message,
-                        mapobj.project, mapobj.package, mapobj.obs.weburl,
-                        mapobj.package, mapobj.project))
-
-        elif skipped:
-            message = "%s, which was already handled; skipping" % message
-        elif qp and delayed:
-            message = "%s, which will be delayed by %s" % (message, qp)
-            if qp.comment:
-                message = "%s\n%s" % (message, qp.comment)
-
-        fields = mapobj.to_fields()
-        fields['msg'] = message
-        fields['payload'] = payload
-        print message
-        launch_notify(fields)
-
-    if build:
-        fields = mapobj.to_fields()
-        fields['branch'] = mapobj.branch
-        fields['revision'] = lsr.revision
-        fields['payload'] = payload
-        print "build"
-        launch_build(fields)
-        if tag:
-            lsr.tag = tag
-
-    lsr.save()
 
 def create_placeholder(repourl, branch, packages=None):
 

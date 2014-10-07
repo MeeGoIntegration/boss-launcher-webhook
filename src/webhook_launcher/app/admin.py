@@ -30,8 +30,6 @@ from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping,
                                           VCSNameSpace, QueuePeriod,
                                           RelayTarget, get_or_none )
 
-from webhook_launcher.app.utils import handle_tag
-
 class LastSeenRevisionInline(admin.StackedInline):
     model = LastSeenRevision 
     extra = 1
@@ -110,7 +108,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
             if not to_build:
                 to_build = mapobj.rev_or_head
 
-            handle_tag(mapobj, lsr, request.user.username, {}, to_build, webuser=request.user)
+            mapobj.handle_tag(lsr, request.user.username, {}, to_build, webuser=request.user)
             msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': mapobj.rev_or_head}
             self.message_user(request, msg)
 
