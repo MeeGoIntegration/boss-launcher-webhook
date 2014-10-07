@@ -217,7 +217,7 @@ class WebHookMapping(models.Model):
         return fields
 
     # If any fields are added/removed then ensure they are handled
-    # correctly in to_fields
+    # correctly in to_fields and the webhook_diff
     repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
     branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
     project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
