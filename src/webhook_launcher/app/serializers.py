@@ -60,10 +60,13 @@ class LSRField(serializers.Field):
     Handle references to a LastSeenRevision object
     """
     def to_native(self, obj):
-        return LastSeenRevisionSerializer().to_native(obj)
+        return LastSeenRevisionSerializer().to_native(obj.lsr)
 
     def field_from_native(self, data, files, field_name, into):
-        mydata = JSONParser().parse(StringIO(data[field_name]))
+        if field_name not in data:
+            return
+        mydata = data[field_name]
+        
         # create a new lsr
         lsr = LastSeenRevision(mapping = self.parent.object)
         # update it with the data and ensure it's valid
@@ -76,15 +79,12 @@ class LSRField(serializers.Field):
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
 #    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
-    revision = serializers.CharField(source="lsr.revision", write_only=True, required=False)
-#    obs = BuildServiceField()
-#    user = serializers.RelatedField(many=False, read_only=True)
-
-    lsr = LSRField()
+#    revision = serializers.CharField(source="lsr.revision", write_only=True, required=False)
+    lsr = LSRField(source="*", read_only=True)
     obs = BuildServiceField()
     user = UserField()
 
     class Meta:
         model = WebHookMapping
-#        depth = 2
-        exclude = ('id',)
+        exclude = ('id',) # don't want/need to expose internal pk
+        depth = 1
