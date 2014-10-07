@@ -205,7 +205,7 @@ class WebHookMapping(models.Model):
                 raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
 
     # handle an incoming payload/tag
-    def handle_tag(self, lsr, user, payload, tag, webuser=None):
+    def handle_tag(self, lsr_in, user, payload, tag, webuser=None):
         # Only fire for projects which allow webhooks. We can't just
         # rely on validation since a Project may forbid hooks after
         # the hook was created
@@ -218,11 +218,11 @@ class WebHookMapping(models.Model):
         skipped = False
         qp = None
         if payload:
-            lsr.payload = payload
+            lsr_in.payload = payload
 
         if build:
             if not webuser:
-                if lsr.handled and lsr.tag == tag:
+                if lsr_in.handled and lsr_in.tag == tag:
                     print "build already handled, skipping"
                     build = False
                     skipped = True
@@ -235,8 +235,8 @@ class WebHookMapping(models.Model):
                     print "Build trigger for %s delayed by %s" % (self, qp)
                     print qp.comment
                     if tag:
-                        lsr.tag = tag
-                    lsr.handled = False
+                        lsr_in.tag = tag
+                    lsr_in.handled = False
                     build = False
                     delayed = True
                     break
@@ -277,14 +277,14 @@ class WebHookMapping(models.Model):
         if build:
             fields = self.to_fields()
             fields['branch'] = self.branch
-            fields['revision'] = lsr.revision
+            fields['revision'] = lsr_in.revision
             fields['payload'] = payload
             print "build"
             launch_build(fields)
             if tag:
-                lsr.tag = tag
+                lsr_in.tag = tag
 
-        lsr.save()
+        lsr_in.save()
         return message
 
     def trigger_build(self):
