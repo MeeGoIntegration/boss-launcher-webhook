@@ -26,26 +26,29 @@ static_files=[('/etc/skynet', ['src/webhook_launcher/webhook.conf']),
                 ('/usr/share/webhook_launcher/processes', 
                    ['src/webhook_launcher/processes/VCSCOMMIT_NOTIFY',
                     'src/webhook_launcher/processes/VCSCOMMIT_BUILD',
+                    'src/webhook_launcher/processes/VCSCOMMIT_QUEUE',
                    ]
                 )
              ]
 
 setup(
     name = "webhook_launcher",
-    version = "0.0.6",
+    version = "0.2.0",
     url = '',
     license = 'GPLv2',
     description = "webhook launcher",
     author = 'Islam Amer <pharon@gmail.com>',
     packages = ['webhook_launcher',
                 'webhook_launcher.app',
+                'webhook_launcher.app.migrations',
                 ],    
     package_dir = {'webhook_launcher':'src/webhook_launcher',
                    'webhook_launcher.app':'src/webhook_launcher/app',
                    'webhook_launcher.app.migrations' : 'src/webhook_launcher/app/migrations',
                   },
-    package_data = { 'webhook_launcher' : ['templates/admin/*.html',
-                                           'templates/app/*.html']
+    package_data = { 'webhook_launcher.app' : ['templates/admin/*.html',
+                                            'templates/app/*.html',
+                                            ]
                    },
     data_files = static_files,
 )
