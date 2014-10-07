@@ -28,7 +28,7 @@ from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
-from rest_framework.decorators import list_route, detail_route
+from rest_framework.decorators import list_route, detail_route, permission_classes
 from utils import launch_queue
 from models import WebHookMapping, LastSeenRevision
 from serializers import WebHookMappingSerializer, LastSeenRevisionSerializer
@@ -114,12 +114,43 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
-    @detail_route(methods=['get'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
+    @detail_route(methods=['get', 'put'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
     def find(self, request, obsname, project, package):
-        qs = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
-        ser = WebHookMappingSerializer(qs)
-        return Response(ser.data)
-        
+        if request.method == 'GET':
+            try:
+                qs = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
+                ser = WebHookMappingSerializer(qs)
+                return Response(ser.data)
+            except WebHookMapping.DoesNotExist:
+                return Response(None)
+        elif request.method == 'PUT':
+            try:
+                obj = WebHookMapping.objects.get(obs__namespace=obsname, project=project, package=package)
+                # The decorator stored our kwargs and doesn's support
+                # chaining very well so append 'pk' to self.kwargs and
+                # then call update()
+                self.kwargs['pk'] = obj.id
+                return self.update(request=request, pk=obj.id)
+            except WebHookMapping.DoesNotExist:
+                return self.create(request=request)
+        else :
+            raise Exception("Invalid method in find()")
+    # def pre_save(self, obj):
+    #     obj.user = self.request.user
+
+    # def post_save(self, obj, created=False):
+    #     request = self.get_renderer_context()['request']
+    #     revision = request.DATA.get('revision', None)
+    #     if revision is None:
+    #         return
+
+    #     if created:
+    #         lsr = LastSeenRevision(mapping = obj, revision = revision)
+    #     else:
+    #         lsr = obj.lsr
+    #         lsr.revision = revision
+
+    #     lsr.save()
 
 class LastSeenRevisionViewSet(viewsets.ModelViewSet):
     queryset = LastSeenRevision.objects.all()
