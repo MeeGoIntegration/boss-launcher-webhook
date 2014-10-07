@@ -195,6 +195,20 @@ class WebHookMapping(models.Model):
             if not self.project.startswith("home:%s" % self.user.username) and not self.user.is_superuser:
                 raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
 
+    def trigger_build(self):
+        if not self.lsr:
+            mylsr, created = LastSeenRevision.objects.get_or_create(mapping=self)
+        else:
+            mylsr=self.lsr
+        revision_to_build = self.tag
+        if not revision_to_build:
+            revision_to_build = self.branch
+
+        # handle_tag actually launches a build process
+        # setting webuser is a way of doing a forced rebuild
+        msg = self.handle_tag(mylsr, self.user.username, {}, revision_to_build, webuser=self.user.username)
+        return msg
+
     def to_fields(self):
         fields = {}
         fields['repourl'] = self.repourl
@@ -233,7 +247,7 @@ class WebHookMapping(models.Model):
 
     class Meta:
         unique_together = (("project", "package", "obs"),)
-    
+
 class LastSeenRevision(models.Model):
 
     def __unicode__(self):
