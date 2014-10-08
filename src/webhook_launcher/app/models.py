@@ -102,10 +102,10 @@ class Project(models.Model):
         else:
             return False
 
-    name = models.CharField(max_length=250)
+    name = models.CharField(max_length=250, help_text="The OBS project name. eg nemo:mw")
     obs = models.ForeignKey(BuildService)
-    official = models.BooleanField(default=True)
-    allowed = models.BooleanField(default=True)
+    official = models.BooleanField(default=True, help_text="If set then only valid namespaces can be used for the git repo")
+    allowed = models.BooleanField(default=True, help_text="If not set then webhooks are not allowed for this project. This is useful for projects which should only have specific versions of packages promoted to them.")
     groups = models.ManyToManyField(Group, blank=True, null=True)
     vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
 
