@@ -208,34 +208,33 @@ class WebHookMapping(models.Model):
                     delayed = True
                     break
 
+        if tag:
+            message = "Tag %s" % tag
+            if webuser:
+                message = "Forced build trigger for %s" % tag
+        else:
+            message = "%s" % self.rev_or_head
+            if webuser:
+                message = "Forced build trigger for %s" % self.rev_or_head
+
+        message = "%s by %s in %s branch of %s" % (message, user, self.branch,
+                                                   self.repourl)
+        if not self.mapped:
+            message = "%s, which is not mapped yet. Please map it." % message
+        elif build:
+            message = ("%s, which will trigger build in project %s package "
+                       "%s (%s/package/show?package=%s&project=%s)" % (message,
+                        self.project, self.package, self.obs.weburl,
+                        self.package, self.project))
+
+        elif skipped:
+            message = "%s, which was already handled; skipping" % message
+        elif qp and delayed:
+            message = "%s, which will be delayed by %s" % (message, qp)
+            if qp.comment:
+                message = "%s\n%s" % (message, qp.comment)
+
         if self.notify:
-
-            if tag:
-                message = "Tag %s" % tag
-                if webuser:
-                    message = "Forced build trigger for %s" % tag
-            else:
-                message = "%s" % self.rev_or_head
-                if webuser:
-                    message = "Forced build trigger for %s" % self.rev_or_head
-
-            message = "%s by %s in %s branch of %s" % (message, user, self.branch,
-                                                       self.repourl)
-            if not self.mapped:
-                message = "%s, which is not mapped yet. Please map it." % message
-            elif build:
-                message = ("%s, which will trigger build in project %s package "
-                           "%s (%s/package/show?package=%s&project=%s)" % (message,
-                            self.project, self.package, self.obs.weburl,
-                            self.package, self.project))
-
-            elif skipped:
-                message = "%s, which was already handled; skipping" % message
-            elif qp and delayed:
-                message = "%s, which will be delayed by %s" % (message, qp)
-                if qp.comment:
-                    message = "%s\n%s" % (message, qp.comment)
-
             fields = self.to_fields()
             fields['msg'] = message
             fields['payload'] = payload
@@ -253,6 +252,7 @@ class WebHookMapping(models.Model):
                 lsr.tag = tag
 
         lsr.save()
+        return message
 
     def to_fields(self):
         fields = {}
