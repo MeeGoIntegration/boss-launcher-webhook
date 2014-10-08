@@ -140,6 +140,18 @@ class WebHookMapping(models.Model):
     def rev_or_head(self):
         return self.revision or self.branch
 
+    @property
+    def project_disabled(self):
+        project = get_or_none(Project, name = self.project)
+        if project and not project.allowed: # Disabled if Project is marked not-allowed
+            return True
+
+        if project and project.official: # Disabled if Project is official and namespace is not valid
+            namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
+            if not service or not namespace:
+                return True
+        return False
+
     def clean(self, exclude=None):
         self.repourl = self.repourl.strip()
         self.branch  = self.branch.strip()
@@ -179,6 +191,12 @@ class WebHookMapping(models.Model):
 
     # handle an incoming payload/tag
     def handle_tag(self, lsr, user, payload, tag, webuser=None):
+        # Only fire for projects which allow webhooks. We can't just
+        # rely on validation since a Project may forbid hooks after
+        # the hook was created
+        if self.project_disabled:
+            print "Project has build disabled"
+            return
 
         build = self.build and self.mapped
         delayed = False
