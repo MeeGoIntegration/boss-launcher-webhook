@@ -85,7 +85,7 @@ class Project(models.Model):
 
         repourl = urlparse.urlparse(repourl)
         netloc = repourl.netloc
-        path = repourl.path.rsplit("/", 1)
+        path = repourl.path.rsplit("/", 1)[1]
         if self.vcsnamespaces.count():
             return self.vcsnamespaces.filter(path=path, service__netloc=netloc).count()
         else:
@@ -144,7 +144,7 @@ class WebHookMapping(models.Model):
         self.project = self.project.strip()
         self.package = self.package.strip()
 
-        if WebHookMapping.objects.exclude(pk=self.pk).filter(project=self.project, package=self.package).count():
+        if WebHookMapping.objects.exclude(pk=self.pk).filter(project=self.project, package=self.package, obs=self.obs).count():
             raise ValidationError('A mapping object with the same parameters already exists')
 
         repourl = urlparse.urlparse(self.repourl)
@@ -163,6 +163,18 @@ class WebHookMapping(models.Model):
             namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
             if not service or not namespace:
                 raise ValidationError('Official project %s allows mapping from known service namespaces only' % project)
+
+        if settings.STRICT_MAPPINGS:
+
+            if project and not project.is_repourl_allowed(self.repourl):
+                raise ValidationError("Webhook mapping repourl is not allowed by %s's strict rules" % project)
+
+            if project and not project.is_user_allowed(self.user):
+                raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
+
+            if not self.project.startswith("home:%s" % self.user.username) and not self.user.is_superuser:
+                raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
+
 
     def to_fields(self):
         fields = {}
@@ -190,7 +202,7 @@ class WebHookMapping(models.Model):
     notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
     build = models.BooleanField(default=False, help_text="Enable OBS build triggering")
     comment = models.TextField(blank=True, null=True, default="")
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(User, editable=False)
     obs = models.ForeignKey(BuildService)
 
 class LastSeenRevision(models.Model):
