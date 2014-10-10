@@ -206,7 +206,7 @@ class Payload(object):
         # tag
             if 'base_refs' in payload:
                 branches = payload['base_refs']
-            elif 'base_ref' in payload:
+            elif 'base_ref' in payload and not payload['base_ref'] is None:
                 branches = [payload['base_ref'].split("/")[2]]
             else:
                 # unfortunately github doesn't send info about the branch that an annotated tag is in
