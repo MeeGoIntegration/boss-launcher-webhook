@@ -114,7 +114,8 @@ class Payload(object):
                                     user=User.objects.get(id=1),
                                     obs=BuildService.objects.all()[0],
                                     notify=False, build=False,
-                                    project=project, package=package)
+                                    project=project, package=package,
+                                    comment="Placeholder")
             mapobj.save()
             mapobjs.append(mapobj)
     
