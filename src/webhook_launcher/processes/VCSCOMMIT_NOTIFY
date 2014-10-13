@@ -19,8 +19,9 @@
 Ruote.process_definition 'vcscommit' do
 
   sequence do
+    set :f => 'log_channel', :value => '#mer-boss'
     set :f => 'debug_dump', :value => 'true'
-    notify_irc :irc_channel => '#commits', :msg => '${f:msg}'
+    notify_irc :irc_channel => '${f:log_channel}', :msg => '${f:msg}'
   end
 
 end
