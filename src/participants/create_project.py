@@ -45,13 +45,9 @@ import osc
 from urlparse import urlparse
 import os
 from lxml import etree
+import re
 
-from boss.bz.config import parse_bz_config
 from boss.bz.rest import BugzillaError
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
-
-from webhook_launcher.app.models import WebHookMapping
 
 class ParticipantHandler(BuildServiceParticipant):
     """ Participant class as defined by the SkyNET API """
@@ -70,10 +66,13 @@ class ParticipantHandler(BuildServiceParticipant):
         """
         :param config: ConfigParser instance with the bugzilla configuration
         """
-        self.bzs = parse_bz_config(config)
-        # If there are any auth errors in the config, find out now.
-        for bzconfig in self.bzs.values():
-            bzconfig['interface'].login()
+        supported_bzs = config.get("bugzilla", "bzs").split(",")
+        self.bzs = {}
+        for bz in supported_bzs:
+            self.bzs[bz] = {}
+            self.bzs[bz]['platforms'] = config.get(bz, 'platforms').split(',')
+            self.bzs[bz]['regexp'] = config.get(bz, 'regexp')
+            self.bzs[bz]['compiled_re'] = re.compile(config.get(bz, 'regexp'))
 
     def get_repolinks(self, wid, project):
         """Get a description of the repositories to link to.
