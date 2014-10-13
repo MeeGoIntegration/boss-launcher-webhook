@@ -27,7 +27,7 @@ import requests
 import os
 
 from models import (WebHookMapping, BuildService, LastSeenRevision, QueuePeriod,
-                    RelayTarget, Project)
+                    RelayTarget, Project, VCSNameSpace)
 
 from boss import launch, launch_queue, launch_notify, launch_build
 
@@ -423,7 +423,8 @@ def create_placeholder(repourl, branch, packages=None):
                                 user=User.objects.get(id=1),
                                 obs=BuildService.objects.all()[0],
                                 notify=False, build=False,
-                                project=project, package=package)
+                                project=project, package=package,
+                                comment="Placeholder")
         mapobj.save()
         mapobjs.append(mapobj)
 
