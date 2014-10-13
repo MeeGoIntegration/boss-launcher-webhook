@@ -140,6 +140,7 @@ class ParticipantHandler(BuildServiceParticipant):
             params["branch"] = f.branch
         if p.branch:
             params["branch"] = p.branch
+        params["revision"] = ""
         if f.revision:
             params["revision"] = f.revision
         if p.revision:
