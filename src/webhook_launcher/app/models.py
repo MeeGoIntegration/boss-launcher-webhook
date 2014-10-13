@@ -19,6 +19,7 @@
 import urlparse
 import datetime
 import os
+import re
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -42,7 +43,7 @@ class BuildService(models.Model):
     def __unicode__(self):
         return self.weburl
 
-    namespace = models.CharField(max_length=50, unique=True)
+    namespace = models.CharField(max_length=50, unique=True, help_text="This is also used to identify the OBS alias in BOSS processes")
     apiurl = models.CharField(max_length=250, unique=True)
     weburl = models.CharField(max_length=250, unique=True)
 
@@ -102,12 +103,23 @@ class Project(models.Model):
         else:
             return False
 
+    def matches(self, proj_name):
+        # Update if/when https://pypi.python.org/pypi/django-regex-field/0.1.4 is used
+        if proj_name == self.name:
+            return True
+        if self.match: # ie not None and not ""
+            reg = re.compile(self.match) # this is optimised to a cache in regex-field
+            if reg.match(proj_name):
+                return True
+        return False
+
     name = models.CharField(max_length=250, help_text="The OBS project name. eg nemo:mw")
     obs = models.ForeignKey(BuildService)
     official = models.BooleanField(default=True, help_text="If set then only valid namespaces can be used for the git repo")
     allowed = models.BooleanField(default=True, help_text="If not set then webhooks are not allowed for this project. This is useful for projects which should only have specific versions of packages promoted to them.")
     groups = models.ManyToManyField(Group, blank=True, null=True)
     vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
+    match = models.CharField(max_length=250, blank=True, null=True, help_text="If set then used as well as name to re.match() project names")
 
 class WebHookMapping(models.Model):
 
@@ -142,14 +154,17 @@ class WebHookMapping(models.Model):
 
     @property
     def project_disabled(self):
-        project = get_or_none(Project, name = self.project)
-        if project and not project.allowed: # Disabled if Project is marked not-allowed
-            return True
+        # Just search all Projects for a match
+        for project in Project.objects.all():
+            if project.matches(self.project):
+                print "Project disable check: project %s matches rules in %s" %(self.project, project.name)
+                if project and not project.allowed: # Disabled if Project is marked not-allowed
+                    return True
+                if project and project.official: # Disabled if Project is official and namespace is not valid
+                    namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
+                    if not service or not namespace:
+                        return True
 
-        if project and project.official: # Disabled if Project is official and namespace is not valid
-            namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
-            if not service or not namespace:
-                return True
         return False
 
     def clean(self, exclude=None):

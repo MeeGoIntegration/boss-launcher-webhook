@@ -405,6 +405,7 @@ def create_placeholder(repourl, branch, packages=None):
 
     vcsns = VCSNameSpace.find(repourl)
 
+    project = None
     if vcsns and vcsns.default_project:
         project = vcsns.default_project.name
     elif settings.DEFAULT_PROJECT:
