@@ -203,7 +203,7 @@ class ParticipantHandler(BuildServiceParticipant):
         new_service = etree.fromstring(new_service_xml)
         svcname = new_service.find(".").get("name")
         old_service = services.find("./service[@name='%s']" % svcname)
-        if old_service:
+        if old_service is not None:
             services.replace(old_service, new_service)
         else:
             services.append(new_service)
