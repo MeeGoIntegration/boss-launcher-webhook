@@ -256,9 +256,9 @@ class WebHookMapping(models.Model):
             message = "%s, which is not mapped yet. Please map it." % message
         elif build:
             message = ("%s, which will trigger build in project %s package "
-                       "%s (%s/package/show?package=%s&project=%s)" % (message,
+                       "%s (%s/package/show/%s/%s)" % (message,
                         self.project, self.package, self.obs.weburl,
-                        self.package, self.project))
+                        self.project, self.package))
 
         elif skipped:
             message = "%s, which was already handled; skipping" % message
