@@ -476,7 +476,7 @@ class WebHookMapping(models.Model):
         elif self.build:
             parts.append(
                 "- which will trigger build in project %s package "
-                "%s (%s/package/show?package=%s&project=%s)" % (
+                "%s (%s/package/show/%s/%s)" % (
                     self.project, self.package, self.obs.weburl,
                     self.package, self.project,
                 )
