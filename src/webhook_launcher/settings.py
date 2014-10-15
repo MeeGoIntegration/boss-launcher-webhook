@@ -44,7 +44,7 @@ if config.has_option('web', 'default_project'):
 USE_REMOTE_AUTH = config.getboolean('web', 'use_http_remote_user')
 
 PUBLIC_LANDING_PAGE = False
-if config.has_option('web', 'default_project'):
+if config.has_option('web', 'public_landing_page'):
     PUBLIC_LANDING_PAGE = config.getboolean('web', 'public_landing_page')
 
 SERVICE_WHITELIST = False
