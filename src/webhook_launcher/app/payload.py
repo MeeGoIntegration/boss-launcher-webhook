@@ -195,6 +195,9 @@ class GhPush(Payload):
         repourl = self.url
 
         # github performs one POST per ref (tag/branch) touched even if they are pushed together
+        if 'ref' not in payload:
+            print "This payload has no 'ref' in it. Nothing to do."
+            return
         refsplit = payload['ref'].split("/", 2)
         if len(refsplit) > 1:
             reftype, refname = refsplit[1:]
