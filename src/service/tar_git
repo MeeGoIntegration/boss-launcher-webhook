@@ -312,11 +312,11 @@ find_compression () {
 
   case "$SOURCE_FILENAME" in
       *.tar.gz)
-          COMPRESS_COMMAND="gzip -1"
+          COMPRESS_COMMAND="gzip -n -1"
           COMPRESS_EXT="tar.gz"
           ;;
       *.tgz)
-          COMPRESS_COMMAND="gzip -1"
+          COMPRESS_COMMAND="gzip -n -1"
           COMPRESS_EXT="tgz"
           ;;
       *.tar.bz2)
@@ -854,7 +854,7 @@ rpm_pkg () {
      echo -n $VERSHA > .tarball-version
   fi 
 
-  git_ls_files | tar --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
+  git_ls_files | tar --mtime '2000-01-01' --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
 
   # add matching version to the spec file
   sed -i -e "s/^Version:.*$/Version:    $VERSHA/g" ../$(basename $SPECFILE)
