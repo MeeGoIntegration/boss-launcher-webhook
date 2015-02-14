@@ -5,9 +5,11 @@
 <head>
 <title>Webhook Mappings</title>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link rel="stylesheet" href="/webhook/site_media/jquery-ui.css">
 <style type="text/css">
    body {margin: 0; padding: 0;}
    table {
+        display: none;
         width: 95%;
         margin-left: auto;
         margin-right: auto;
@@ -26,16 +28,31 @@
         border-top: 0px;
     }
 
-    div#header h2 {
+    div#header {
         background-color: #F2F2F2;
-        color: #20435C;
         padding: 3px 0 3px 10px;
         border-bottom: 1px solid #CCCCCC;
         margin-top: 0;
-        font-size: 200%;
-        font-family: 'Trebuchet MS',sans-serif;
         text-align: center;
     }
+
+    div#header h2 {
+        color: #20435C;
+        font-size: 200%;
+        font-family: 'Trebuchet MS',sans-serif;
+        display: inline;
+    }
+
+    h3 {
+        margin-left: 2%;
+    }
+
+    div#header h3 {
+        text-align: right;
+        display: inline;
+        margin-left: 1%;
+    }
+
     p {
         width: 70%;
         line-height: 130%;
@@ -44,34 +61,98 @@
         margin-right: auto;
     }
 </style>
+<script src="/webhook/site_media/jquery-1.10.2.js"></script>
+<script src="/webhook/site_media/jquery-ui.js"></script>
+<script>
+$(document).ready(function() {
+    $( "#tabs" ).tabs();
+    $("a.toggle").click(function(){
+        $(this).parent().next("table.list").toggle();
+        return false;
+    });
+});
+</script>
 </head>
 <body>
-<body>
-<div id="header">
-<h2>Webhook Mappings</h2>
-</div>
-{% for server, maps in mappings.items %}
+
+  <div id="header">
+    <h2>Webhook Mappings</h2>
+    <h3>
+      <a href="/webhook/admin/app/webhookmapping/add/">Create new</a> 
+      <a href="/webhook/admin/app/webhookmapping/">Search</a>
+    </h3>
+  </div>
+  <div id="tabs">
+
+    <ul>
+      <li><a href="#tabs-official">Official</a></li>
+      <li><a href="#tabs-personal">Personal</a></li>
+    </ul>
+
+    <div id="tabs-official">
+{% for project, maps in mappings.items %}
+  {% if maps.official %}
 <div>
-<h3 align="center">{{ server }}</h3>
-<table id="list">
+<h3><a class="toggle" href="#">{{ project }}</a> <a href="{{maps.obsweburl}}/project/monitor?project={{project}}">(view)</a></h3>
+<table id="{{project}}" class="list">
   <thead>
     <tr>
+        <th>Package</th>
         <th>Repository</th>
         <th>Branch</th>
-        <th>Project</th>
-        <th>Package</th>
+        <th>Revision</th>
+        <th>Tag</th>
     </tr>
   </thead>
   <tbody>
-    {% for map in maps|dictsort:"project" %}
+    {% for map in maps.packages|dictsort:"package" %}
     <tr>
-      <td>{{ map.path }}</td><td>{{ map.branch }}</td><td>{{ map.project }}</td><td>{{ map.package }}</td>
+      <td><a href="/webhook/admin/app/webhookmapping/{{map.pk}}/">{{map.package}}</a> <a href="{{maps.obsweburl}}/package/show?package={{map.package}}&project={{project}}">(view)</a></td>
+      <td>{{ map.repourl }}</td>
+      <td>{{ map.branch }}</td>
+      <td>{{ map.revision }}</td>
+      <td>{{ map.tag }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 </div>
+  {% endif %}
 {% endfor %}
+    </div>
+
+<div id="tabs-personal">
+{% for project, maps in mappings.items %}
+  {% if maps.personal %}
+<div>
+<h3><a class="toggle" href="#">{{ project }}</a> <a href="{{maps.obsweburl}}/project/monitor?project={{project}}">(view)</a></h3>
+<table id="{{project}}" class="list">
+  <thead>
+    <tr>
+        <th>Package</th>
+        <th>Repository</th>
+        <th>Branch</th>
+        <th>Revision</th>
+        <th>Tag</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for map in maps.packages|dictsort:"package" %}
+    <tr>
+      <td><a href="/webhook/admin/app/webhookmapping/{{map.pk}}/">{{map.package}}</a> <a href="{{maps.obsweburl}}/package/show?package={{map.package}}&project={{project}}">(view)</a></td>
+      <td>{{ map.repourl }}</td>
+      <td>{{ map.branch }}</td>
+      <td>{{ map.revision }}</td>
+      <td>{{ map.tag }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+  {% endif %}
+{% endfor %}
+  </div>
+  </div>
 </body>
 </html>
 

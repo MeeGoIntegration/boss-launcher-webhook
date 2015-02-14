@@ -137,7 +137,7 @@ sanitise_params () {
 
   # make sure no sneaky params were passed to the service
 
-  local regex1='^[a-z]+://([[:alnum:]_.-]+@)?[[:alnum:]_./~%:-]+$'      # url
+  local regex1='^[a-z]+://([[:alnum:]_.-]+@)?[[:alnum:]_./~:%-]+$'      # url
   local regex2='^([[:alnum:]_.-]+@)?[[:alnum:]_.-]+:[[:alnum:]_./-]+$' # ssh
   if [[ -z "$MYURL" || ! "$MYURL" =~ $regex1|$regex2 && ! -d "$MYURL" ]]; then
     echo "invalid or empty checkout URL was given via --url parameter!"

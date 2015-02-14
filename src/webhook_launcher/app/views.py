@@ -20,8 +20,9 @@
 
 import urlparse
 from collections import defaultdict
-from django.http import ( HttpResponse, HttpResponseBadRequest,
+from django.http import ( HttpResponse, HttpResponseBadRequest, HttpResponseRedirect,
                           HttpResponseForbidden, HttpResponseNotAllowed )
+from django.db.models import Q
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.utils import simplejson
@@ -29,10 +30,14 @@ from django.conf import settings
 from rest_framework import viewsets
 from rest_framework import permissions
 from utils import launch_queue
-from models import WebHookMapping, BuildService, LastSeenRevision
+from models import WebHookMapping, BuildService, LastSeenRevision, Project
 from serializers import WebHookMappingSerializer, BuildServiceSerializer
 from pprint import pprint
 import struct, socket
+
+
+def remotelogin_redirect(request):
+    return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
 
 def index(request):
     """
@@ -43,17 +48,19 @@ def index(request):
 
     if request.method == 'GET':
         if not settings.PUBLIC_LANDING_PAGE and not request.user.is_authenticated():
-            return HttpResponseForbidden()
+            return HttpResponseRedirect(settings.LOGIN_URL)
 
-        mappings = defaultdict(list)
-        #TODO: filter with privileged projects
-        maps = WebHookMapping.objects.exclude(package="")
+        mappings = defaultdict(dict)
+        off_prjs = set([prj.name for prj in Project.objects.filter(official=True, allowed=True)])
+        maps = WebHookMapping.objects.exclude(package="").filter(Q(project__in=off_prjs) | Q(user=request.user)).prefetch_related("obs", "lastseenrevision_set")
         for mapobj in maps:
-            repourl = urlparse.urlparse(mapobj.repourl)
-            mappings[repourl.netloc].append({ "path" : repourl.path,
-                                         "branch" : mapobj.branch,
-                                         "project" : mapobj.project,
-                                         "package" : mapobj.package})
+            if not mapobj.project in mappings:
+                mappings[mapobj.project] = {"personal" : mapobj.user.pk == request.user.pk,
+                                            "official" : mapobj.project in off_prjs,
+                                            "obsweburl" : mapobj.obs.weburl, "packages" : []}
+
+            mappings[mapobj.project]["packages"].append(mapobj.to_fields())
+
         return render_to_response('app/index.html', {'mappings' : dict(mappings)},
                                   context_instance=RequestContext(request))
 
@@ -112,6 +119,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    filter_fields = ("package", "project", "repourl")
 
     def pre_save(self, obj):
         obj.user = self.request.user

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from django.conf.urls import *
+from django.conf.urls.defaults import *
 from django.contrib import admin
 admin.autodiscover()
 from rest_framework import routers
@@ -29,6 +29,6 @@ router.register(r'buildservices', views.BuildServiceViewSet)
 urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),
     url(r'^api/', include(router.urls)),
-    url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    url(r'^login/', 'webhook_launcher.app.views.remotelogin_redirect', name='redirect'),
     url(r'$', 'webhook_launcher.app.views.index', name='index'),
 )

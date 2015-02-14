@@ -240,6 +240,7 @@ class Payload(object):
                     mapobjs.extend(create_placeholder(repourl, branch,
                                                       packages=packages))
 
+            notified = False
             for mapobj in mapobjs:
                 seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
 
@@ -255,10 +256,8 @@ class Payload(object):
 
                 # notify new branch created or commit in branch
                 if reftype == "heads":
-                    notified = False
-                    if mapobj.notify and not notified:
-                        handle_commit(mapobj, seenrev, name, payload)
-                        notified = True
+                    handle_commit(mapobj, seenrev, name, payload, notify=mapobj.notify and not notified)
+                    notified = True
 
                 elif reftype == "tags":
                     print "Tag %s for %s in %s/%s, notify and build it if enabled" % (refname, revision, repourl, mapobj.branch)
@@ -320,10 +319,8 @@ class Payload(object):
 
                     print "%s in %s was not seen before, notify it if enabled" % (commits[-1], branch)
                     seenrev.revision = commits[-1]
-
-                    if mapobj.notify and not notified:
-                        handle_commit(mapobj, seenrev, payload["user"], payload)
-                        notified = True
+                    handle_commit(mapobj, seenrev, payload["user"], payload, notify=mapobj.notify and not notified)
+                    notified = True
 
                 else:
                     print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
@@ -383,7 +380,15 @@ def handle_payload(data):
          urlparse.urlparse(payload.url).netloc in settings.SERVICE_WHITELIST)):
         payload.handle()
 
-def handle_commit(mapobj, lsr, user, payload):
+def handle_commit(mapobj, lsr, user, payload, notify=False):
+
+    lsr.tag = ""
+    lsr.handled = False
+    lsr.payload = payload
+    lsr.save()
+
+    if not notify:
+        return
 
     message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
     if not mapobj.mapped:
@@ -394,11 +399,6 @@ def handle_commit(mapobj, lsr, user, payload):
     fields['payload'] = payload
     print message
     launch_notify(fields)
-
-    lsr.tag = ""
-    lsr.handled = False
-    lsr.payload = payload
-    lsr.save()
 
 
 def create_placeholder(repourl, branch, packages=None):

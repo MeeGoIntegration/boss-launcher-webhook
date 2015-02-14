@@ -66,7 +66,7 @@ class VCSNameSpace(models.Model):
     def find(repourl):
         url = urlparse.urlparse(repourl)
         return get_or_none(VCSNameSpace, service__netloc = url.netloc,
-                           path=os.path.basename(url.path))
+                           path=os.path.dirname(url.path))
 
     service = models.ForeignKey(VCSService)
     path = models.CharField(max_length=200)
