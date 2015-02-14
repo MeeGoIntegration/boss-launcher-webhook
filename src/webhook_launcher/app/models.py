@@ -31,6 +31,7 @@ from django.contrib.auth.backends import RemoteUserBackend
 from django.utils import timezone
 
 from boss import launch, launch_queue, launch_notify, launch_build
+from utils import giturlparse
 
 def get_or_none(model, **kwargs):
     try:
@@ -176,7 +177,7 @@ class WebHookMapping(models.Model):
         if WebHookMapping.objects.exclude(pk=self.pk).filter(project=self.project, package=self.package, obs=self.obs).count():
             raise ValidationError('A mapping object with the same parameters already exists')
 
-        repourl = urlparse.urlparse(self.repourl)
+        repourl = giturlparse(self.repourl)
         service = get_or_none(VCSService, netloc = repourl.netloc)
 
         if settings.SERVICE_WHITELIST:

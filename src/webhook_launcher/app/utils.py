@@ -27,7 +27,7 @@ import requests
 import os
 
 from models import (WebHookMapping, BuildService, LastSeenRevision, QueuePeriod,
-                    RelayTarget, Project)
+                    RelayTarget, Project, VCSNameSpace)
 
 from boss import launch, launch_queue, launch_notify, launch_build
 
@@ -328,7 +328,6 @@ class Payload(object):
 
     def relay(self, relays=None):
 
-
         if not self.url:
             return
 
@@ -443,3 +442,29 @@ def handle_pr(mapobj, data, payload):
         fields['payload'] = payload
         print message
         launch_notify(fields)
+
+def giturlparse(repourl):
+    parsed = urlparse.urlparse(repourl)
+    if not parsed.scheme:
+        #if url didn't have scheme prepend default git:// and parse again
+        repourl = "git://%s" % repourl
+        parsed = urlparse.urlparse(repourl)
+
+    if parsed.netloc.count(":") > 0:
+        #if url has : other than the scheme it could be a port or a git service thingie
+        try:
+            #invalid port raises value error
+            port = parsed.port
+            repourl = repourl.replace(":%s" % port, "")
+            parsed = urlparse.urlparse(repourl)
+        except ValueError, e:
+            #in that case replace it with / and reparse
+            repourl = "/".join(repourl.rsplit(":", 1))
+            parsed = urlparse.urlparse(repourl)
+
+    #finally remove users from the url
+    if "@" in parsed.netloc:
+        repourl = "%s://%s" % (parsed.scheme, repourl.split("@", 1)[1])
+        parsed = urlparse.urlparse(repourl)
+
+    return parsed
