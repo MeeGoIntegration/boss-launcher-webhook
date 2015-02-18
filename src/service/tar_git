@@ -206,8 +206,6 @@ find_spec_file () {
 
   [[ "$(echo $SPECFILE | wc -w)" -eq 1 ]] || error "Need single spec file in rpm"
 
-  cp "$SPECFILE" ..
-
 }
 
 find_changes_file () {
@@ -246,11 +244,11 @@ get_spec_field() {
 
 expand_spec_file() {
   local inc incfile
-  grep -Po "^%include.*$" "$SPECFILE" | while read inc; do
+  grep -Po "^%include[[:space:]]+.*$" "$SPECFILE" | while read inc; do
     incfile="$( echo $inc | awk '{ print $2 }')"
     incfile="$(resolve_spec_macro "$incfile")"
-    inc="$(echo $inc | sed -e 's|/|\\/|g')"
-    sed -i -e "/$inc/ {
+    inc="$(echo $inc | sed -e 's|[\/&]|\\&|g')"
+    sed -i -e "/^$inc/ {
 r $incfile
 d }" "$SPECFILE"
   done
@@ -789,7 +787,7 @@ rpm_pkg () {
 
   find_spec_file
   expand_spec_file "$SPECFILE"
-  find_spec_file
+  cp "$SPECFILE" ..
   find_changes_file
   find_yaml_file
   find_other_files
