@@ -244,6 +244,18 @@ get_spec_field() {
     resolve_spec_macro "$value"
 }
 
+expand_spec_file() {
+  local inc incfile
+  grep -Po "^%include.*$" "$SPECFILE" | while read inc; do
+    incfile="$( echo $inc | awk '{ print $2 }')"
+    incfile="$(resolve_spec_macro "$incfile")"
+    inc="$(echo $inc | sed -e 's|/|\\/|g')"
+    sed -i -e "/$inc/ {
+r $incfile
+d }" "$SPECFILE"
+  done
+}
+
 find_package_name () {
 
   PACKAGE_NAME="$(get_spec_field Name)"
@@ -775,6 +787,8 @@ rpm_pkg () {
 
   pushd $CLONE_NAME >/dev/null
 
+  find_spec_file
+  expand_spec_file "$SPECFILE"
   find_spec_file
   find_changes_file
   find_yaml_file
