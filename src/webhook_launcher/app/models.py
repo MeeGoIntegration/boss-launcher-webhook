@@ -65,7 +65,7 @@ class VCSNameSpace(models.Model):
 
     @staticmethod
     def find(repourl):
-        url = urlparse.urlparse(repourl)
+        url = giturlparse(repourl)
         return get_or_none(VCSNameSpace, service__netloc = url.netloc,
                            path=os.path.dirname(url.path))
 
@@ -83,11 +83,7 @@ class Project(models.Model):
 
     def is_repourl_allowed(self, repourl):
 
-        # handle SSH git URLs
-        if "@" in repourl and ":" in repourl:
-            repourl = repourl.replace(":", "/").replace("@", "://")
-
-        repourl = urlparse.urlparse(repourl)
+        repourl = giturlparse(repourl)
         netloc = repourl.netloc
         path = repourl.path.rsplit("/", 1)[1]
         if self.vcsnamespaces.count():
@@ -306,6 +302,7 @@ class WebHookMapping(models.Model):
         fields = {}
         fields['repourl'] = self.repourl
         fields['branch'] = self.branch
+        fields['pk'] = self.pk
         if self.project:
             fields['project'] = self.project
             fields['package'] =  self.package
@@ -316,6 +313,10 @@ class WebHookMapping(models.Model):
             fields['debian'] = self.debian
         if self.dumb:
             fields['dumb'] = self.dumb
+        if self.revision:
+            fields['revision'] = self.revision
+        if self.tag:
+            fields['tag'] = self.tag
         return fields
 
     # If any fields are added/removed then ensure they are handled
@@ -328,7 +329,7 @@ class WebHookMapping(models.Model):
     debian = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
     dumb = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
     notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
-    build = models.BooleanField(default=False, help_text="Enable OBS build triggering")
+    build = models.BooleanField(default=True, help_text="Enable OBS build triggering")
     comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User, editable=False)
     obs = models.ForeignKey(BuildService)
