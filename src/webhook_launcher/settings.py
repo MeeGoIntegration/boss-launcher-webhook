@@ -239,6 +239,12 @@ FORCE_SCRIPT_NAME = ''
 LOGIN_URL='/' + URL_PREFIX + "/login/"
 LOGIN_REDIRECT_URL='/' + URL_PREFIX + "/"
 
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': (
+        'rest_framework.filters.DjangoFilterBackend',
+    )
+}
+
 if USE_LDAP:
 
   logger = logging.getLogger('django_auth_ldap')
@@ -257,3 +263,9 @@ if USE_LDAP:
   )
 elif USE_REMOTE_AUTH:
   MIDDLEWARE_CLASSES += ( 'django.contrib.auth.middleware.RemoteUserMiddleware',)
+
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'webhook_launcher.app.auth.RemoteAuthentication',
+        )
+    }
