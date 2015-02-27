@@ -1,4 +1,4 @@
-from models import WebHookMapping, LastSeenRevision, BuildService
+from webhook_launcher.app.models import WebHookMapping, LastSeenRevision, BuildService
 from rest_framework import serializers
 
 class BuildServiceSerializer(serializers.ModelSerializer):

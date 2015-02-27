@@ -29,9 +29,9 @@ from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework import permissions
-from utils import launch_queue
-from models import WebHookMapping, BuildService, LastSeenRevision, Project
-from serializers import WebHookMappingSerializer, BuildServiceSerializer
+from webhook_launcher.app.utils import launch_queue
+from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRevision, Project
+from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer
 from pprint import pprint
 import struct, socket
 

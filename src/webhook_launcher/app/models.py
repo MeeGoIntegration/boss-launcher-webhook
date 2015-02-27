@@ -30,8 +30,8 @@ from django.db.models.signals import post_save
 from django.contrib.auth.backends import RemoteUserBackend
 from django.utils import timezone
 
-from boss import launch, launch_queue, launch_notify, launch_build
-from utils import giturlparse
+from webhook_launcher.app.boss import launch, launch_queue, launch_notify, launch_build
+from webhook_launcher.app.misc import giturlparse
 
 def get_or_none(model, **kwargs):
     try:
