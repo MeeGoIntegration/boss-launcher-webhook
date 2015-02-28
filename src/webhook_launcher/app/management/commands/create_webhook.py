@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
-from app.models import WebHookMapping, BuildService, LastSeenRevision
+from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRevision
 from optparse import make_option
 import sys
 from xml.etree import ElementTree as ET
