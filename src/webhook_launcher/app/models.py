@@ -158,8 +158,12 @@ class WebHookMapping(models.Model):
                 if project and not project.allowed: # Disabled if Project is marked not-allowed
                     return True
                 if project and project.official: # Disabled if Project is official and namespace is not valid
+                    repourl = giturlparse(self.repourl)
+                    service = get_or_none(VCSService, netloc = repourl.netloc)
+                    if not service:
+                        return True
                     namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
-                    if not service or not namespace:
+                    if not namespace:
                         return True
 
         return False
