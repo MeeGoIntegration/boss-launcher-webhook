@@ -29,9 +29,11 @@ from django.utils import simplejson
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework import permissions
+from rest_framework.response import Response
+from rest_framework import status
 from webhook_launcher.app.utils import launch_queue
 from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRevision, Project
-from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer
+from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer, LastSeenRevisionSerializer
 from pprint import pprint
 import struct, socket
 
@@ -138,6 +140,40 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
 
         lsr.save()
 
+    # PUT / trigger webhook
+    def update(self, request, pk=None):
+        try:
+            hook = WebHookMapping.objects.get(pk=pk)
+        except WebHookMapping.DoesNotExist:
+            return Response({'cannot find webhook id' : pk }, status=status.HTTP_404_NOT_FOUND)
+
+        msg = hook.trigger_build()
+        return Response({ 'WebHookMapping Triggered by API': msg })
+
+    # PATCH / update webhook
+    def partial_update(self, request, pk=None):
+        try:
+            hook = WebHookMapping.objects.get(pk=pk)
+        except WebHookMapping.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = WebHookMappingSerializer(hook, data=request.DATA)
+        lsr_data = request.DATA.get('lsr', None)
+        if lsr_data:
+            lsr_serializer = LastSeenRevisionSerializer(hook.lsr, data=lsr_data)
+
+        if serializer.is_valid():
+             if lsr_data:
+                if lsr_serializer.is_valid():
+                    serializer.save()
+                    lsr_serializer.save()
+             else:
+                serializer.save()
+        else:
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.data)
 class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BuildService.objects.all()
     serializer_class = BuildServiceSerializer
