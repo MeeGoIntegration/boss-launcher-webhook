@@ -156,14 +156,47 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
             hook = WebHookMapping.objects.get(pk=pk)
         except WebHookMapping.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = WebHookMappingSerializer(hook)
 
-        serializer = WebHookMappingSerializer(hook, data=request.DATA)
+        #first take the original data
+        patched_data = serializer.data
+
+        # patch keys from request.DATA
+        for key, value in request.DATA.items():
+            patched_data[key] = value
+
+        # for obs input is namespace but we store more.
+        obs = request.DATA.get('obs', None)
+        if not obs and patched_data.get('obs', None):
+            patched_data['obs'] = patched_data['obs']['namespace']
+
+        serializer = WebHookMappingSerializer(hook, data=patched_data)
+
         lsr_data = request.DATA.get('lsr', None)
-        if lsr_data:
+        revision = request.DATA.get('revision', None)
+
+        if lsr_data or revision:
+            # in rare case there is no mapping to lsr from hook we create one
+            if not hook.lsr:
+                if revision:
+                    LastSeenRevision.objects.get_or_create(mapping=hook, revision=revision)
+                else:
+                    return Response({"detail": "no LastSeenRevision mapped to object. Please give also 'revision'"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
             lsr_serializer = LastSeenRevisionSerializer(hook.lsr, data=lsr_data)
+            lsr_patch_data = lsr_serializer.data
+
+            if lsr_data:
+                for key, value in lsr_data.items():
+                    lsr_patch_data[key] = value
+            if revision:
+                lsr_patch_data['revision'] = revision
+
+            lsr_serializer = LastSeenRevisionSerializer(hook.lsr, data=lsr_patch_data)
 
         if serializer.is_valid():
-             if lsr_data:
+             if lsr_data or revision:
                 if lsr_serializer.is_valid():
                     serializer.save()
                     lsr_serializer.save()
@@ -174,6 +207,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.data)
+
 class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = BuildService.objects.all()
     serializer_class = BuildServiceSerializer
