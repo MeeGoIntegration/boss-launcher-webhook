@@ -263,9 +263,4 @@ if USE_LDAP:
   )
 elif USE_REMOTE_AUTH:
   MIDDLEWARE_CLASSES += ( 'django.contrib.auth.middleware.RemoteUserMiddleware',)
-
-  REST_FRAMEWORK = {
-        'DEFAULT_AUTHENTICATION_CLASSES': (
-            'webhook_launcher.app.auth.RemoteAuthentication',
-        )
-    }
+  REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] =  ('webhook_launcher.app.auth.RemoteAuthentication',)
