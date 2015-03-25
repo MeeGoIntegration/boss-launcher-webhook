@@ -121,7 +121,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-    filter_fields = ("package", "project", "repourl")
+    filter_fields = ("package", "project", "repourl", "user__username", "build", )
 
     def pre_save(self, obj):
         obj.user = self.request.user
