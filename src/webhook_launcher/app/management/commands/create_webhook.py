@@ -28,7 +28,7 @@ def create_branch_hook(project, package, branch, url, revision):
         # fallback obs
         obs = BuildService.objects.all()[0]
 
-    obj, _ = WebHookMapping.objects.get_or_create(project="%s:%s" %(project, branch),
+    obj, _ = WebHookMapping.objects.get_or_create(project=project,
                                                   branch=branch,
                                                   repourl=url,
                                                   notify=True,
