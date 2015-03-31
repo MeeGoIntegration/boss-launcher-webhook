@@ -51,7 +51,7 @@ from boss.bz.rest import BugzillaError
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
-from webhook_launcher.app.models import WebHookMapping
+from webhook_launcher.app.models import WebHookMapping, Project, get_or_none
 
 class ParticipantHandler(BuildServiceParticipant):
     """ Participant class as defined by the SkyNET API """
@@ -113,49 +113,57 @@ class ParticipantHandler(BuildServiceParticipant):
         repos = []
         paths = []
         repolinks = {}
+        build = True
+
+        if not project:
+            #TODO: deduce project name from "official" mappings of the same repo
+            # for now just short circuit here
+            wid.result = True
+            return
+
+        # events for official projects that are gated get diverted to a side project
+        prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
+        if prjobj and prjobj.official and prjobj.allowed:
+            link = project
+            f.target_project = project
+            project += ":gate:%s" % package
+            f.project = project
+            build = False
 
         project_list = self.obs.getProjectList()
-        if project:
-            if project in project_list:
-                # project already exists, don't do anything
-                return
+        if project in project_list:
+            # project already exists, don't do anything
+            return
 
-            prj_parts = project.split(":")
-            if prj_parts[0] == "home" and len(prj_parts) > 1:
-                maintainers.append(project.split(":")[1])
-                #TODO: construct repos and build paths for a devel build
+        prj_parts = project.split(":")
+        if prj_parts[0] == "home" and len(prj_parts) > 1:
+            maintainers.append(project.split(":")[1])
+            #TODO: construct repos and build paths for a devel build
 
-            link = None
-            summary = ""
-            desc = ""
-            # support "updateX" subprojects by creating a link to the parent
-            if prj_parts[-1].startswith("update"):
-                link = ":".join(prj_parts[0:-1])
+        link = None
+        summary = ""
+        desc = ""
+        if prj_parts[-3] == "feature":
+            link = ":".join(prj_parts[0:-3])
+            fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
+            # Go through each bugzilla we support
+            for (bugzillaname, bugzilla) in self.bzs.iteritems():
+                for match in bugzilla['compiled_re'].finditer(fea):
+                    try:
+                        summary = bugzilla['interface'].bug_get(match.group('key'), 0)['summary']
+                        desc = bugzilla['interface'].comment_get(match.group('key'), 0)['text']
+                    except BugzillaError, error:
+                        if error.code == 101:
+                            print "Bug %s not found" % bugnum
+                        else:
+                            raise
 
-            if prj_parts[-3] == "feature":
-                link = ":".join(prj_parts[0:-3])
-                fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
-                # Go through each bugzilla we support
-                for (bugzillaname, bugzilla) in self.bzs.iteritems():
-                    for match in bugzilla['compiled_re'].finditer(fea):
-                        try:
-                            summary = bugzilla['interface'].bug_get(match.group('key'), 0)['summary']
-                            desc = bugzilla['interface'].comment_get(match.group('key'), 0)['text']
-                        except BugzillaError, error:
-                            if error.code == 101:
-                                print "Bug %s not found" % bugnum
-                            else:
-                                raise
-
-            if link and link in project_list:
-                links.append(link)
-                repolinks.update(self.get_repolinks(wid, link))
-
-        #else:
-        #TODO: deduce project name from "official" mappings of the same repo
+        if link and link in project_list:
+            links.append(link)
+            repolinks.update(self.get_repolinks(wid, link))
 
         result = self.obs.createProject(project, repolinks, desc=desc, summary=summary,
-                                        links=links, maintainers=maintainers)
+                                        links=links, maintainers=maintainers, build=build)
 
         if not result:
             raise RuntimeError("Something went wrong while creating project %s" % project)

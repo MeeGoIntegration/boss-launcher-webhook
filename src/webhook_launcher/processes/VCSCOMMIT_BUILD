@@ -28,6 +28,7 @@ Ruote.process_definition 'vcscommit' do
 
     create_project
     trigger_service
+    auto_promote
   end
 
   define 'do_log_error' do
