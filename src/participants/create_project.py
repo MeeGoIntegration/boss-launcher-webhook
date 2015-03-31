@@ -123,7 +123,7 @@ class ParticipantHandler(BuildServiceParticipant):
 
         # events for official projects that are gated get diverted to a side project
         prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
-        if prjobj and prjobj.official and prjobj.allowed:
+        if prjobj and prjobj.gated:
             link = project
             f.target_project = project
             project += ":gate:%s" % package

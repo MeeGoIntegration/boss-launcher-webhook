@@ -91,7 +91,7 @@ class ParticipantHandler(BuildServiceParticipant):
 
         # events for official projects that are gated get diverted to a side project
         prjobj = get_or_none(Project, name=target_project, obs__apiurl=self.obs.apiurl)
-        if prjobj and prjobj.official and prjobj.allowed and prjobj.gated:
+        if prjobj and prjobj.gated:
             actions = [{"action" : "submit", "src_project" : project, "src_package" : package,
                         "tgt_project" : target_project, "tgt_package" : package}]
             description = "Devel gating automatic promotion for %s %s" % (target_project, package)
