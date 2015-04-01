@@ -114,7 +114,10 @@ class ParticipantHandler(BuildServiceParticipant):
         paths = []
         repolinks = {}
         build = True
-
+        mechanism = "localdep"
+        link = None
+        summary = ""
+        desc = ""
         if not project:
             #TODO: deduce project name from "official" mappings of the same repo
             # for now just short circuit here
@@ -124,11 +127,15 @@ class ParticipantHandler(BuildServiceParticipant):
         # events for official projects that are gated get diverted to a side project
         prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
         if prjobj and prjobj.gated:
+            print(prjobj, "is gated")
             link = project
-            f.target_project = project
+            f.gated_project = project
             project += ":gate:%s" % package
             f.project = project
             build = False
+            summary = "Gate entry for %s" % package
+            desc = summary
+            mechanism = "off"
 
         project_list = self.obs.getProjectList()
         if project in project_list:
@@ -140,9 +147,6 @@ class ParticipantHandler(BuildServiceParticipant):
             maintainers.append(project.split(":")[1])
             #TODO: construct repos and build paths for a devel build
 
-        link = None
-        summary = ""
-        desc = ""
         if prj_parts[-3] == "feature":
             link = ":".join(prj_parts[0:-3])
             fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
@@ -162,7 +166,7 @@ class ParticipantHandler(BuildServiceParticipant):
             links.append(link)
             repolinks.update(self.get_repolinks(wid, link))
 
-        result = self.obs.createProject(project, repolinks, desc=desc, summary=summary,
+        result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
                                         links=links, maintainers=maintainers, build=build)
 
         if not result:

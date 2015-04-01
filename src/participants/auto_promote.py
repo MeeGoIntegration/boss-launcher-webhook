@@ -96,7 +96,7 @@ class ParticipantHandler(BuildServiceParticipant):
                         "tgt_project" : target_project, "tgt_package" : package}]
             description = "Devel gating automatic promotion for %s %s" % (target_project, package)
             comment = ""
-            result = self.obs.createRequest(actions, description, comment, supersede=True, opt_sourceupdate="cleanup")
+            result = self.obs.createRequest(options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
 
             if not result:
                 raise RuntimeError("Something went wrong while creating project %s" % project)

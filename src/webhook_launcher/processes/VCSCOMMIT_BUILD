@@ -19,16 +19,40 @@
 Ruote.process_definition 'vcscommit' do
 
   sequence do
+    set :f => 'priority', :value => 'high'
     set :f => 'debug_dump', :value => 'true'
     set :f => 'log_channel', :value => '#mer-boss'
-    set :f => 'highlight', :value => ' '
-
+    set :f => 'highlight', :value => ''
     # Any error will get notified by this flanked suprocess
     do_log_error :flank => true
 
     create_project
     trigger_service
-    auto_promote
+    _if '"${gated_project}" != ""' do
+      sequence do
+        do_wait_for_build
+        auto_promote
+      end
+    end
+  end
+
+  define 'do_log' do
+    sequence do
+      echo 'process ${wfid}: ${v:msg}'
+      notify_irc :msg => 'process ${wfid} ${v:msg}',
+                 :irc_channel => '#mer-boss'
+    end
+  end
+
+  define 'do_wait_for_build' do
+    sequence do
+      do_log :msg => 'Waiting for ${v:wait_for} to build'
+      repeat :timeout => '48h', :on_timeout => 'error' do
+        is_repo_published :project => '${project}', :package => '$package'
+        _break :if => '${f:__result__}'
+        wait '2m'
+      end
+    end
   end
 
   define 'do_log_error' do
