@@ -46,7 +46,7 @@ Ruote.process_definition 'vcscommit' do
 
   define 'do_wait_for_build' do
     sequence do
-      do_log :msg => 'Waiting for ${v:wait_for} to build'
+      do_log :msg => 'Waiting for ${project} to build'
       repeat :timeout => '48h', :on_timeout => 'error' do
         is_repo_published :project => '${project}', :package => '$package'
         _break :if => '${f:__result__}'

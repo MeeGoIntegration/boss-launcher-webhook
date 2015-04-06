@@ -81,20 +81,18 @@ class ParticipantHandler(BuildServiceParticipant):
 
         project = f.project
         package = f.package
-        target_project = f.target_project
+        gated_project = f.gated_project
 
-        if not project or not target_project:
-            #TODO: deduce project name from "official" mappings of the same repo
-            # for now just short circuit here
+        if not project or not gated_project:
             wid.result = True
             return
 
         # events for official projects that are gated get diverted to a side project
-        prjobj = get_or_none(Project, name=target_project, obs__apiurl=self.obs.apiurl)
+        prjobj = get_or_none(Project, name=gated_project, obs__apiurl=self.obs.apiurl)
         if prjobj and prjobj.gated:
             actions = [{"action" : "submit", "src_project" : project, "src_package" : package,
-                        "tgt_project" : target_project, "tgt_package" : package}]
-            description = "Devel gating automatic promotion for %s %s" % (target_project, package)
+                        "tgt_project" : gated_project, "tgt_package" : package}]
+            description = "Automated promotion for %s %s" % (gated_project, package)
             comment = ""
             result = self.obs.createRequest(options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
 
