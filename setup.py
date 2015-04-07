@@ -22,8 +22,8 @@ from distutils.core import setup
 
 from setuptools import find_packages
 
-static_files=[('/etc/skynet', ['src/webhook_launcher/webhook.conf']),
-                ('/usr/share/webhook_launcher/processes', 
+static_files=[('etc/skynet', ['src/webhook_launcher/webhook.conf']),
+                ('usr/share/webhook_launcher/processes', 
                    ['src/webhook_launcher/processes/VCSCOMMIT_NOTIFY',
                     'src/webhook_launcher/processes/VCSCOMMIT_BUILD',
                     'src/webhook_launcher/processes/VCSCOMMIT_QUEUE',
@@ -40,15 +40,22 @@ setup(
     author = 'Islam Amer <pharon@gmail.com>',
     packages = ['webhook_launcher',
                 'webhook_launcher.app',
+                'webhook_launcher.app.templatetags',
                 'webhook_launcher.app.migrations',
+                'webhook_launcher.app.management',
+                'webhook_launcher.app.management.commands',
                 ],    
     package_dir = {'webhook_launcher':'src/webhook_launcher',
                    'webhook_launcher.app':'src/webhook_launcher/app',
                    'webhook_launcher.app.migrations' : 'src/webhook_launcher/app/migrations',
                   },
     package_data = { 'webhook_launcher.app' : ['templates/admin/*.html',
-                                            'templates/app/*.html',
-                                            ]
+                                               'templates/app/*.html',
+                                               'static/images/*.png',
+                                               'static/*.gif',
+                                               'static/*.css',
+                                               'static/*.js',
+                                              ]
                    },
     data_files = static_files,
 )
