@@ -244,5 +244,7 @@ if __name__ == "__main__":
         delete_hook(hooks[0]["id"])
 
     if opts.trigger:
-        print_list([trigger_hook(hook) for hook in hooks])
+        for hook in hooks:
+            print trigger_hook(hook['id'])
+
     sys.exit(0)
