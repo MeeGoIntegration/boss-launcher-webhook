@@ -6,6 +6,7 @@ import subprocess
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 WEBHOOK = 'https://webhook.jollamobile.com/webhook/api/webhookmappings/'
+debug = False
 
 def geturl(*arg):
     """ Convenience funtion to create url with trailing slash. Joins arguments together.
@@ -17,7 +18,9 @@ def geturl(*arg):
     return path
 
 def curl(*args):
-    cmd = ('curl', '--location', '--write-out', '\n%{http_code}', '--header', json_header , '--show-error',  '--netrc', '--silent') + args
+    cmd = ('curl', '--location', '--write-out', r'\n%{http_code}', '--header', json_header , '--show-error',  '--netrc', '--silent') + args
+    if debug: print " ".join(cmd)
+
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).splitlines()
         code = output[1].strip()
@@ -148,6 +151,8 @@ def parse_args():
 
     parser = ArgumentParser(prog="whcli", description="A command line client for WebHooks", epilog=usage, formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument('--version', action='version', version='0.1')
+    parser.add_argument('-v', '--verbose', action='store_true', dest='verbose')
+    parser.add_argument('-d', '--debug', action='store_true', dest='debug')
 
     # main action modes: list, create, modify, delete
     actions = parser.add_argument_group("actions", "what to do with the webhooks")
@@ -166,10 +171,6 @@ def parse_args():
     select.add_argument('--filter-project', action='store', dest='filter_prj', help="select webhook mappings targeting a certain project")
     select.add_argument('--filter-package', action='store', dest='filter_pkg', help="select webhook mappings targeting a certain package")
     select.add_argument('--filter-build', action='store', dest='filter_build', help="select only build enabled webhook mappings")
-
-    parser.add_argument('-v', '--verbose', action='store_true', dest='verbose')
-
-    # trigger webhook(s)
 
     # fields available for create and modify
     fields = parser.add_argument_group("fields", "data fields used when creating or modifying webhooks")
@@ -190,6 +191,9 @@ def parse_args():
     filters = [opts.filter_build, opts.filter_repourl, opts.filter_user, opts.filter_prj, opts.filter_pkg]
     any_filters = any(filters)
 
+    if opts.debug:
+        global debug
+        debug = True
     # make sure one of the modes is selected
     if modes.count(True) != 1:
         parser.exit(status=2, message="Must specify one of --list, --create, --modify, --trigger or --delete, see --help for usage\n")
