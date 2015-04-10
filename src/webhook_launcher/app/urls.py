@@ -30,5 +30,6 @@ urlpatterns = patterns('',
     (r'^admin/', include(admin.site.urls)),
     url(r'^api/', include(router.urls)),
     url(r'^login/', 'webhook_launcher.app.views.remotelogin_redirect', name='redirect'),
+    url(r'^landing/$', 'webhook_launcher.app.views.index', name='index'),
     url(r'$', 'webhook_launcher.app.views.index', name='index'),
 )

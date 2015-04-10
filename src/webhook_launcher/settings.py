@@ -237,11 +237,11 @@ INSTALLED_APPS = (
 FORCE_SCRIPT_NAME = ''
 
 LOGIN_URL='/' + URL_PREFIX + "/login/"
-LOGIN_REDIRECT_URL='/' + URL_PREFIX + "/"
+LOGIN_REDIRECT_URL='/' + URL_PREFIX + "/landing/"
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
-        'rest_framework.filters.DjangoFilterBackend',
+        'rest_framework_filters.backends.DjangoFilterBackend',
     )
 }
 

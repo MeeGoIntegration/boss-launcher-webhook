@@ -115,6 +115,7 @@ class ParticipantHandler(BuildServiceParticipant):
         repolinks = {}
         build = True
         mechanism = "localdep"
+        block = "all"
         link = None
         summary = ""
         desc = ""
@@ -136,6 +137,7 @@ class ParticipantHandler(BuildServiceParticipant):
             summary = "Gate entry for %s" % package
             desc = summary
             mechanism = "off"
+            block = "local"
 
         project_list = self.obs.getProjectList()
         if project in project_list:
@@ -167,7 +169,7 @@ class ParticipantHandler(BuildServiceParticipant):
             repolinks.update(self.get_repolinks(wid, link))
 
         result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                        links=links, maintainers=maintainers, build=build)
+                                        links=links, maintainers=maintainers, build=build, block=block)
 
         if not result:
             raise RuntimeError("Something went wrong while creating project %s" % project)
