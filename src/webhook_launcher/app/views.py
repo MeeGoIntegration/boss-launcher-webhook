@@ -36,7 +36,7 @@ from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRe
 from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer, LastSeenRevisionSerializer
 from pprint import pprint
 import struct, socket
-
+import rest_framework_filters as filters
 
 def remotelogin_redirect(request):
     return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
@@ -117,11 +117,22 @@ def index(request):
     else:
         return HttpResponseNotAllowed(['GET', 'POST'])
 
+class WebHookMappingFilter(filters.FilterSet):
+    package = filters.AllLookupsFilter(name='package')
+    project = filters.AllLookupsFilter(name='project')
+    repourl = filters.AllLookupsFilter(name='repourl')
+    branch = filters.AllLookupsFilter(name='branch')
+    user = filters.AllLookupsFilter(name='user__username')
+    
+    class Meta:
+        model = WebHookMapping
+        fields = ["package", "project", "repourl", "user__username", "build"]
+
 class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-    filter_fields = ("package", "project", "repourl", "user__username", "build", )
+    filter_class = WebHookMappingFilter
 
     def pre_save(self, obj):
         obj.user = self.request.user
