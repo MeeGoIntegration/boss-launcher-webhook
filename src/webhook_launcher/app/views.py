@@ -131,13 +131,16 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
         revision = request.DATA.get('revision', None)
         if revision is None:
             return
+        tag = request.DATA.get('tag', None)
 
         if created:
-            lsr = LastSeenRevision(mapping = obj, revision = revision)
+            lsr = LastSeenRevision(mapping = obj, revision = revision, tag=tag)
         else:
             lsr = obj.lsr
             lsr.revision = revision
-
+            if tag:
+                lsr.tag = tag
+            
         lsr.save()
 
     # PUT / trigger webhook
