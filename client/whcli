@@ -55,17 +55,40 @@ def print_hook(data, verbose=False):
     else:
         print webhook_print_template % data
 
+def _expand_search(field, search):
+    """"
+    Support four search types
+    1) "*foo"  -> field__endswith=foo
+    2) "foo*"  -> field__startswith=foo
+    3) "*foo*" -> field__contains=foo
+    4) "foo*bar" -> field__startswith=foo&field__endswith=bar
+    """
+    if search.startswith('*') and search.endswith('*'):
+        return "%s__contains=%s&" % (field, search[1:-1])
+    if search.endswith('*'):
+        return "%s__startswith=%s&" % (field, search[:-1])
+    if search.startswith('*'):
+        return "%s__endswith=%s&" % (field, search[1:])
+    terms = search.split('*')
+    if len(terms) == 2:
+        return "%s__startswith=%s&%s__endswith=%s&" % (field, terms[0], field, terms[1])
+
+    # default
+    return "%s=%s&" % (field, search)
+
 def get_hooks(opts):
     url = geturl()
     query_url = ""
     if opts.filter_prj:
-        query_url += "project=%s&" % opts.filter_prj
+        query_url += _expand_search("project", opts.filter_prj)
     if opts.filter_pkg:
-        query_url += "package=%s&" % opts.filter_pkg
+        query_url += _expand_search("package", opts.filter_pkg)
     if opts.filter_user:
-        query_url += "user__username=%s&" % opts.filter_user
+        query_url += _expand_search("user", opts.filter_user)
     if opts.filter_repourl:
-        query_url += "repourl=%s&" % opts.filter_repourl
+        query_url +=  _expand_search("repourl", opts.filter_repourl)
+    if opts.filter_branch:
+        query_url += _expand_search("branch", opts.filter_branch)
     if opts.filter_build:
         # rest of the options work with lower case false/true
         # so make also this to work like that. Filtering needs
@@ -171,6 +194,7 @@ def parse_args():
     select.add_argument('--filter-project', action='store', dest='filter_prj', help="select webhook mappings targeting a certain project")
     select.add_argument('--filter-package', action='store', dest='filter_pkg', help="select webhook mappings targeting a certain package")
     select.add_argument('--filter-build', action='store', dest='filter_build', help="select only build enabled webhook mappings")
+    select.add_argument('--filter-branch', action='store', dest='filter_branch', help="select webhook mappings targeting a certain branch")
 
     # fields available for create and modify
     fields = parser.add_argument_group("fields", "data fields used when creating or modifying webhooks")
@@ -188,7 +212,7 @@ def parse_args():
 
     opts = parser.parse_args()
     modes = [opts.create, opts.delete, opts.modify, opts.list_hooks, opts.trigger]
-    filters = [opts.filter_build, opts.filter_repourl, opts.filter_user, opts.filter_prj, opts.filter_pkg]
+    filters = [opts.filter_build, opts.filter_repourl, opts.filter_user, opts.filter_prj, opts.filter_pkg, opts.filter_branch]
     any_filters = any(filters)
 
     if opts.debug:
