@@ -82,6 +82,9 @@ BOSS_USER = config.get('boss', 'boss_user')
 BOSS_PASS = config.get('boss', 'boss_pass')
 BOSS_VHOST = config.get('boss', 'boss_vhost')
 
+AMQP_HOST = config.get('amqp', 'host')
+AMQP_ROUTING_KEY = config.get('amqp', 'routing_key')
+
 db_engine = config.get('db', 'db_engine')
 db_name = config.get('db', 'db_name')
 db_user = config.get('db', 'db_user')

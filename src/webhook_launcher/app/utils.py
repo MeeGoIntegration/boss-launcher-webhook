@@ -18,7 +18,6 @@
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from RuoteAMQP import Launcher
 
 import urlparse
 import pycurl
@@ -29,7 +28,7 @@ import os
 from webhook_launcher.app.models import (WebHookMapping, BuildService, LastSeenRevision, QueuePeriod,
                     RelayTarget, Project, VCSNameSpace)
 
-from webhook_launcher.app.boss import launch, launch_queue, launch_notify, launch_build
+from webhook_launcher.app.bureaucrat import launch, launch_queue, launch_notify, launch_build
 from webhook_launcher.app.misc import giturlparse
 
 class bbAPIcall(object):
