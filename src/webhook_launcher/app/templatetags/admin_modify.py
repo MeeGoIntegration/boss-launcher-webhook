@@ -30,7 +30,7 @@ def submit_row(context):
     is_popup = context['is_popup']
     save_as = context['save_as']
     return {
-        'onclick_attrib': (opts.get_ordered_objects() and change
+        'onclick_attrib': (opts.get_all_related_objects() and change
                             and 'onclick="submitOrderForm();"' or ''),
         'show_delete_link': (not is_popup and context['has_delete_permission']
                               and change and context.get('show_delete', True)),
