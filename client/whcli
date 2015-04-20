@@ -47,13 +47,16 @@ delete = lambda url: curl('--request', 'DELETE', url)
 post = lambda url, data: curl('--request', 'POST', '--data', json.dumps(data), url)
 patch = lambda url, data: curl('--request', 'PATCH', '--data', json.dumps(data), url)
 
-webhook_print_template = "%(id)5s | %(project)5s | %(package)5s | %(branch)5s | %(repourl)5s"
+webhook_print_template = "%(id)5s | %(project)5s | %(package)5s | %(repourl)5s | %(branch)5s"
 
 def print_hook(data, verbose=False):
     if verbose:
         print json.dumps(data, indent=4)
     else:
-        print webhook_print_template % data
+        string = webhook_print_template % data
+        if "lsr" in data:
+            string = string + " | %(revision)5s" % data["lsr"]
+        print string
 
 def _expand_search(field, search):
     """"
