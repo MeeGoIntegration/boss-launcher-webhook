@@ -20,24 +20,35 @@ def geturl(*arg):
 def curl(*args):
     cmd = ('curl', '--location', '--write-out', r'\n%{http_code}', '--header', json_header , '--show-error',  '--netrc', '--silent') + args
     if debug: print " ".join(cmd)
-
+    output = ""
+    response = ""
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).splitlines()
-        code = output[1].strip()
-        response = ""
-        if output[0].strip():
-            response = json.loads(output[0].strip())
+        code = output[-1].strip()
+        if not code:
+            raise RuntimeError("No response code from server, check your network connection")
+        elif code.startswith("4"):
+            raise RuntimeError("Server replied with %s client error" % code)
+        elif code.startswith("5"):
+            raise RuntimeError("Received %s server error" % code)
         #http://www.django-rest-framework.org/api-guide/status-codes/#successful-2xx
-        if code in ["200", "201", "202", "203", "204", "205", "206"]:
+        elif code in ["200", "201", "202", "203", "204", "205", "206"]:
+            response = json.loads(output[0].strip())
             return response
-        else:
-            for key, val in response.items():
-                sys.stderr.write("%s: %s\n" % (key, ",".join(val)))
-            sys.exit()
+        #else:
+        #    for key, val in response.items():
+        #        sys.stderr.write("%s: %s\n" % (key, ",".join(val)))
+        #    sys.exit()
     except subprocess.CalledProcessError, exc:
         for line in exc.output.splitlines()[:-1]:
             if line.strip():
                 sys.stderr.write(line.strip() + '\n')
+        sys.exit()
+    except ValueError, exc:
+        print exc
+        sys.exit()
+    except RuntimeError, exc:
+        print exc
         sys.exit()
 
 json_header = "Content-Type: application/json"
