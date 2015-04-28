@@ -27,7 +27,7 @@ def handle_task_success(sender=None, **kwargs):
                           body=json.dumps(kwargs["result"]),
                           properties=pika.BasicProperties(
                               delivery_mode=2,
-                              content_type='application/x-bureaucrat-workitem'
+                              content_type='application/x-bureaucrat-message'
                           ))
     connection.close()
 
