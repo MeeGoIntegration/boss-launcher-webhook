@@ -12,7 +12,7 @@ from webhook_launcher.celery import app
 def handle_webhook(workitem):
     """Handle POST request to a webhook."""
 
-    payload = workitem["fields"]["payload"]
+    payload = workitem["payload"]["payload"]
     handle_payload(payload)
 
     return workitem
@@ -21,7 +21,7 @@ def handle_webhook(workitem):
 def relay_webhook(workitem):
     """Relay webhook POST request to task queue."""
 
-    payload = workitem["fields"]["payload"]
+    payload = workitem["payload"]["payload"]
     relay_payload(payload)
 
     return workitem
