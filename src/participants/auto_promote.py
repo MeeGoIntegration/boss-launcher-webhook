@@ -90,9 +90,10 @@ class ParticipantHandler(BuildServiceParticipant):
         # events for official projects that are gated get diverted to a side project
         prjobj = get_or_none(Project, name=gated_project, obs__apiurl=self.obs.apiurl)
         if prjobj and prjobj.gated:
+            webhook = get_or_none(WebHookMapping, pk=f.pk)
             actions = [{"action" : "submit", "src_project" : project, "src_package" : package,
                         "tgt_project" : gated_project, "tgt_package" : package}]
-            description = "Automated promotion for %s %s" % (gated_project, package)
+            description = "Automated promotion for %s to %s %s" % (str(webhook), gated_project, package)
             comment = ""
             result = self.obs.createRequest(options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
 
