@@ -253,7 +253,8 @@ class Payload(object):
             notified = False
             for mapobj in mapobjs:
                 seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
-                seenrev.emails = json.dumps(list(emails))
+                if emails:
+                    seenrev.emails = json.dumps(list(emails))
 
                 if created or seenrev.revision != revision:
                     if branches:
@@ -330,7 +331,8 @@ class Payload(object):
                     emails.add(commit["raw_author"])
                     if len(emails) == 2: break
 
-                seenrev.emails = json.dumps(list(emails))
+                if emails:
+                    seenrev.emails = json.dumps(list(emails))
 
                 if created or seenrev.revision != commits[-1]:
 
