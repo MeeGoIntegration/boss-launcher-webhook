@@ -396,7 +396,7 @@ def handle_commit(mapobj, lsr, user, payload, notify=False):
 
     fields = mapobj.to_fields()
     fields['msg'] = message
-    fields['payload'] = payload
+    fields['payload'] = json.dumps(payload)
     print message
     launch_notify(fields)
 

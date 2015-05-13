@@ -20,6 +20,7 @@ import urlparse
 import datetime
 import os
 import re
+import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -220,7 +221,7 @@ class WebHookMapping(models.Model):
         skipped = False
         qp = None
         if payload:
-            lsr.payload = payload
+            lsr.payload = json.dumps(payload)
 
         if build:
             if not webuser:
