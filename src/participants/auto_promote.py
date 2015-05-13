@@ -93,7 +93,7 @@ class ParticipantHandler(BuildServiceParticipant):
             webhook = get_or_none(WebHookMapping, pk=f.pk)
             actions = [{"action" : "submit", "src_project" : project, "src_package" : package,
                         "tgt_project" : gated_project, "tgt_package" : package}]
-            description = "Automated promotion for %s to %s %s" % (str(webhook), gated_project, package)
+            description = "%s @ %s" % (webhook.tag or webhook.rev_or_head, str(webhook))
             comment = ""
             result = self.obs.createRequest(options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
 
