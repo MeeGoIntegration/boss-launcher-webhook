@@ -224,12 +224,18 @@ class Payload(object):
             #the head commit is either the branch's HEAD or what the tag is pointing at
             revision = None
             name = None
+            emails = set()
             if 'head_commit' in payload:
                 revision = payload['head_commit']['id']
                 name = payload["pusher"]["name"]
+                emails.add(payload["head_commit"]["author"]["email"])
+                emails.add(payload["head_commit"]["committer"]["email"])
             else:
                 revision = payload['after']
                 name = payload["user_name"]
+
+            if "pusher" in payload:
+                emails.add(payload["pusher"]["email"])
 
             if not revision or not name:
                 return
@@ -244,6 +250,7 @@ class Payload(object):
             notified = False
             for mapobj in mapobjs:
                 seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
+                seenrev.emails = json.dumps(list(emails))
 
                 if created or seenrev.revision != revision:
                     if branches:
@@ -315,6 +322,12 @@ class Payload(object):
                 print "found or created mapping"
 
                 seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
+                emails = set()
+                for commit in payload["commits"]:
+                    emails.add(commit["raw_author"])
+                    if len(emails) == 2: break
+
+                seenrev.emails = json.dumps(list(emails))
 
                 if created or seenrev.revision != commits[-1]:
 

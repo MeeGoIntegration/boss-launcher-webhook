@@ -350,6 +350,7 @@ class LastSeenRevision(models.Model):
     tag = models.CharField(max_length=50, blank=True, null=True)
     handled = models.BooleanField(default=False, editable=False)
     timestamp = models.DateTimeField(auto_now=True)
+    emails = models.TextField(blank=True, null=True, editable=False)
     payload = models.TextField(blank=True, null=True, editable=False)
 
 class QueuePeriod(models.Model):
