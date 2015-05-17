@@ -178,12 +178,14 @@ class ParticipantHandler(BuildServiceParticipant):
 
         try:
             self._set_blame_emails(project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
-        except:
+        except Exception, exc:
+            print exc
             pass
 
     def _set_blame_emails(self, project, package, lsr):
         if not lsr or not lsr.emails:
             return
         emails = json.loads(lsr.emails)
+        self.log("Setting %s %s blame emails %s" % (project, package, ", ".join(emails)))
         self.obs.createProjectAttribute(project, "BlameEmails", package=package, namespace="GIT", values=emails)
 
