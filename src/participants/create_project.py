@@ -45,13 +45,14 @@ import osc
 from urlparse import urlparse
 import os
 from lxml import etree
+import json
 
 from boss.bz.config import parse_bz_config
 from boss.bz.rest import BugzillaError
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
-from webhook_launcher.app.models import WebHookMapping, Project, get_or_none
+from webhook_launcher.app.models import WebHookMapping, LastSeenRevision, Project, get_or_none
 
 class ParticipantHandler(BuildServiceParticipant):
     """ Participant class as defined by the SkyNET API """
@@ -133,16 +134,15 @@ class ParticipantHandler(BuildServiceParticipant):
             f.gated_project = project
             project += ":gate:%s" % package
             f.project = project
-            build = False
             summary = "Gate entry for %s" % package
             desc = summary
             mechanism = "off"
             block = "local"
 
         project_list = self.obs.getProjectList()
-        if project in project_list:
+        #if project in project_list:
             # project already exists, don't do anything
-            return
+        #    return
 
         prj_parts = project.split(":")
         if prj_parts[0] == "home" and len(prj_parts) > 1:
@@ -175,3 +175,14 @@ class ParticipantHandler(BuildServiceParticipant):
             raise RuntimeError("Something went wrong while creating project %s" % project)
 
         wid.result = True
+
+        try:
+            self._set_blame_emails(project, get_or_none(LastSeenRevision, mapping_id=f.pk))
+        except:
+            pass
+
+    def _set_blame_emails(self, project, lsr):
+        if not lsr or not lsr.emails:
+            return
+        emails = json.loads(lsr.emails)
+        self.obs.createProjectAttribute(project, "BlameEmails", namespace="GIT", values=emails)
