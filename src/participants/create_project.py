@@ -95,6 +95,10 @@ class ParticipantHandler(BuildServiceParticipant):
                 arch = archelem.text
                 if arch in exclude_archs:
                     continue
+                if arch == "armv8el" and not "armv7hl" in repo:
+                    continue
+                if arch == "i586" and not "i486" in repo:
+                    continue
                 repolinks[repo].append(arch)
             if not repolinks[repo]:
                 del repolinks[repo]
@@ -115,6 +119,7 @@ class ParticipantHandler(BuildServiceParticipant):
         paths = []
         repolinks = {}
         build = True
+        create = False
         mechanism = "localdep"
         block = "all"
         link = None
@@ -138,6 +143,7 @@ class ParticipantHandler(BuildServiceParticipant):
             desc = summary
             mechanism = "off"
             block = "local"
+            create = True
 
         project_list = self.obs.getProjectList()
         #if project in project_list:
@@ -147,9 +153,10 @@ class ParticipantHandler(BuildServiceParticipant):
         prj_parts = project.split(":")
         if prj_parts[0] == "home" and len(prj_parts) > 1:
             maintainers.append(project.split(":")[1])
+            if project not in project_list: create = True
             #TODO: construct repos and build paths for a devel build
 
-        if prj_parts[-3] == "feature":
+        if len(prj_parts) >= 3 and prj_parts[-3] == "feature":
             link = ":".join(prj_parts[0:-3])
             fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
             # Go through each bugzilla we support
@@ -163,16 +170,18 @@ class ParticipantHandler(BuildServiceParticipant):
                             print "Bug %s not found" % bugnum
                         else:
                             raise
+            if project not in project_list: create = True
 
         if link and link in project_list:
             links.append(link)
             repolinks.update(self.get_repolinks(wid, link))
 
-        result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                        links=links, maintainers=maintainers, build=build, block=block)
+        if create:
+            result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
+                                            links=links, maintainers=maintainers, build=build, block=block)
 
-        if not result:
-            raise RuntimeError("Something went wrong while creating project %s" % project)
+            if not result:
+                raise RuntimeError("Something went wrong while creating project %s" % project)
 
         wid.result = True
 
@@ -186,6 +195,6 @@ class ParticipantHandler(BuildServiceParticipant):
         if not lsr or not lsr.emails:
             return
         emails = json.loads(lsr.emails)
-        self.log("Setting %s %s blame emails %s" % (project, package, ", ".join(emails)))
+        self.log.info("Setting %s %s blame emails %s" % (project, package, ", ".join(emails)))
         self.obs.createProjectAttribute(project, "BlameEmails", package=package, namespace="GIT", values=emails)
 
