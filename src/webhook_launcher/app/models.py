@@ -284,6 +284,7 @@ class WebHookMapping(models.Model):
             fields['payload'] = payload
             print "build"
             launch_build(fields)
+            lsr.handled = True
             if tag:
                 lsr.tag = tag
 
