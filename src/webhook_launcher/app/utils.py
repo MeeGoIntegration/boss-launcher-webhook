@@ -228,8 +228,12 @@ class Payload(object):
             if 'head_commit' in payload:
                 revision = payload['head_commit']['id']
                 name = payload["pusher"]["name"]
-                emails.add(payload["head_commit"]["author"]["email"])
-                emails.add(payload["head_commit"]["committer"]["email"])
+                try:
+                    emails.add(payload["head_commit"]["author"]["email"])
+                    emails.add(payload["head_commit"]["committer"]["email"])
+                except KeyError as e:
+                    # do not fail if head_commit does not have "author" or "committer" info
+                    pass
             else:
                 revision = payload['after']
                 name = payload["user_name"]
