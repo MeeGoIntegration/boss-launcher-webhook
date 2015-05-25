@@ -237,7 +237,7 @@ class Payload(object):
             else:
                 revision = payload['after']
                 name = payload["user_name"]
-                for commit in payload["commits"]:
+                for commit in payload.get("commits", []):
                     emails.add(commit["author"]["email"])
                     if len(emails) == 2: break
 
