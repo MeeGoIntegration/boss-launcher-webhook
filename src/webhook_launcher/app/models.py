@@ -55,9 +55,9 @@ class VCSService(models.Model):
     def __unicode__(self):
         return self.netloc
 
-    name = models.CharField(max_length=50, unique=True)
-    netloc = models.CharField(max_length=200, unique=True)
-    ips = models.TextField(blank=True, null=True)
+    name = models.CharField(max_length=50, unique=True, help_text="Friendly name of this VCS hosting service")
+    netloc = models.CharField(max_length=200, unique=True, help_text="Network location from payload (for example: git@git.merproject.org:1234)")
+    ips = models.TextField(blank=True, null=True, help_text="Known IP adresses of this service (optional)")
 
 class VCSNameSpace(models.Model):
 
@@ -70,9 +70,9 @@ class VCSNameSpace(models.Model):
         return get_or_none(VCSNameSpace, service__netloc = url.netloc,
                            path=os.path.dirname(url.path))
 
-    service = models.ForeignKey(VCSService)
-    path = models.CharField(max_length=200)
-    default_project = models.ForeignKey("Project", blank=True, null=True)
+    service = models.ForeignKey(VCSService, help_text="VCS service where this namespace is hosted")
+    path = models.CharField(max_length=200, help_text="the network path (gitlab group or github organization eg. /mer-core)")
+    default_project = models.ForeignKey("Project", blank=True, null=True, help_text="Default project for webhook placeholder creation")
 
 class Project(models.Model):
 
@@ -402,11 +402,11 @@ class RelayTarget(models.Model):
     def __unicode__(self):
         return "%s webhook relay" % self.name
 
-    active = models.BooleanField(default=True)
-    name = models.CharField(max_length=50)
-    url = models.CharField(max_length=200)
-    verify_SSL = models.BooleanField(default=True)
-    sources = models.ManyToManyField(VCSNameSpace)
+    active = models.BooleanField(default=True, help_text="Whether this relay will fire on matching events")
+    name = models.CharField(max_length=50, help_text="Friendly name of recipient, for example: Organization name")
+    url = models.CharField(max_length=200, help_text="HTTP(S) endpoint which will receive POST of GIT events (for example http://webhook.example.com/webhook/)")
+    verify_SSL = models.BooleanField(default=True, help_text="Turn on SSL certificate verification")
+    sources = models.ManyToManyField(VCSNameSpace, help_text="List of VCS namespaces (for example github organization or gitlab groups)")
 
 def default_perms(sender, **kwargs):
     if kwargs['created']:
