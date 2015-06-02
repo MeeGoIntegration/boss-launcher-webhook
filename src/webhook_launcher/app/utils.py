@@ -355,10 +355,10 @@ class Payload(object):
             return
 
         parsed_url = urlparse.urlparse(self.url)
-        official_projects = set(prj.name for prj in Project.objects.filter(official=True, allowed=True))
-        official_packages = set(mapobj.package for mapobj in 
+        official_projects = list(set(prj.name for prj in Project.objects.filter(official=True, allowed=True)))
+        official_packages = list(set(mapobj.package for mapobj in
                                 WebHookMapping.objects.filter(repourl=self.url,
-                                project__in=official_projects).exclude(package=""))
+                                project__in=official_projects).exclude(package="")))
 
         service_path = os.path.dirname(parsed_url.path)
         if not relays:
