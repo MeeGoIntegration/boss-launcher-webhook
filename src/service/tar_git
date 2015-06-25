@@ -36,12 +36,16 @@ set_default_params () {
   MYURL=""
   BRANCH=""
   REVISION=""
-  OUTDIR=""
+  MYOUTDIR=""
   TOKEN=""
   TOKENCHRE="^.*$"
   DEBIAN="N"
   FILESERVER=""
   DUMB="N"
+  REPO_NAME=""
+  CLONE_NAME=""
+  SVC_NAME=""
+  REPO_PATH=""
 }
 
 get_config_options () {
@@ -63,8 +67,8 @@ usage () {
     echo '	--revision	sha1 of a commit or a tag name to use for creating the package and the changelog'
     echo '	--token		a token that should exist in tag names and changelog entry headers to enable handling them'
     echo '	--debian	Y/N switch to turn on debian packaging support (defaults to N)'
-    echo '      --fileserver    baseurl of a location for fetching files listed in a _sources file in the rpm subdir'
-    echo '      --dumb          Y/N switch to take content of revision as-is without automatic processing'
+    echo '	--fileserver    baseurl of a location for fetching files listed in a _sources file in the rpm subdir'
+    echo '	--dumb          Y/N switch to take content of revision as-is without automatic processing'
     echo 'If your git repo has multiple spec files in the rpm subdirectory set the env variable OBS_SERVICE_PACKAGE '
     echo 'to the name of the one you want to use (without .spec suffix)'
     echo 'The _sources file is expected to contain lines of <sha1sum> <subdir>/<filename>'
@@ -185,7 +189,6 @@ sanitise_params () {
     exit 1
   fi
 
-  local regex="[Y|N]"
   if [ ! -z "$DUMB" ] && [[ ! "$DUMB" =~ $regex ]]; then
     echo "invalid dumb switch"
     usage
@@ -196,12 +199,12 @@ sanitise_params () {
 
 find_spec_file () {
 
-  [[ -d rpm ]] || error "no rpm directory in this git clone"
+  [[ -d "$1" ]] || error "no packaging in this git clone"
 
-  SPECFILE="$(find rpm/ -type f -name '*.spec')"
+  SPECFILE="$(find "$1"/ -maxdepth 1 -type f -name '*.spec')"
 
   if [[ ! "$(echo $SPECFILE | wc -w)" -eq 1 ]]; then
-      SPECFILE=$(find rpm/ -type f -name "$OBS_SERVICE_PACKAGE".spec)
+      SPECFILE=$(find "$1"/ -type f -name "$OBS_SERVICE_PACKAGE".spec)
   fi
 
   [[ "$(echo $SPECFILE | wc -w)" -eq 1 ]] || error "Need single spec file in rpm"
@@ -210,7 +213,7 @@ find_spec_file () {
 
 find_changes_file () {
 
-  CHANGESFILE="$(find rpm/ -type f -name '*.changes')"
+  CHANGESFILE="$(find $1 -type f -name '*.changes')"
 
   [[ "$(echo $CHANGESFILE | wc -w)" -le 1 ]] || error "Need single changes file in rpm"
 
@@ -519,7 +522,6 @@ do_changelog_block () {
 }
 
 generate_changes () {
-  pushd $CLONE_NAME >/dev/null
 
   CHANGES=""
   ENTRIES=""
@@ -613,8 +615,6 @@ generate_changes () {
     rm -f "$SORTEDCHANGES"
 
   fi
-
-  popd >/dev/null
 
 }
 
@@ -736,15 +736,51 @@ handle_submodules() {
  
 }
 
+parse_url () {
+
+  # parse git URLs of various forms:
+  # ssh://[user@]host.xz[:port]/path/to/repo.git/
+  # git://host.xz[:port]/path/to/repo.git/
+  # http[s]://host.xz[:port]/path/to/repo.git/
+  # ftp[s]://host.xz[:port]/path/to/repo.git/
+  # rsync://host.xz/path/to/repo.git/
+  # [user@]host.xz:path/to/repo.git/
+
+  # remove possible trailing slash
+  TEMP_URL="${MYURL%/}"
+  # remove possible trailing .git
+  TEMP_URL="${TEMP_URL%.git}"
+  # extract git repo name
+  REPO_NAME="${TEMP_URL##*/}"
+  # remove repo name from url
+  TEMP_URL="${TEMP_URL%/$REPO_NAME}"
+  # extract possible scheme from url
+  SCHEME="${TEMP_URL%://*}"
+  # remove possible scheme from url
+  TEMP_URL="${TEMP_URL#*://}"
+  if test "$SCHEME" = "$TEMP_URL"; then
+    # no scheme
+    SCHEME="ssh"
+    REPO_PATH="${TEMP_URL#*:}"
+    REPO_URL="${TEMP_URL%:$REPO_PATH}"
+  else
+    REPO_PATH="${TEMP_URL#*/}"
+    REPO_URL="${TEMP_URL%/$REPO_PATH}"
+  fi
+  # remove possible username / password
+  REPO_URL="${REPO_URL##*@}"
+  # remove possible port
+  REPO_URL="${REPO_URL%:*}"
+  # extract service name
+  SVC_NAME="${REPO_URL%.*}"
+  SVC_NAME="${SVC_NAME#*.}"
+  CLONE_NAME="$REPO_NAME"
+
+}
+
 clone () {
 
-  CLONE_NAME="${MYURL%/}"
-  CLONE_NAME="${CLONE_NAME##*/}"
-  CLONE_NAME="${CLONE_NAME%.git}"
-  CLONE_NAME="${CLONE_NAME#*@*:}"
-
   echo "Handling $CLONE_NAME"
-
   URL=$MYURL
   cache_prefetch $CLONE_NAME $URL
   MYURL=$URL
@@ -781,20 +817,8 @@ clone () {
   popd >/dev/null
 }
 
-rpm_pkg () {
 
-  pushd $CLONE_NAME >/dev/null
-
-  find_spec_file
-  expand_spec_file "$SPECFILE"
-  cp "$SPECFILE" ..
-  find_changes_file
-  find_yaml_file
-  find_other_files
-  find_compression "$SPECFILE"
-  find_package_name "$SPECFILE"
-  echo "package name is $PACKAGE_NAME"
-
+set_versha () {
 
   VERSION=""
   VERSION_FULLTAG=""
@@ -861,13 +885,10 @@ rpm_pkg () {
  
   # concat version and sha 
   VERSHA="$VERSION$SHA"
-  # add tarball version file for some packages that use auto foo
-  if [ -f git-version-gen ] || [ -f build-aux/git-version-gen ]; then
-     echo -n $VERSHA > .tarball-version
-  fi 
 
-  git_ls_files | tar --mtime '2000-01-01' --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
+}
 
+set_spec_version () {
   # add matching version to the spec file
   sed -i -e "s/^Version:.*$/Version:    $VERSHA/g" ../$(basename $SPECFILE)
 
@@ -875,9 +896,42 @@ rpm_pkg () {
     sed -i -e "s/^Release:.*$/Release:    $RELEASE/g" ../$(basename $SPECFILE)
     SPECRELEASE=$RELEASE
   fi
+}
 
-  popd >/dev/null
+rpm_pkg () {
 
+  find_spec_file rpm
+  expand_spec_file "$SPECFILE"
+  cp "$SPECFILE" ..
+  find_changes_file rpm
+  find_yaml_file
+  find_other_files
+  find_compression "$SPECFILE"
+  find_package_name "$SPECFILE"
+  echo "package name is $PACKAGE_NAME"
+
+  set_versha
+
+  # add tarball version file for some packages that use auto foo
+  if [ -f git-version-gen ] || [ -f build-aux/git-version-gen ]; then
+     echo -n $VERSHA > .tarball-version
+  fi
+
+  git_ls_files | tar --mtime '2000-01-01' --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
+
+  set_spec_version
+
+}
+
+run_android_repo_service () {
+  REPOCMD="/usr/lib/obs/service/repo --initrepo "$REPO_PATH"/"$REPO_NAME" --service "$SVC_NAME" --branch "$BRANCH" --outdir "$MYOUTDIR""
+  test -f tagged-manifest.xml && REPOCMD="$REPOCMD --manifest-name tagged-manifest.xml"
+  test -x /usr/lib/obs/service/repo || error "repo service script not found at /usr/lib/obs/service/repo"
+  $REPOCMD
+  find_spec_file "$MYOUTDIR"
+  find_changes_file "$MYOUTDIR"
+  set_versha
+  set_spec_version
 }
 
 download_files () {
@@ -982,10 +1036,7 @@ try_debian_packaging() {
     return 0
   fi
 
-  pushd $CLONE_NAME >/dev/null
-
   if [ ! -f "debian/control" ]; then
-    popd >/dev/null
     return 0
   fi
 
@@ -1002,8 +1053,6 @@ try_debian_packaging() {
   fi
   mv "debian/changelog.git" "debian/changelog"
 
-  popd >/dev/null
-
   dpkg-source --format="3.0 (quilt)" -I -b "$CLONE_NAME"
 }
 
@@ -1012,8 +1061,6 @@ source_checks () {
   # CHECK_PROJECTS set as space separated list in /etc/obs/services/tar_git or $HOME/.obs/tar_git
   # OBS_SERVICE_PROJECT set in env by bs_service
   ( x_in "$CHECK_PROJECTS" "$OBS_SERVICE_PROJECT" ) || return 0
-
-  pushd $CLONE_NAME >/dev/null
 
   CV=$(head -n1 $CHANGESFILE | awk -F' - ' '{ print $2 }' | xargs)
   VER=$VERSHA
@@ -1027,7 +1074,6 @@ since last tagged version. example: [anything] foo bar'
 
   [[ $VER = $CV ]] || error "$ERROR1"
 
-  popd >/dev/null
 }
 
 
@@ -1037,21 +1083,25 @@ main () {
 
   parse_params "$@"
   sanitise_params
-
-  SRCDIR=$(pwd)
-  cd "$MYOUTDIR"
-
+  parse_url
   clone
-  if [ ! x"$DUMB" = "xY" ]; then
-	rpm_pkg
-	generate_changes
-	download_files
-	try_debian_packaging
-	source_checks
-  else
-        # Dumb mode is simple - take the content of the checkout and drop it in out dir
-        cp -ar $CLONE_NAME/* $MYOUTDIR/
+  if [ x"$DUMB" = "xY" ]; then
+    # Dumb mode is simple - take the content of the checkout and drop it in out dir
+    cp -ar "$CLONE_NAME"/* "$MYOUTDIR"/
+    return
   fi
+  pushd "$CLONE_NAME" >/dev/null
+  # check for default manifest file
+  if test -f default.xml; then
+    run_android_repo_service
+  else
+    rpm_pkg
+  fi
+  generate_changes
+  download_files
+  try_debian_packaging
+  source_checks
+  popd >/dev/null
 }
 
 main "$@"
