@@ -198,12 +198,12 @@ sanitise_params () {
 
 generate_spec_files () {
 
-    [[ -f "rpm/precheckin.sh" ]] || return 0
+    [[ -f "rpm/genspecs.sh" ]] || return 0
 
-    echo "Generating spec files from rpm/precheckin.sh"
+    echo "Generating spec files from rpm/genspecs.sh"
     pushd rpm >/dev/null
     rm -f *.spec
-    sh precheckin.sh || error "Could not generate .spec files with precheckin.sh"
+    sh genspecs.sh || error "Could not generate .spec files with genspecs.sh"
     popd >/dev/null
 
 }
