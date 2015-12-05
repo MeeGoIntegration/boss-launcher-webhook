@@ -26,19 +26,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User, Group
-from django.contrib.auth.models import Permission
-from django.db.models.signals import post_save
-from django.contrib.auth.backends import RemoteUserBackend
 from django.utils import timezone
 
 from webhook_launcher.app.boss import launch, launch_queue, launch_notify, launch_build
-from webhook_launcher.app.misc import giturlparse
-
-def get_or_none(model, **kwargs):
-    try:
-        return model.objects.get(**kwargs)
-    except model.DoesNotExist:
-        return None
+from webhook_launcher.app.misc import giturlparse, get_or_none
 
 class BuildService(models.Model):
 
@@ -327,7 +318,7 @@ class WebHookMapping(models.Model):
         return fields
 
     # If any fields are added/removed then ensure they are handled
-    # correctly in the webhook_diff
+    # correctly in to_fields
     repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
     branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
     project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
@@ -408,36 +399,3 @@ class RelayTarget(models.Model):
     verify_SSL = models.BooleanField(default=True, help_text="Turn on SSL certificate verification")
     sources = models.ManyToManyField(VCSNameSpace, help_text="List of VCS namespaces (for example github organization or gitlab groups)")
 
-def default_perms(sender, **kwargs):
-    if kwargs['created']:
-        user = kwargs['instance']
-        # Set the is_staff flag in a transaction-safe way, while
-        # working around django_auth_ldap which saves unsafely.
-        User.objects.filter(id=user.id).update(is_staff=True)
-        user.is_staff = True
-        try:
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_add_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_change_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_delete_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_add_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_change_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_delete_permission()))
-        except Permission.DoesNotExist:
-            # we're probably creating the superuser during syncdb
-            pass
-
-class RemoteStaffBackend(RemoteUserBackend):
-
-    def configure_user(self, user):
-
-        user.is_staff = True
-        user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_add_permission()))
-        user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_change_permission()))
-        user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_delete_permission()))
-        user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_add_permission()))
-        user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_change_permission()))
-        user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_delete_permission()))
-        return user
-
-post_save.connect(default_perms, sender=User, weak=False,
-                  dispatch_uid="default_perms")

@@ -28,7 +28,7 @@ import time
 
 WEBHOOK_TARGETS = [
 #    'https://webhook.merproject.org/webhook/',
-    'http://webhook.jollamobile.com/webhook/',
+    'https://webhook.jollamobile.com/webhook/',
 ]
 
 if len(sys.argv) != 3:

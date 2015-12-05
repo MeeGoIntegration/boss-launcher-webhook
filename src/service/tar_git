@@ -614,7 +614,6 @@ generate_changes () {
     rm -f "$SORTEDCHANGES"
 
   fi
-
 }
 
 changes_to_debian () {
@@ -929,6 +928,8 @@ run_android_repo_service () {
   $REPOCMD
   find_spec_file "$MYOUTDIR"
   find_changes_file "$MYOUTDIR"
+  find_package_name "$SPECFILE"
+  echo "package name is $PACKAGE_NAME"
   set_versha
   set_spec_version
 }
