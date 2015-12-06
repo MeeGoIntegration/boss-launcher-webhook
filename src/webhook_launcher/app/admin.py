@@ -25,10 +25,13 @@ from django.forms import TextInput
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
-from webhook_launcher.app.models import ( LastSeenRevision, WebHookMapping, 
-                                          BuildService, Project, VCSService,
-                                          VCSNameSpace, QueuePeriod,
-                                          RelayTarget, get_or_none )
+from webhook_launcher.app.models import (LastSeenRevision, WebHookMapping, 
+                                         BuildService, Project, VCSService,
+                                         VCSNameSpace, QueuePeriod,
+                                         RelayTarget)
+
+from webhook_launcher.app.misc import get_or_none
+from webhook_launcher.app.payload import get_payload
 
 class LastSeenRevisionInline(admin.StackedInline):
     model = LastSeenRevision 
@@ -92,16 +95,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
 
     def trigger_build(self, request, mappings):
         for mapobj in mappings:
-
-            lsr = mapobj.lsr
-            if not lsr:
-                lsr, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
-
-            to_build = mapobj.tag
-            if not to_build:
-                to_build = mapobj.rev_or_head
-
-            mapobj.handle_tag(lsr, request.user.username, {}, to_build, webuser=request.user)
+            mapobj.trigger_build(request.user, force=True)
             msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': mapobj.rev_or_head}
             self.message_user(request, msg)
 
@@ -146,7 +140,7 @@ class RelayTargetAdmin(admin.ModelAdmin):
             for mapobj in mapobjs:
                 lsr = mapobj.lsr
                 if lsr and lsr.payload:
-                    payloads.append(Payload(lsr.payload))
+                    payloads.append(get_payload(lsr.payload))
 
         for pld in payloads:
             pld.relay(relays=relaytargets)

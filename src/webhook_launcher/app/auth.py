@@ -1,8 +1,11 @@
 from django.contrib.auth.models import User, Permission
 from django.contrib.auth.backends import RemoteUserBackend
 from django.db.models.signals import post_save
+
 from rest_framework import authentication
 from rest_framework import exceptions
+
+from webhook_launcher.app.models import LastSeenRevision, WebHookMapping
 
 class RemoteAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):

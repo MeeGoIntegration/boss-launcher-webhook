@@ -19,24 +19,28 @@
 """ webhook view """
 
 import urlparse
+import json
+from pprint import pprint
+import struct, socket
 from collections import defaultdict
+
 from django.http import ( HttpResponse, HttpResponseBadRequest, HttpResponseRedirect,
                           HttpResponseForbidden, HttpResponseNotAllowed )
 from django.db.models import Q
 from django.shortcuts import render_to_response
 from django.template import RequestContext
-from django.utils import simplejson
 from django.conf import settings
+
 from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework import status
-from webhook_launcher.app.utils import launch_queue
+import rest_framework_filters as filters
+
+from webhook_launcher.app.boss import launch_queue
 from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRevision, Project
 from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer, LastSeenRevisionSerializer
-from pprint import pprint
-import struct, socket
-import rest_framework_filters as filters
+
 
 def remotelogin_redirect(request):
     return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
@@ -97,7 +101,7 @@ def index(request):
             return HttpResponseBadRequest()
 
         try:
-            data = simplejson.loads(payload)
+            data = json.loads(payload)
             # merge in GET params
             get = {}
             for key, values in request.GET.lists():
