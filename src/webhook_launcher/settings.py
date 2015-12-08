@@ -188,6 +188,25 @@ STATIC_ROOT = static_media_collect
 
 STATIC_URL = '/' + URL_PREFIX + '/site_media/'
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+        'OPTIONS': {
+             'context_processors': [
+                 'django.template.context_processors.debug',
+                 'django.template.context_processors.request',
+                 "django.contrib.auth.context_processors.auth",
+                 "django.template.context_processors.i18n",
+                 "django.template.context_processors.media",
+                 "django.template.context_processors.static",
+                 'django.contrib.auth.context_processors.auth',
+                 'django.contrib.messages.context_processors.messages',
+             ],
+         },
+    },
+]
+
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
@@ -229,7 +248,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'webhook_launcher.app',
     'django.contrib.admin',
-    'south',
     'django_extensions',
     'rest_framework',
 )

@@ -9,16 +9,16 @@ class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
 
-class BuildServiceField(serializers.WritableField):
+class BuildServiceField(serializers.Field):
     """
     Handle references to a BuildService object
     Outputs namespace
     Takes a namespace as a key
     """
-    def to_native(self, obj):
+    def to_representation(self, obj):
         return BuildServiceSerializer().to_native(obj)
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         try:
             obs = BuildService.objects.get(namespace=data)
         except BuildService.DoesNotExist as e:

@@ -16,20 +16,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-from django.conf.urls import url, patterns, include
+from django.conf.urls import url, include
 from django.contrib import admin
 admin.autodiscover()
 from rest_framework import routers
-from  webhook_launcher.app import views
+from webhook_launcher.app import views
 
 router = routers.DefaultRouter()
 router.register(r'webhookmappings', views.WebHookMappingViewSet)
 router.register(r'buildservices', views.BuildServiceViewSet)
 
-urlpatterns = patterns('',
-    (r'^admin/', include(admin.site.urls)),
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
     url(r'^api/', include(router.urls)),
-    url(r'^login/', 'webhook_launcher.app.views.remotelogin_redirect', name='redirect'),
-    url(r'^landing/$', 'webhook_launcher.app.views.index', name='index'),
-    url(r'$', 'webhook_launcher.app.views.index', name='index'),
-)
+    url(r'^login/', views.remotelogin_redirect, name='redirect'),
+    url(r'^landing/$', views.index, name='index'),
+    url(r'$', views.index, name='index'),
+]
