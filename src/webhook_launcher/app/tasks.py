@@ -17,28 +17,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import json
-import urlparse
-
-from django.conf import settings
 
 from webhook_launcher.app.models import (LastSeenRevision, QueuePeriod)
-from webhook_launcher.app.payload import get_payload
 from webhook_launcher.app.boss import launch_notify, launch_build
-
-def relay_payload(data):
-
-    payload = get_payload(data)
-    payload.relay()
-
-def handle_payload(data):
-
-    payload = get_payload(data)
-
-    #TODO: move to DB based service whitelist
-    if ((not settings.SERVICE_WHITELIST) or
-        (settings.SERVICE_WHITELIST and
-         urlparse.urlparse(payload.url).netloc in settings.SERVICE_WHITELIST)):
-        payload.handle()
 
 def handle_commit(mapobj, lsr, user, notify=False):
 

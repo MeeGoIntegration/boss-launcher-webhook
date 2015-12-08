@@ -35,7 +35,7 @@
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
-from webhook_launcher.app.tasks import handle_payload
+from webhook_launcher.app.payload import get_payload
 
 class ParticipantHandler(object):
     """ Participant class as defined by the SkyNET API """
@@ -52,11 +52,10 @@ class ParticipantHandler(object):
         """ Workitem handling function """
         wid.result = False
 
-        payload = wid.fields.payload
-
-        if not payload:
+        if wid.fields.payload is None:
            raise RuntimeError("Missing mandatory field: payload")
 
-        handle_payload(payload.as_dict())
+        payload = get_payload(wid.fields.payload.as_dict())
+        payload.handle()
 
         wid.result = True
