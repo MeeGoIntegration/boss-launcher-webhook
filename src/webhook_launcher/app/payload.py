@@ -26,7 +26,7 @@ import os
 
 from webhook_launcher.app.models import (WebHookMapping, LastSeenRevision, RelayTarget, Project, VCSNameSpace, BuildService)
 
-from webhook_launcher.app.tasks import (handle_payload, handle_commit, handle_pr) 
+from webhook_launcher.app.tasks import (handle_commit, handle_pr, trigger_build) 
 from webhook_launcher.app.misc import bbAPIcall
 
 def get_payload(data):
@@ -34,7 +34,7 @@ def get_payload(data):
 
     bburl = "https://bitbucket.org"
     url = None
-    klass = Noop
+    klass = Payload
     params = data.get('webhook_parameters', {})
     repo = data.get('repository', None)
     gh_pull_request = data.get('pull_request', None)
@@ -158,8 +158,6 @@ class Payload(object):
             if response.status_code != requests.codes.ok:
                 raise RuntimeError("%s returned %s" % (relay, response.status_code))
         
-
-class Noop(Payload):
 
     def handle(self):
 
@@ -303,7 +301,7 @@ class GhPush(Payload):
 
                 elif reftype == "tags":
                     print "Tag %s for %s in %s/%s, notify and build it if enabled" % (refname, revision, repourl, mapobj.branch)
-                    mapobj.trigger_build(name, lsr=seenrev, tag=refname)
+                    trigger_build(mapobj, name, lsr=seenrev, tag=refname)
 
 
 class BbPull(Payload):
@@ -401,7 +399,7 @@ class BbPush(Payload):
 
                 else:
                     print "%s in %s was seen before, notify and build it if enabled" % (commits[-1], branch)
-                    mapobj.trigger_build(payload["user"], lsr=seenrev, tag=tag)
+                    trigger_build(mapobj, payload["user"], lsr=seenrev, tag=tag)
 
 
 

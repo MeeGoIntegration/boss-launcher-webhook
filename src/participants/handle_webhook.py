@@ -35,7 +35,7 @@
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
-from webhook_launcher.app.utils import handle_payload
+from webhook_launcher.app.tasks import handle_payload
 
 class ParticipantHandler(object):
     """ Participant class as defined by the SkyNET API """

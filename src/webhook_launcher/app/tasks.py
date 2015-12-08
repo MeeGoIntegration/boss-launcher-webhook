@@ -21,6 +21,7 @@ import urlparse
 
 from django.conf import settings
 
+from webhook_launcher.app.models import (LastSeenRevision, QueuePeriod)
 from webhook_launcher.app.payload import get_payload
 from webhook_launcher.app.boss import launch_notify, launch_build
 
@@ -71,6 +72,46 @@ def handle_pr(mapobj, data, payload):
         fields['payload'] = payload
         print message
         launch_notify(fields)
+
+def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
+
+    if lsr is None:
+        lsr, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
+
+    # Only fire for projects which allow webhooks. We can't just
+    # rely on validation since a Project may forbid hooks after
+    # the hook was created
+    if mapobj.project_disabled:
+        print "Project has build disabled"
+        return
+
+    build = mapobj.build and mapobj.mapped
+    delayed = False
+    skipped = False
+    qp = None
+
+    if build:
+        if not force:
+            if lsr.handled and lsr.tag == tag:
+                print "build already handled, skipping"
+                build = False
+                skipped = True
+
+        # Find possible queue period objects
+        qps = QueuePeriod.objects.filter(projects__name=mapobj.project,
+                                         projects__obs__pk=mapobj.obs.pk)
+        for qp in qps:
+            if qp.delay() and not qp.override(webuser=user):
+                print "Build trigger for %s delayed by %s" % (mapobj, qp)
+                print qp.comment
+                lsr.handled = False
+                build = False
+                delayed = True
+                break
+
+    # handle_build actually launches a build process
+    msg = handle_build(mapobj, user, lsr, force, skipped, delayed, qp)
+    return msg
 
 def handle_build(mapobj, user=None, lsr=None, force=None, skipped=False, delayed=False, qp=None):
 

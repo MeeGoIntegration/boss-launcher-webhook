@@ -30,6 +30,7 @@ from webhook_launcher.app.models import (LastSeenRevision, WebHookMapping,
                                          VCSNameSpace, QueuePeriod,
                                          RelayTarget)
 
+from webhook_launcher.app.tasks import trigger_build
 from webhook_launcher.app.misc import get_or_none
 from webhook_launcher.app.payload import get_payload
 
@@ -95,7 +96,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
 
     def trigger_build(self, request, mappings):
         for mapobj in mappings:
-            mapobj.trigger_build(request.user, force=True)
+            trigger_build(mapobj, request.user, force=True)
             msg = 'Build triggered for %(rev)s @ "%(obj)s" .' % {'obj': mapobj, 'rev': mapobj.rev_or_head}
             self.message_user(request, msg)
 

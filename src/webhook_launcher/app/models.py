@@ -16,11 +16,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import urlparse
 import datetime
 import os
 import re
-import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -28,7 +26,6 @@ from django.conf import settings
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 
-from webhook_launcher.app.tasks import handle_build
 from webhook_launcher.app.misc import giturlparse, get_or_none
 
 class BuildService(models.Model):
@@ -197,46 +194,6 @@ class WebHookMapping(models.Model):
 
             if not self.project.startswith("home:%s" % self.user.username) and not self.user.is_superuser:
                 raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
-
-    def trigger_build(self, user, lsr=None, tag=None, force=False):
-
-        if lsr is None:
-            lsr, created = LastSeenRevision.objects.get_or_create(mapping=self)
-
-        # Only fire for projects which allow webhooks. We can't just
-        # rely on validation since a Project may forbid hooks after
-        # the hook was created
-        if self.project_disabled:
-            print "Project has build disabled"
-            return
-
-        build = self.build and self.mapped
-        delayed = False
-        skipped = False
-        qp = None
-
-        if build:
-            if not force:
-                if lsr.handled and lsr.tag == tag:
-                    print "build already handled, skipping"
-                    build = False
-                    skipped = True
-
-            # Find possible queue period objects
-            qps = QueuePeriod.objects.filter(projects__name=self.project,
-                                             projects__obs__pk=self.obs.pk)
-            for qp in qps:
-                if qp.delay() and not qp.override(webuser=user):
-                    print "Build trigger for %s delayed by %s" % (self, qp)
-                    print qp.comment
-                    lsr.handled = False
-                    build = False
-                    delayed = True
-                    break
-
-        # handle_build actually launches a build process
-        msg = handle_build(self, user, lsr, force, skipped, delayed, qp)
-        return msg
 
     def to_fields(self):
         fields = {}
