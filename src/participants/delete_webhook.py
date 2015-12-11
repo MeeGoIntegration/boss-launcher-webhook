@@ -39,6 +39,8 @@
 
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
+import django
+django.setup()
 
 from webhook_launcher.app.models import WebHookMapping
 

@@ -48,6 +48,8 @@ from boss.bz.config import parse_bz_config
 from boss.bz.rest import BugzillaError
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
+import django
+django.setup()
 
 from webhook_launcher.app.models import WebHookMapping, Project, get_or_none
 
