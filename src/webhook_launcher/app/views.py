@@ -37,7 +37,7 @@ from rest_framework.response import Response
 from rest_framework import status
 import rest_framework_filters as filters
 
-from webhook_launcher.app.boss import launch_queue
+from webhook_launcher.app.bureaucrat import launch_queue
 from webhook_launcher.app.models import WebHookMapping, BuildService, LastSeenRevision, Project
 from webhook_launcher.app.serializers import WebHookMappingSerializer, BuildServiceSerializer, LastSeenRevisionSerializer
 

@@ -19,7 +19,7 @@
 import json
 
 from webhook_launcher.app.models import (LastSeenRevision, QueuePeriod)
-from webhook_launcher.app.boss import launch_notify, launch_build
+from webhook_launcher.app.bureaucrat import launch_notify, launch_build
 
 def handle_commit(mapobj, lsr, user, notify=False):
 

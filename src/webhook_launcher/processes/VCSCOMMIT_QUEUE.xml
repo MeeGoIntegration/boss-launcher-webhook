@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<process name="vcsqueue">
+    <sequence>
+        <action participant="webhook_launcher.tasks.handle_webhook" />
+        <action participant="webhook_launcher.tasks.relay_webhook" />
+    </sequence>
+</process>

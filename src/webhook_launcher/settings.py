@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import os
 from os.path import abspath, dirname, join
 import struct,socket
 PROJECT_DIR = dirname(__file__)
@@ -29,9 +30,10 @@ try:
 except Exception:
     try:
         # during docs build
-        config.readfp(open("src/webhook_launcher/webhook.conf"))
+        config.readfp(open("/home/rozhkov/work/ci/boss-launcher-webhook/src/webhook_launcher/webhook.conf"))
     except IOError:
         # when developing it is in cwd
+        print "CURRENT DIR:", os.getcwd()
         config.readfp(open("webhook.conf"))
 
 URL_PREFIX = config.get('web', 'url_prefix')
@@ -81,6 +83,9 @@ BOSS_HOST = config.get('boss', 'boss_host')
 BOSS_USER = config.get('boss', 'boss_user')
 BOSS_PASS = config.get('boss', 'boss_pass')
 BOSS_VHOST = config.get('boss', 'boss_vhost')
+
+AMQP_HOST = config.get('amqp', 'host')
+AMQP_ROUTING_KEY = config.get('amqp', 'routing_key')
 
 db_engine = config.get('db', 'db_engine')
 db_name = config.get('db', 'db_name')
