@@ -21,7 +21,7 @@ from os.path import abspath, dirname, join
 import struct,socket
 PROJECT_DIR = dirname(__file__)
 
-WEBHOOKCONF="/etc/skynet/webhook.conf"
+WEBHOOKCONF="/etc/webhook.conf"
 
 import ConfigParser
 config = ConfigParser.ConfigParser()

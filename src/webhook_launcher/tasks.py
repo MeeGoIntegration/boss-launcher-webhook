@@ -4,16 +4,15 @@ import os
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 
-from webhook_launcher.app.utils import handle_payload
-from webhook_launcher.app.utils import relay_payload
 from webhook_launcher.celery import app
+from webhook_launcher.app.payload import get_payload
 
 @app.task
 def handle_webhook(workitem):
     """Handle POST request to a webhook."""
 
-    payload = workitem["payload"]["payload"]
-    handle_payload(payload)
+    payload = get_payload(workitem["payload"]["payload"])
+    payload.handle()
 
     return workitem
 
@@ -21,7 +20,7 @@ def handle_webhook(workitem):
 def relay_webhook(workitem):
     """Relay webhook POST request to task queue."""
 
-    payload = workitem["payload"]["payload"]
-    relay_payload(payload)
+    payload = get_payload(workitem["payload"]["payload"])
+    payload.relay()
 
     return workitem
