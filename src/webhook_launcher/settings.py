@@ -30,7 +30,7 @@ try:
 except Exception:
     try:
         # during docs build
-        config.readfp(open("/home/rozhkov/work/ci/boss-launcher-webhook/src/webhook_launcher/webhook.conf"))
+        config.readfp(open("src/webhook_launcher/webhook.conf"))
     except IOError:
         # when developing it is in cwd
         print "CURRENT DIR:", os.getcwd()
@@ -96,6 +96,7 @@ db_host = config.get('db', 'db_host')
 VCSCOMMIT_QUEUE = config.get('processes', 'vcscommit_queue')
 VCSCOMMIT_NOTIFY = config.get('processes', 'vcscommit_notify')
 VCSCOMMIT_BUILD = config.get('processes', 'vcscommit_build')
+VCSCOMMIT_GATE = config.get('processes', 'vcscommit_gate')
 
 
 USE_LDAP = config.getboolean('ldap', 'use_ldap')

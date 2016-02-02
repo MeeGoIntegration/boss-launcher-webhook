@@ -26,7 +26,8 @@ import os
 
 from webhook_launcher.app.models import (WebHookMapping, LastSeenRevision, RelayTarget, Project, VCSNameSpace, BuildService)
 
-from webhook_launcher.app.tasks import (handle_commit, handle_pr, trigger_build) 
+from webhook_launcher.app.tasks import trigger_build 
+from webhook_launcher.app.bureaucrat import launch_notify, launch_build
 from webhook_launcher.app.misc import bbAPIcall
 
 def get_payload(data):
@@ -38,6 +39,7 @@ def get_payload(data):
     params = data.get('webhook_parameters', {})
     repo = data.get('repository', None)
     gh_pull_request = data.get('pull_request', None)
+    gerrit = data.get('gerrit', None)
     bb_pr_keys = ["pullrequest_created"]
     # https://bitbucket.org/site/master/issue/8340/pull-request-post-hook-does-not-include
     # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
@@ -57,6 +59,14 @@ def get_payload(data):
         # Github pull request event
         klass = GhPull
         url = data['pull_request']['base']['repo']['clone_url']
+
+    elif gerrit:
+        url = data["gerrit"] + '/' + data["change"]["project"]
+        event_type = data["type"]
+        if event_type in ["patchset-created", "change-restored"]:
+            klass = GerritPull
+        elif event_type in ["ref-updated", "change-merged"]:
+            klass = GerritPush
 
     elif repo:
         if repo.get('absolute_url', None):
@@ -120,6 +130,41 @@ class Payload(object):
     
         return mapobjs
 
+    def handle_commit(self, mapobj, lsr, user, notify=False):
+    
+        lsr.tag = ""
+        lsr.handled = False
+        lsr.save()
+    
+        if not notify:
+            return
+    
+        message = "%s commit(s) pushed by %s to %s branch of %s" % (len(lsr.payload["commits"]), user, mapobj.branch, mapobj.repourl)
+        if not mapobj.mapped:
+            message = "%s, which is not mapped yet. Please map it." % message
+    
+        fields = mapobj.to_fields()
+        fields['msg'] = message
+        fields['payload'] = lsr.payload
+        launch_notify(fields)
+    
+    def handle_pr(self, mapobj, pr):
+ 
+        fields = mapobj.to_fields()
+        fields['payload'] = self.data
+        fields['pr'] = pr
+        message = "Pull request #%s by %s from %s / %s to %s %s (%s)" % (
+                pr['id'], pr['username'], pr['source_repourl'],
+                pr['source_branch'], mapobj, pr['action'], pr['url'])
+    
+        fields['msg'] = message
+
+        if mapobj.notify:
+            launch_notify(fields)
+
+        if mapobj.pr_voting:
+            launch_gate(mapobj, fields)
+
     def relay(self, relays=None):
 
         if not self.url:
@@ -167,6 +212,35 @@ class Payload(object):
         else:
             print "unknown payload"
 
+class GerritPull(Payload):
+
+    def handle(self):
+        payload = self.data
+        repourl = self.url
+
+        branch = payload["change"]["branch"]
+        pr = { "url" : payaload["change"]["url"],
+               "source_repourl" : repourl,
+               "source_branch" : payload["change"]["owner"]["username"],
+               "action" : payload['type'].split("")[1],
+               "id" : payload['change']['id'],
+              }
+
+        
+        for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
+            self.handle_pr(mapobj, pr)
+
+class GerritPush(Payload):
+
+    def handle(self):
+        payload = self.data
+        repourl = self.url
+
+        branch = "master"
+        
+        for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
+            self.trigger_build(mapobj, name, lsr=seenrev, tag=refname)
+
 class GhPull(Payload):
 
     def handle(self):
@@ -175,16 +249,16 @@ class GhPull(Payload):
         repourl = self.url
 
         branch = payload['pull_request']['base']['ref']
-        data = { "url" : payload['pull_request']['html_url'],
+        pr = { "url" : payload['pull_request']['html_url'],
                  "source_repourl" : payload['pull_request']['head']['repo']['clone_url'],
                  "source_branch" : payload['pull_request']['head']['ref'],
                  "username" : payload['pull_request']['user']['login'],
                  "action" : payload['action'],
                  "id" : payload['number'],
-             }
+               }
 
         for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
-            handle_pr(mapobj, data, payload)
+            self.handle_pr(mapobj, pr)
 
 class GhPush(Payload):
 
@@ -296,7 +370,7 @@ class GhPush(Payload):
 
                 # notify new branch created or commit in branch
                 if reftype == "heads":
-                    handle_commit(mapobj, seenrev, name, notify=mapobj.notify and not notified)
+                    self.handle_commit(mapobj, seenrev, name, notify=mapobj.notify and not notified)
                     notified = True
 
                 elif reftype == "tags":
@@ -316,7 +390,7 @@ class BbPull(Payload):
             branch = values['destination']['branch']['name']
             source = urlparse.urljoin(bburl, values['source']['repository']['full_name'])
 
-            data = { "url" : urlparse.urljoin(source + '/', "pull-request/%s" % values['id']),
+            pr = { "url" : urlparse.urljoin(source + '/', "pull-request/%s" % values['id']),
                      "source_repourl" : source + ".git",
                      "source_branch" : values['source']['branch']['name'],
                      "username" : values['author']['username'],
@@ -325,7 +399,7 @@ class BbPull(Payload):
                  }
 
         for mapobj in WebHookMapping.objects.filter(repourl=self.url, branch=branch):
-            handle_pr(mapobj, data, self.data)
+            self.handle_pr(mapobj, pr)
 
 
 class BbPush(Payload):
@@ -394,7 +468,7 @@ class BbPush(Payload):
 
                     print "%s in %s was not seen before, notify it if enabled" % (commits[-1], branch)
                     seenrev.revision = commits[-1]
-                    handle_commit(mapobj, seenrev, payload["user"], notify=mapobj.notify and not notified)
+                    self.handle_commit(mapobj, seenrev, payload["user"], notify=mapobj.notify and not notified)
                     notified = True
 
                 else:

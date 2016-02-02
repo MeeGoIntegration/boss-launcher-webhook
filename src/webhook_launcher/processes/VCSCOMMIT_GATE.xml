@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <process name="vcsbuild">
     <sequence>
+      <action participant="webhook_launcher.tasks.create_branch" />
       <action participant="webhook_launcher.tasks.trigger_service" />
+      <action participant="webhook_launcher.tasks.auto_promote" />
     </sequence>
 </process>

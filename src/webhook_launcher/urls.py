@@ -19,5 +19,7 @@
 from django.conf.urls import include, url
 from django.conf import settings
 import app.urls
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
-urlpatterns = [url(r''+settings.URL_PREFIX+'/', include(app.urls))]
+urlpatterns = staticfiles_urlpatterns()
+urlpatterns += [url(r''+settings.URL_PREFIX+'/', include(app.urls))]

@@ -46,6 +46,7 @@ class VCSService(models.Model):
     name = models.CharField(max_length=50, unique=True, help_text="Friendly name of this VCS hosting service")
     netloc = models.CharField(max_length=200, unique=True, help_text="Network location from payload (for example: git@git.merproject.org:1234)")
     ips = models.TextField(blank=True, null=True, help_text="Known IP adresses of this service (optional)")
+    gerrit = models.BooleanField(default=False, help_text="Enable listening to gerrit event-stream over ssh(requires setting up SSH key and role on gerrit)")
 
 class VCSNameSpace(models.Model):
 
@@ -221,12 +222,13 @@ class WebHookMapping(models.Model):
     repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
     branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
     project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
-    package = models.CharField(max_length=250, help_text="name of the package to create or update in OBS")
+    package = models.CharField(max_length=250, help_text="name of the package to create or update in the build system")
     token = models.CharField(max_length=100, default="", null=True, blank=True, help_text="a token that should exist in tag names and changelog entry headers to enable handling them")
     debian = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
     dumb = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
-    notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
-    build = models.BooleanField(default=True, help_text="Enable OBS build triggering")
+    notify = models.BooleanField(default=True, help_text="Enable notifications of events")
+    build = models.BooleanField(default=True, help_text="Enable build triggering")
+    pr_voting = modles.BooleanField(default=True, help_text="Enable pull request voting")
     comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User, editable=False)
     obs = models.ForeignKey(BuildService)

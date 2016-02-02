@@ -26,3 +26,6 @@ def launch_notify(fields):
 def launch_build(fields):
     launch(settings.VCSCOMMIT_BUILD, fields)
 
+def launch_gate(fields):
+    launch(settings.VCSCOMMIT_GATE, fields)
+

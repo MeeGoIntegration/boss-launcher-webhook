@@ -1,7 +1,11 @@
 from __future__ import absolute_import
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "webhook_launcher.settings")
 
 import pika
 import json
+import django
+django.setup()
 
 from celery import Celery
 from celery.signals import task_success

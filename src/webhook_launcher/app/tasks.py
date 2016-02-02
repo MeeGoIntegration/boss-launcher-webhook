@@ -21,44 +21,14 @@ import json
 from webhook_launcher.app.models import (LastSeenRevision, QueuePeriod)
 from webhook_launcher.app.bureaucrat import launch_notify, launch_build
 
-def handle_commit(mapobj, lsr, user, notify=False):
-
-    lsr.tag = ""
-    lsr.handled = False
-    lsr.save()
-
-    if not notify:
-        return
-
-    message = "%s commit(s) pushed by %s to %s branch of %s" % (len(lsr.payload["commits"]), user, mapobj.branch, mapobj.repourl)
-    if not mapobj.mapped:
-        message = "%s, which is not mapped yet. Please map it." % message
-
-    fields = mapobj.to_fields()
-    fields['msg'] = message
-    fields['payload'] = lsr.payload
-    print message
-    launch_notify(fields)
-
-def handle_pr(mapobj, data, payload):
-
-    message = "Pull request #%s by %s from %s / %s to %s %s (%s)" % (
-        data['id'], data['username'], data['source_repourl'],
-        data['source_branch'], mapobj, data['action'], data['url'])
-
-    if mapobj.notify:
-
-        fields = mapobj.to_fields()
-        fields['msg'] = message
-        fields['payload'] = payload
-        print message
-        launch_notify(fields)
-
 def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
 
     if lsr is None:
         lsr, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
 
+    if user is None:
+        user = mapobj.user.username
+  
     # Only fire for projects which allow webhooks. We can't just
     # rely on validation since a Project may forbid hooks after
     # the hook was created
@@ -90,20 +60,6 @@ def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
                 delayed = True
                 break
 
-    # handle_build actually launches a build process
-    msg = handle_build(mapobj, user, lsr, force, skipped, delayed, qp)
-    return msg
-
-def handle_build(mapobj, user=None, lsr=None, force=None, skipped=False, delayed=False, qp=None):
-
-    build = mapobj.build and mapobj.mapped
-
-    if lsr is None:
-        lsr = mapobj.lsr
-  
-    if user is None:
-        user = mapobj.user.username
-  
     if lsr.tag:
         message = "Tag %s" % lsr.tag
         if force:
@@ -140,7 +96,10 @@ def handle_build(mapobj, user=None, lsr=None, force=None, skipped=False, delayed
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
         fields['revision'] = lsr.revision
-        fields['payload'] = json.loads(lsr.payload)
+        if lsr.payload:
+            fields['payload'] = json.loads(lsr.payload)
+        else:
+            fields['payload'] = json.loads("{}")
         launch_build(fields)
         lsr.handled = True
 
