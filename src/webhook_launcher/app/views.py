@@ -130,7 +130,7 @@ class WebHookMappingFilter(filters.FilterSet):
     
     class Meta:
         model = WebHookMapping
-        fields = ["package", "project", "repourl", "user__username", "build"]
+        fields = ["package", "project", "repourl", "user__username", "build_head"]
 
 class WebHookMappingViewSet(viewsets.ModelViewSet):
     queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")

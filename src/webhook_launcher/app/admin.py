@@ -54,9 +54,9 @@ class WebHookMappingAdmin(admin.ModelAdmin):
             "all": ("extra.css",)
         }
 
-    list_display = ( 'repourl', 'branch', 'project', 'package', 'notify', 'build', 'user')
+    list_display = ( 'repourl', 'branch', 'project', 'package', 'notify', 'build_head', 'user')
     list_display_links = ( 'repourl', )
-    list_filter = ( 'project', 'user', 'notify', 'build' )
+    list_filter = ( 'project', 'user', 'notify', 'build_head' )
     search_fields = ( 'user__username', 'user__email', 'repourl', 'project', 'package' )
     inlines = [LastSeenRevisionInline]
     actions = ['trigger_build']

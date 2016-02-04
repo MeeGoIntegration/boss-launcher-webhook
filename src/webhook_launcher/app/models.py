@@ -232,7 +232,7 @@ class WebHookMapping(models.Model):
     pr_voting = models.BooleanField(default=True, help_text="Enable pull request voting")
     comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User, editable=False)
-    bs = models.ForeignKey(BuildService)
+    obs = models.ForeignKey(BuildService)
 
 class LastSeenRevision(models.Model):
 

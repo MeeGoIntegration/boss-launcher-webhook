@@ -24,13 +24,11 @@ def listen_streams():
     while True:
         for server, gerrit in gerrit_instances.items():
             event = None
-            event = gerrit.get_event(block=False, timeout=1)
+            event = gerrit.get_event(block=True, timeout=1)
             if event is not None:
                 data = event.json
                 data["gerrit"] = server
                 launch_queue({"payload" : data})
-            else:
-                time.sleep(1)
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
