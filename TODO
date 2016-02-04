@@ -1,0 +1,6 @@
+* Enrich VCS classes with API calls to:
+** Vote on pull requests
+** Fetch missed events (at least gerrit api supports that)
+* Support new bitbucket webhooks
+* refactor app.tasks away
+* Add support for more build services when needed

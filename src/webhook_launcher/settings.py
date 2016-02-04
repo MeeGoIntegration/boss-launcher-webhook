@@ -96,7 +96,7 @@ db_host = config.get('db', 'db_host')
 VCSCOMMIT_QUEUE = config.get('processes', 'vcscommit_queue')
 VCSCOMMIT_NOTIFY = config.get('processes', 'vcscommit_notify')
 VCSCOMMIT_BUILD = config.get('processes', 'vcscommit_build')
-VCSCOMMIT_GATE = config.get('processes', 'vcscommit_gate')
+VCSCOMMIT_PRVOTE = config.get('processes', 'vcscommit_prvote')
 
 
 USE_LDAP = config.getboolean('ldap', 'use_ldap')

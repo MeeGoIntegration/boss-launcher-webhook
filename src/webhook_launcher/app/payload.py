@@ -27,7 +27,7 @@ import os
 from webhook_launcher.app.models import (WebHookMapping, LastSeenRevision, RelayTarget, Project, VCSNameSpace, BuildService)
 
 from webhook_launcher.app.tasks import trigger_build 
-from webhook_launcher.app.bureaucrat import launch_notify, launch_build
+from webhook_launcher.app.bureaucrat import launch_notify, launch_build, launch_pr_voting
 from webhook_launcher.app.misc import bbAPIcall
 
 def get_payload(data):
@@ -136,9 +136,6 @@ class Payload(object):
         lsr.handled = False
         lsr.save()
     
-        if not notify:
-            return
-    
         message = "%s commit(s) pushed by %s to %s branch of %s" % (len(lsr.payload["commits"]), user, mapobj.branch, mapobj.repourl)
         if not mapobj.mapped:
             message = "%s, which is not mapped yet. Please map it." % message
@@ -146,7 +143,12 @@ class Payload(object):
         fields = mapobj.to_fields()
         fields['msg'] = message
         fields['payload'] = lsr.payload
-        launch_notify(fields)
+
+        if mapobj.notify:
+            launch_notify(fields)
+
+        if mapobj.build_head:
+            trigger_build(mapobj, user, lsr=lsr)
     
     def handle_pr(self, mapobj, pr):
  
@@ -163,7 +165,7 @@ class Payload(object):
             launch_notify(fields)
 
         if mapobj.pr_voting:
-            launch_gate(mapobj, fields)
+            launch_pr_voting(mapobj, fields)
 
     def relay(self, relays=None):
 
@@ -236,10 +238,66 @@ class GerritPush(Payload):
         payload = self.data
         repourl = self.url
 
-        branch = "master"
+        refsplit = payload['refUpdate']['refName'].split("/", 2)
+        if len(refsplit) > 1:
+            reftype, refname = refsplit[1:]
+        else:
+            print "Couldn't figure out reftype or refname"
+            return
+
+        branches = []
+        if reftype == "heads":
+        # commit to branch
+            branches = [refname]
+        elif reftype == "tags":
+            print "WIP"
+        else:
+            print "Couldn't use payload"
+            return
         
-        for mapobj in WebHookMapping.objects.filter(repourl=repourl, branch=branch):
-            self.trigger_build(mapobj, name, lsr=seenrev, tag=refname)
+        mapobj = None
+        mapobjs = WebHookMapping.objects.filter(repourl=repourl)
+        if branches:
+            mapobjs = mapobjs.filter(branch__in=branches)
+        print mapobjs
+
+        revision = payload['refUpdate']['newRev']
+        zerosha = '0000000000000000000000000000000000000000'
+        # action
+        if revision == zerosha:
+            #deleted
+            if reftype == "heads":
+                for mapobj in mapobjs:
+                    # branch was deleted
+                    # FIXME: Notify
+                    # NOTE: do related objects get removed ?
+                    mapobj.delete()
+
+        else:
+            #created or changed
+            emails = set([payload["submitter"]["email"]])
+            name = payload["submitter"]["username"]
+
+            if not revision or not name:
+                return
+
+            if not len(mapobjs):
+                mapobjs = []
+                packages = self.params.get("packages", None)
+                for branch in branches:
+                    mapobjs.extend(self.create_placeholder(repourl, branch,
+                                                           packages=packages))
+
+            notified = False
+            for mapobj in mapobjs:
+                seenrev, created = LastSeenRevision.objects.get_or_create(mapping=mapobj)
+                seenrev.payload = json.dumps(payload)
+                seenrev.revision = revision
+
+                if emails:
+                    seenrev.emails = json.dumps(list(emails))
+
+                trigger_build(mapobj, name, lsr=seenrev, tag=refname)
 
 class GhPull(Payload):
 

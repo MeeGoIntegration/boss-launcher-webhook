@@ -146,3 +146,8 @@ def auto_promote(workitem):
     result = obs_create_request(apiurl, options_list=actions, description="", comment=comment, supersede=True, opt_sourceupdate="cleanup")
     return workitem
 
+@app.task
+def pr_vote(workitem):
+
+    #FIXME: placeholder
+    return workitem

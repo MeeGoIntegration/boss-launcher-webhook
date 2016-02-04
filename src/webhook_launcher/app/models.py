@@ -33,7 +33,7 @@ class BuildService(models.Model):
     def __unicode__(self):
         return self.weburl
 
-    namespace = models.CharField(max_length=50, unique=True, help_text="This is also used to identify the OBS alias in BOSS processes")
+    namespace = models.CharField(max_length=50, unique=True, help_text="This is also used to identify the build service alias in processes")
     apiurl = models.CharField(max_length=250, unique=True)
     weburl = models.CharField(max_length=250, unique=True)
 
@@ -227,11 +227,12 @@ class WebHookMapping(models.Model):
     debian = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
     dumb = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
     notify = models.BooleanField(default=True, help_text="Enable notifications of events")
-    build = models.BooleanField(default=True, help_text="Enable build triggering")
-    pr_voting = modles.BooleanField(default=True, help_text="Enable pull request voting")
+    build_head = models.BooleanField(default=True, help_text="Enable build triggering whenever the branch is updated")
+    build_tag = models.BooleanField(default=True, help_text="Enable build triggering on git tag events")
+    pr_voting = models.BooleanField(default=True, help_text="Enable pull request voting")
     comment = models.TextField(blank=True, null=True, default="")
     user = models.ForeignKey(User, editable=False)
-    obs = models.ForeignKey(BuildService)
+    bs = models.ForeignKey(BuildService)
 
 class LastSeenRevision(models.Model):
 

@@ -3,6 +3,7 @@
     <sequence>
       <action participant="webhook_launcher.tasks.create_branch" />
       <action participant="webhook_launcher.tasks.trigger_service" />
-      <action participant="webhook_launcher.tasks.auto_promote" />
+      <!-- participant="webhook_launcher.tasks.trigger_qa" /> -->
+      <action participant="webhook_launcher.tasks.pr_vote" />
     </sequence>
 </process>
