@@ -36,7 +36,7 @@ def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
         print "Project has build disabled"
         return
 
-    build = mapobj.build and mapobj.mapped
+    build = (mapobj.build_head or mapobj.build_tag) and mapobj.mapped
     delayed = False
     skipped = False
     qp = None
@@ -95,7 +95,7 @@ def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
     if build:
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
-        fields['revision'] = lsr.revision
+        fields['revision'] = lsr.revision or mapobj.branch
         if lsr.payload:
             fields['payload'] = json.loads(lsr.payload)
         else:
