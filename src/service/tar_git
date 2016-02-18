@@ -198,21 +198,23 @@ sanitise_params () {
 
 find_spec_file () {
 
-  [[ -d "$1" ]] || error "no packaging in this git clone"
+  SPECFILE="$(find rpm/ packaging/ "$MYOUTDIR/.." -type f -name '*.spec')"
 
-  SPECFILE="$(find "$1"/ -maxdepth 1 -type f -name '*.spec')"
-
-  if [[ ! "$(echo $SPECFILE | wc -w)" -eq 1 ]]; then
-      SPECFILE=$(find "$1"/ -type f -name "$OBS_SERVICE_PACKAGE".spec)
+  if [[ "$(echo $SPECFILE | wc -w)" -gt 1 ]]; then
+      SPECFILE=$(find rpm/ packaging/ "$MYOUTDIR/.." -type f -name "$OBS_SERVICE_PACKAGE".spec)
   fi
 
-  [[ "$(echo $SPECFILE | wc -w)" -eq 1 ]] || error "Need single spec file in rpm"
+  [[ "$(echo $SPECFILE | wc -w)" -eq 1 ]] || { echo "no spec file found"; return 1; }
+
+  cp "$SPECFILE" ..
+  SPECFILE="../$(basename $SPECFILE)"
+
 
 }
 
 find_changes_file () {
 
-  CHANGESFILE="$(find $1 -type f -name '*.changes')"
+  CHANGESFILE="$(find rpm/ -type f -name '*.changes')"
 
   [[ "$(echo $CHANGESFILE | wc -w)" -le 1 ]] || error "Need single changes file in rpm"
 
@@ -258,8 +260,9 @@ d }" "$SPECFILE"
 
 find_package_name () {
 
-  PACKAGE_NAME="$(get_spec_field Name)"
-  [[ -z $PACKAGE_NAME ]] && error "couldn't determine package name from spec file"
+  [[ -z "$SPECFILE" ]] || PACKAGE_NAME="$(get_spec_field Name)"
+  [[ -z "$OBS_SERVICE_PACKAGE" ]] || PACKAGE_NAME="$OBS_SERVICE_PACKAGE"
+  [[ -z $PACKAGE_NAME ]] && error "couldn't determine package name from spec file or environment"
 
 }
 
@@ -318,6 +321,8 @@ find_version () {
 }
 
 find_compression () {
+
+  [[ -z "$SPECFILE" ]] && { COMPRESS_COMMAND="gzip -1"; COMPRESS_EXT="tar.gz"; return 0; }
 
   SOURCE_FILENAME="$(get_spec_field Source)"
   [[ -z "$SOURCE_FILENAME" ]] && SOURCE_FILENAME="$(get_spec_field "Source[0-9]*")"
@@ -797,7 +802,7 @@ clone () {
 
   pushd $CLONE_NAME >/dev/null
   if [ ! -z "$BRANCH" ] ; then
-      git checkout "$BRANCH"
+      git fetch origin "$BRANCH" && git checkout FETCH_HEAD
       [ $? -eq 0 ] || error "couldn't checkout branch $BRANCH"
   else
       BRANCH="$(git branch | grep '*' | gawk '{ print $2 }')"
@@ -826,8 +831,8 @@ set_versha () {
   find_version_tag
   
   if [ "x$VERSION" = "x" ]; then 
-    # none found, fallback to using version from spec file
-    find_version "$SPECFILE"
+    # none found, fallback to using version from spec file, and 0 as last ditch 
+    find_version "$SPECFILE" || VERSION="0"
   fi
 
   # decide if we need to add a git revision to the version
@@ -898,10 +903,9 @@ set_spec_version () {
 
 rpm_pkg () {
 
-  find_spec_file rpm
+  find_spec_file
   expand_spec_file "$SPECFILE"
-  cp -v "$SPECFILE" ..
-  find_changes_file rpm
+  find_changes_file
   find_yaml_file
   find_other_files
   find_compression "$SPECFILE"
