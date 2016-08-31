@@ -10,7 +10,7 @@ License: GPLv2+
 URL: http://www.merproject.org
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp
+BuildRequires: python, python-setuptools, python-sphinx, python-boss-skynet, python-ruote-amqp
 %if ! 0%{?use_pip}
 BuildRequires: python-django
 %endif
