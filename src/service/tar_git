@@ -708,25 +708,32 @@ cache_prefetch () {
 handle_submodules() {
  
   if [ -f .gitmodules ] ; then
-    local submod url path URL REFERENCE
+    local submod url baseurl path URL REFERENCE
+    baseurl=${1%/}
     for submod in $(git config -f .gitmodules -l | grep -P 'submodule\..*\.url' | xargs); do
       url=$(echo $submod | cut -d= -f2)
+      # Handle relative URLs
+      case "$url" in
+      ../*)
+        url=${baseurl%/*}${url:2};;
+      ./*)
+        url=${baseurl}${url:1};;
+      esac
       name=$(echo $submod | cut -d= -f1 | cut -d. -f2)
       path=$(git config -f .gitmodules --get submodule.$name.path | cut -d= -f2)
     
       URL=$url
       cache_prefetch $name $URL
-      url=$URL
     
       REFERENCE=""
-      [ -d "$url" ] && REFERENCE="--reference $url"
+      [ -d "$URL" ] && REFERENCE="--reference $URL"
     
       git submodule --quiet update --init --force $REFERENCE -- $path
 
       test -d $path || error "Something went wrong handling submodule $name from $url"
 
       pushd $path >/dev/null
-        handle_submodules
+        handle_submodules $url
       popd >/dev/null
      
     done
@@ -809,7 +816,7 @@ clone () {
   fi
 
   # initialize submodules if any
-  handle_submodules
+  handle_submodules $MYURL
   git submodule update --recursive --init --force
 
   popd >/dev/null
