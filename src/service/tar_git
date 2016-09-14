@@ -921,8 +921,9 @@ rpm_pkg () {
   if [ -f git-version-gen ] || [ -f build-aux/git-version-gen ]; then
      echo -n $VERSHA > .tarball-version
   fi
-
-  git_ls_files | tar --mtime '2000-01-01' --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
+  
+  commitdate=$(git log -1 --date=short --pretty=format:%cd)
+  git_ls_files | tar --mtime "$commitdate" --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
 
   set_spec_version
 
