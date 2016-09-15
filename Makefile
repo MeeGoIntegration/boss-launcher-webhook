@@ -1,7 +1,7 @@
 all: install 
 
 install:
-	python setup.py install --root=$(DESTDIR) --prefix=$(PREFIX)
+	python setup.py install --root=$(DESTDIR)
 	install -D -m 644 conf/supervisor/webhook.conf    $(DESTDIR)/etc/supervisor/conf.d/webhook.conf
 
 	for p in create_project delete_webhook handle_webhook relay_webhook trigger_service ; do \
