@@ -182,8 +182,11 @@ class ParticipantHandler(BuildServiceParticipant):
             x = core.http_PUT(u, data="".join(data))
 
         # Start with an empty XML doc
-        try: # to get any existing _service file
-            services_xml = self.obs.getFile(project, package, "_service")
+        try: # to get any existing _service file.
+             # We use expand=0 as otherwise a failed service run won't
+             # return the _service file
+            print "Trying to get _service file for %s/%s" % (project, package)
+            services_xml = self.obs.getFile(project, package, "_service", expand=0)
         except urllib2.HTTPError, e:
             print "Exception %s trying to get _service file for %s/%s" % (e, project, package)
             if e.code == 404:
