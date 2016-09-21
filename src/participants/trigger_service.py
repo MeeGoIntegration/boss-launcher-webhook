@@ -209,10 +209,10 @@ class ParticipantHandler(BuildServiceParticipant):
         else:
             services.append(new_service)
 
-        # print etree.tostring(services, pretty_print=True)
+        svc_file = etree.tostring(services, pretty_print=True)
+        print "New _service file:\n%s" % svc_file
 
         # And send our new service file
-        self.obs.setupService(project, package,
-                        etree.tostring(services, pretty_print=True))
+        self.obs.setupService(project, package, svc_file)
 
         wid.result = True
