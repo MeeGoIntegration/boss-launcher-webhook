@@ -28,7 +28,7 @@ Ruote.process_definition 'vcscommit' do
 
     # Mer projects are not created by this process
     # This should be conditional though
-    #create_project
+    create_project
     trigger_service
     _if '"${gated_project}" != ""' do
       sequence do
