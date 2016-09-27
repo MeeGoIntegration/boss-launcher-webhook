@@ -72,14 +72,23 @@ def get_payload(data):
                     url = url + ".git"
                 klass = BbPush
 
-        elif repo.get('url', None):
+        else:
+            # Try the gitlab cannonical http url first:
+            url = repo.get('git_http_url', None)
             # github type payload
-            url = repo.get('url', None)
+            if not url:
+                url = repo.get('url', None)
             if url:
-                print "github payload"
+                print "github/gitlab payload"
                 if not url.endswith(".git"):
                     url = url + ".git"
                 klass = GhPush
+
+    if not url:
+        raise Exception("Could not locate a url in the payload\n%s" % data)
+
+    # Some hooks use the sshurl rather than the https.+}
+    self.sshurl = repo.get('git_ssh_url', None)
 
     return klass(url, params, data)
 
@@ -124,6 +133,7 @@ class Payload(object):
     def relay(self, relays=None):
 
         if not self.url:
+            print "Trying to relay but Payload has no url, skipping"
             return
 
         parsed_url = urlparse.urlparse(self.url)
@@ -138,6 +148,7 @@ class Payload(object):
                                     sources__path=service_path,
                                     sources__service__netloc=parsed_url.netloc))
             if not relays:
+                print "This event's netloc path (%s %s) is not in any Relay Target" % (parsed_url.netloc, service_path)
                 return
 
         headers = {'content-type': 'application/json'}
@@ -226,13 +237,14 @@ class GhPush(Payload):
             print "Couldn't use payload"
             return
 
-        print repourl
-        print branches
+        print "Url is %s or maybe %s" % (repourl, self.sshurl)
+        print "Branches %s" % branches
         mapobj = None
-        mapobjs = WebHookMapping.objects.filter(repourl=repourl)
+        # Look for mappings based on either the canonical url or the ssh one
+        mapobjs = WebHookMapping.objects.filter(repourl__in = [u for u in [repourl, self.sshurl] if u is not None])
         if branches:
             mapobjs = mapobjs.filter(branch__in=branches)
-        print mapobjs
+        print "Mappings %s" % mapobjs
 
         zerosha = '0000000000000000000000000000000000000000'
         # action
