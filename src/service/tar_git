@@ -484,9 +484,11 @@ get_tagmsg () {
 }
 
 dash_trim () {
-  # and workaround for github breaking the subject line with ... automatically
-  # in pull requests
-  sed -e 's/^/- /' -e '/^\s*$/d' -e 's/JB#[0-9]\{1,\}\.\.\.$//'
+  # * Workaround for github breaking the subject line with ... automatically
+  #   in pull requests
+  # * Fix uniq filtering by normalizing the \r\n line endings used by gitlab
+  #   in merge commit messages
+  sed -e 's/^/- /' -e '/^\s*$/d' -e 's/JB#[0-9]\{1,\}\.\.\.$//' -e 's/\r//'
 }
 
 grep_entry () {
