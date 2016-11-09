@@ -45,6 +45,7 @@ set_default_params () {
   CLONE_NAME=""
   SVC_NAME=""
   REPO_PATH=""
+  GIT_SUBSTITUTIONS=()
 }
 
 get_config_options () {
@@ -783,6 +784,29 @@ parse_url () {
 
 }
 
+maybe_use_mirror () {
+    # if we're using a mirror then we clone from there.
+    # Essentially s/original_host/local_mirror/
+    #
+    # Input is in MYURL
+    # REPO_NAME is just the final word: qtbase
+    # SCHEME is http/ssh etc. Defaults to ssh
+    # REPO_PATH is the gitlab 'group' (eg mer-core)
+    # REPO_URL is the DNS name of the service git.merproject.org
+    # SVC_NAME is the DNS with the first/last bits removed (eg git.merproject.org > merproject). Only used by 'repo'
+
+    # Need to edit MYURL and REPO_URL
+    for subst in "${GIT_SUBSTITUTIONS[@]}"
+    do
+	sub1=${subst%/*}
+	sub2=${subst#*/}
+	echo 
+	MYURL=${MYURL/$sub1/$sub2}
+	REPO_URL=${REPO_URL/$sub1/$sub2}
+    done
+
+}
+
 clone () {
 
   echo "Handling $CLONE_NAME"
@@ -1093,6 +1117,7 @@ main () {
   SRCDIR=$(pwd)
   cd "$MYOUTDIR"
   parse_url
+  maybe_use_mirror
   clone
   if [ x"$DUMB" = "xY" ]; then
     # Dumb mode is simple - take the content of the checkout and drop it in out dir
