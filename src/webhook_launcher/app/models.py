@@ -104,8 +104,8 @@ class Project(models.Model):
     official = models.BooleanField(default=True, help_text="If set then only valid namespaces can be used for the git repo")
     allowed = models.BooleanField(default=True, help_text="If not set then webhooks are not allowed for this project. This is useful for projects which should only have specific versions of packages promoted to them.")
     gated = models.BooleanField(default=False, help_text="If set then webhooks pointing at this project will be triggered to a side project instead and then an autopromotion attempted. This is useful for projects which apply formal entry checks and/or QA.")
-    groups = models.ManyToManyField(Group, blank=True, null=True)
-    vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True, null=True)
+    groups = models.ManyToManyField(Group, blank=True)
+    vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True)
     match = models.CharField(max_length=250, blank=True, null=True, help_text="If set then used as well as name to re.match() project names")
 
 class WebHookMapping(models.Model):
@@ -296,8 +296,8 @@ class QueuePeriod(models.Model):
 
         return True
 
-    start_time = models.TimeField(default=datetime.datetime.now())
-    end_time = models.TimeField(default=datetime.datetime.now())
+    start_time = models.TimeField(default=timezone.now)
+    end_time = models.TimeField(default=timezone.now)
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
     recurring = models.BooleanField(default=False)
