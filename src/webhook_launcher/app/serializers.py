@@ -31,27 +31,27 @@ class LastSeenRevisionSerializer(serializers.ModelSerializer):
 #             obs = None
 #         return obs
 
-class BuildServiceField(serializers.WritableField):
+class BuildServiceField(serializers.Field):
     """
     Handle references to a BuildService object
     Outputs namespace
     Takes a namespace as a key
     """
-    def to_native(self, obj):
+    def to_representation(self, obj):
         return obj.namespace
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         obs = BuildService.objects.get(namespace=data)
         return obs
 
-class UserField(serializers.WritableField):
+class UserField(serializers.Field):
     """
     Handle references to a User object
     """
-    def to_native(self, obj):
+    def to_representation(self, obj):
         return obj.username
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         user = User.objects.get(username=data)
         return user
 
@@ -59,10 +59,16 @@ class LSRField(serializers.Field):
     """
     Handle references to a LastSeenRevision object
     """
-    def to_native(self, obj):
+    def to_representation(self, obj):
         return LastSeenRevisionSerializer().to_native(obj.lsr)
 
-    def field_from_native(self, data, files, field_name, into):
+    def get_value(self, obj):
+        # Pass the entire object through to `to_representation()`,
+        # instead of the standard attribute lookup.
+        return obj
+
+    def to_internal_value(self, data):
+        field_name="lsr"
         if field_name not in data:
             return
         mydata = data[field_name]
