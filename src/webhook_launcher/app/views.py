@@ -27,7 +27,7 @@ from collections import defaultdict
 from django.http import ( HttpResponse, HttpResponseBadRequest, HttpResponseRedirect,
                           HttpResponseForbidden, HttpResponseNotAllowed )
 from django.db.models import Q
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, render
 from django.template import RequestContext
 from django.conf import settings
 
@@ -67,8 +67,7 @@ def index(request):
 
             mappings[mapobj.project]["packages"].append(mapobj.to_fields())
 
-        return render_to_response('app/index.html', {'mappings' : dict(mappings)},
-                                  context_instance=RequestContext(request))
+        return render(request, 'app/index.html', {'mappings' : dict(mappings)})
 
     elif request.method == 'POST':
         #TODO: Move to database ip filter list
