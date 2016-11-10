@@ -126,7 +126,8 @@ class WebHookMappingFilter(filters.FilterSet):
     project = filters.AllLookupsFilter(name='project')
     repourl = filters.AllLookupsFilter(name='repourl')
     branch = filters.AllLookupsFilter(name='branch')
-    user = filters.AllLookupsFilter(name='user__username')
+    #  user = filters.AllLookupsFilter(name='user__username') ## << FIXME. This is the original line but it seems broken after an update to either django or the filters
+    user = filters.AllLookupsFilter(name='user')
     
     class Meta:
         model = WebHookMapping
