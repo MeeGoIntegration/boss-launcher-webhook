@@ -53,7 +53,7 @@ def index(request):
     """
 
     if request.method == 'GET':
-        if not settings.PUBLIC_LANDING_PAGE and not request.user.is_authenticated():
+        if not settings.PUBLIC_LANDING_PAGE and not request.user.is_authenticated:
             return HttpResponseRedirect(settings.LOGIN_URL)
 
         mappings = defaultdict(dict)
