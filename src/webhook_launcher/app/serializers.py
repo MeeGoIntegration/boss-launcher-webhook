@@ -12,7 +12,8 @@ class BuildServiceSerializer(serializers.ModelSerializer):
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
-        exclude = ('id', 'handled', 'payload', 'timestamp',)
+        exclude = ('payload',)
+        #exclude = ('id', 'handled', 'payload', 'timestamp',)
 
 # Commented out pending testing
 # class BuildServiceField(serializers.Field):
@@ -22,7 +23,7 @@ class LastSeenRevisionSerializer(serializers.ModelSerializer):
 #     Takes a namespace as a key
 #     """
 #     def to_representation(self, obj):
-#         return BuildServiceSerializer().to_native(obj)
+#         return BuildServiceSerializer().to_representation(obj)
 
 #     def to_internal_value(self, data):
 #         try:
@@ -60,7 +61,7 @@ class LSRField(serializers.Field):
     Handle references to a LastSeenRevision object
     """
     def to_representation(self, obj):
-        return LastSeenRevisionSerializer().to_native(obj.lsr)
+        return LastSeenRevisionSerializer().to_representation(obj.lsr)
 
     def get_value(self, obj):
         # Pass the entire object through to `to_representation()`,
@@ -101,5 +102,5 @@ class WebHookMappingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WebHookMapping
-        exclude = ('id',) # don't want/need to expose internal pk
+#        exclude = ('id',) # don't want/need to expose internal pk
         depth = 1

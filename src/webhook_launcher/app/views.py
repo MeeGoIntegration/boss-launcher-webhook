@@ -130,10 +130,10 @@ class WebHookMappingFilter(filters.FilterSet):
     
     class Meta:
         model = WebHookMapping
-        fields = ["package", "project", "repourl", "user__username", "build"]
+        fields = ["id", "package", "project", "repourl", "user__username", "build"]
 
 class WebHookMappingViewSet(viewsets.ModelViewSet):
-    queryset = WebHookMapping.objects.select_related("obs", "lastseenrevision").exclude(package="")
+    queryset = WebHookMapping.objects.select_related("obs").exclude(package="")
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     filter_class = WebHookMappingFilter
@@ -143,10 +143,10 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
 
     def post_save(self, obj, created=False):
         request = self.get_renderer_context()['request']
-        revision = request.DATA.get('revision', None)
+        revision = request.data.get('revision', None)
         if revision is None:
             return
-        tag = request.DATA.get('tag', None)
+        tag = request.data.get('tag', None)
 
         if created:
             lsr = LastSeenRevision(mapping = obj, revision = revision, tag=tag)
@@ -179,19 +179,14 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
         #first take the original data
         patched_data = serializer.data
 
-        # patch keys from request.DATA
-        for key, value in request.DATA.items():
+        # patch keys from request.data
+        for key, value in request.data.items():
             patched_data[key] = value
-
-        # for obs input is namespace but we store more.
-        obs = request.DATA.get('obs', None)
-        if not obs and patched_data.get('obs', None):
-            patched_data['obs'] = patched_data['obs']['namespace']
 
         serializer = WebHookMappingSerializer(hook, data=patched_data)
 
-        lsr_data = request.DATA.get('lsr', None)
-        revision = request.DATA.get('revision', None)
+        lsr_data = request.data.get('lsr', None)
+        revision = request.data.get('revision', None)
 
         if lsr_data or revision:
             # in rare case there is no mapping to lsr from hook we create one
