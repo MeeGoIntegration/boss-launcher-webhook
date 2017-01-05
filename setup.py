@@ -22,8 +22,8 @@ from distutils.core import setup
 
 from setuptools import find_packages
 
-static_files=[('etc/skynet', ['src/webhook_launcher/webhook.conf']),
-                ('usr/share/webhook_launcher/processes', 
+static_files=[('/etc/skynet', ['src/webhook_launcher/webhook.conf']),
+                ('/usr/share/webhook_launcher/processes', 
                    ['src/webhook_launcher/processes/VCSCOMMIT_NOTIFY',
                     'src/webhook_launcher/processes/VCSCOMMIT_BUILD',
                     'src/webhook_launcher/processes/VCSCOMMIT_QUEUE',
