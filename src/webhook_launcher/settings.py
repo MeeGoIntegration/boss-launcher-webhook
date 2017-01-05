@@ -244,7 +244,7 @@ INSTALLED_APPS = (
 
 FORCE_SCRIPT_NAME = ''
 
-LOGIN_URL='/' + URL_PREFIX + "/login/"
+LOGIN_URL='/' + URL_PREFIX + "/admin/login/"
 LOGIN_REDIRECT_URL='/' + URL_PREFIX + "/landing/"
 
 REST_FRAMEWORK = {
