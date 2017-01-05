@@ -1,4 +1,5 @@
 %define svdir %{_sysconfdir}/supervisor/conf.d/
+%define use_pip 1
 
 Name: boss-launcher-webhook
 Version: 0.2.0
@@ -9,29 +10,30 @@ License: GPLv2+
 URL: http://www.merproject.org
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp, python-django
+BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp
+%if ! 0%{?use_pip}
+BuildRequires: python-django
+%endif
 %if 0%{?fedora}
 BuildRequires: MySQL-python
 %else
 BuildRequires: python-mysql
 %endif
-Requires: python-django, python-flup, python-djangorestframework, python-pycurl, python-requests
+Requires: python >= 2.5.0, python-xml, python-boss-skynet, python-flup, python-pycurl, python-requests
+%if ! 0%{?use_pip}
+Requires: python-django, python-djangorestframework python-django-extensions
+%endif
 %if 0%{?fedora}
 Requires: MySQL-python
 %else
 Requires: python-mysql
 %endif
-Requires: python >= 2.5.0
-Requires: python-xml
-Requires: python-boss-skynet
-Requires: python-South
-Requires: python-django-extensions
 Requires(post): python-boss-skynet
 BuildArch: noarch
 Summary: VCS webhook handler
 
 %description
-Webhook handler for github and bitbucket that receives data as a POST callback and launches a ruote process
+Webhook handler for gitlab, github and bitbucket that receives data as a POST callback and launches a ruote process
 
 %package -n obs-service-tar-git
 Group: Applications/Engineering
