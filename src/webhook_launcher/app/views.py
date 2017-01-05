@@ -107,8 +107,10 @@ def index(request):
                 get[key] = values
             data['webhook_parameters'] = get
 
+            print "Payload to launch:"
             pprint(data, indent=2, width=80, depth=6)
             launch_queue({"payload" : data})
+            print "launched"
 
         except Exception as e:
             print e

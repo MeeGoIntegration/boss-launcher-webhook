@@ -33,6 +33,7 @@ def launch(process, fields):
                         amqp_pass = settings.BOSS_PASS,
                         amqp_vhost = settings.BOSS_VHOST)
 
+    print "launching to (%s,%s)" %(settings.BOSS_HOST, settings.BOSS_VHOST)
     launcher.launch(pdef, fields)
 
 def launch_queue(fields):
