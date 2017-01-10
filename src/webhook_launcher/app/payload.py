@@ -87,10 +87,12 @@ def get_payload(data):
     if not url:
         raise Exception("Could not locate a url in the payload\n%s" % data)
 
-    # Some hooks use the sshurl rather than the https.+}
-    self.sshurl = repo.get('git_ssh_url', None)
+    payload = klass(url, params, data)
 
-    return klass(url, params, data)
+    # Some hooks use the sshurl rather than the https.
+    payload.sshurl = repo.get('git_ssh_url', None)
+
+    return payload
 
 class Payload(object):
 
