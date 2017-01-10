@@ -2,7 +2,6 @@ all: install
 
 install:
 	python setup.py install --root=$(DESTDIR)
-	install -D -m 644 conf/supervisor/webhook.conf    $(DESTDIR)/etc/supervisor/conf.d/webhook.conf
 
 	for p in create_project delete_webhook handle_webhook relay_webhook trigger_service ; do \
 	  install -D -m 755 src/participants/$$p.py  $(DESTDIR)/usr/share/boss-skynet/$$p.py ; \

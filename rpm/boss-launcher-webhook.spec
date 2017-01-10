@@ -28,6 +28,7 @@ Requires: MySQL-python
 %else
 Requires: python-mysql
 %endif
+Requires: apache2-mod_wsgi
 Requires(post): python-boss-skynet
 BuildArch: noarch
 Summary: VCS webhook handler
@@ -85,7 +86,6 @@ rm -rf %{buildroot}
 %post
 if [ $1 -ge 1 ]; then
     skynet apply || true
-    skynet reload webhook || true
     skynet reload delete_webhook || true
     skynet reload handle_webhook || true
     skynet reload relay_webhook || true
@@ -109,7 +109,6 @@ fi
 %{python_sitelib}/webhook_launcher
 %{python_sitelib}/*egg-info
 %{_datadir}/webhook_launcher
-%config(noreplace) %{svdir}/webhook.conf
 %config(noreplace) %{svdir}/delete_webhook.conf
 %config(noreplace) %{svdir}/handle_webhook.conf
 %config(noreplace) %{svdir}/relay_webhook.conf
