@@ -105,17 +105,20 @@ fi
 
 %files
 %defattr(-,root,root,-)
+%dir %{_sysconfdir}/skynet
+%dir %{_sysconfdir}/apache2
+%dir %{_sysconfdir}/apache2/vhosts.d
+%dir %{_sysconfdir}/supervisor
+%dir %{svdir}
+%dir %{_datadir}/boss-skynet
 %config(noreplace) %{_sysconfdir}/skynet/webhook.conf
-%{python_sitelib}/webhook_launcher
-%{python_sitelib}/*egg-info
-%{_datadir}/webhook_launcher
+%config(noreplace) %{_sysconfdir}/apache2/vhosts.d/webhook.conf
 %config(noreplace) %{svdir}/delete_webhook.conf
 %config(noreplace) %{svdir}/handle_webhook.conf
 %config(noreplace) %{svdir}/relay_webhook.conf
-%dir /etc/skynet
-%dir /etc/supervisor
-%dir /etc/supervisor/conf.d
-%dir /usr/share/boss-skynet
+%{python_sitelib}/webhook_launcher
+%{python_sitelib}/*egg-info
+%{_datadir}/webhook_launcher
 %{_datadir}/boss-skynet/delete_webhook.py*
 %{_datadir}/boss-skynet/handle_webhook.py*
 %{_datadir}/boss-skynet/relay_webhook.py*
