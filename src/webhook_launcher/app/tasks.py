@@ -30,13 +30,16 @@ def handle_commit(mapobj, lsr, user, notify=False):
     if not notify:
         return
 
-    message = "%s commit(s) pushed by %s to %s branch of %s" % (len(lsr.payload["commits"]), user, mapobj.branch, mapobj.repourl)
+    # lsr.payload is already a json string
+    payload=json.loads(lsr.payload)
+
+    message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
     if not mapobj.mapped:
         message = "%s, which is not mapped yet. Please map it." % message
 
     fields = mapobj.to_fields()
     fields['msg'] = message
-    fields['payload'] = lsr.payload
+    fields['payload'] = payload
     print message
     launch_notify(fields)
 
