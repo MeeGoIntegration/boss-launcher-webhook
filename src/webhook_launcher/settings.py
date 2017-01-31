@@ -41,6 +41,9 @@ DEFAULT_PROJECT = ""
 if config.has_option('web', 'default_project'):
     DEFAULT_PROJECT = config.get('web', 'default_project')
 
+if config.has_option('web', 'allowed_hosts'):
+    ALLOWED_HOSTS = config.get('web', 'allowed_hosts').split(None)
+
 USE_REMOTE_AUTH = config.getboolean('web', 'use_http_remote_user')
 
 PUBLIC_LANDING_PAGE = False
