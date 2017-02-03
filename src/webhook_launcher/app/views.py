@@ -129,7 +129,7 @@ class WebHookMappingFilter(filters.FilterSet):
     branch = filters.AllLookupsFilter(name='branch')
     #  user = filters.AllLookupsFilter(name='user__username') ## << FIXME. This is the original line but it seems broken after an update to either django or the filters
     user = filters.AllLookupsFilter(name='user')
-    
+
     class Meta:
         model = WebHookMapping
         fields = ["id", "package", "project", "repourl", "user__username", "build"]
@@ -139,6 +139,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     filter_class = WebHookMappingFilter
+    fields = '__all__'
 
     def pre_save(self, obj):
         obj.user = self.request.user

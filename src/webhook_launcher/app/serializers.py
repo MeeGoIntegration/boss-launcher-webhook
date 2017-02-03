@@ -8,6 +8,7 @@ from rest_framework.parsers import JSONParser
 class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = BuildService
+        fields = '__all__'
 
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -103,4 +104,5 @@ class WebHookMappingSerializer(serializers.ModelSerializer):
     class Meta:
         model = WebHookMapping
 #        exclude = ('id',) # don't want/need to expose internal pk
+        fields = '__all__'
         depth = 1
