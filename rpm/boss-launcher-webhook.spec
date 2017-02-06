@@ -59,7 +59,7 @@ This package provides the participant that handles creating and/or triggering  _
 
 %package -n boss-participant-create_project
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml
+Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml, boss-launcher-webhook
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
