@@ -52,14 +52,14 @@ This package provides the service to update webhooks from OBS. It ensures that o
 
 %package -n boss-participant-trigger_service
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml
+Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-trigger_service
 This package provides the participant that handles creating and/or triggering  _service files in OBS, in response to webhook triggers
 
 %package -n boss-participant-create_project
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook
+Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
