@@ -146,4 +146,4 @@ fi
 %dir /usr/lib/obs/service
 /usr/lib/obs/service/webhook
 /usr/lib/obs/service/webhook.service
-/usr/lib/obs/service/webhook_diff.py
+/usr/lib/obs/service/webhook_diff.py*
