@@ -954,7 +954,13 @@ rpm_pkg () {
 }
 
 run_android_repo_service () {
-  REPOCMD="/usr/lib/obs/service/repo --initrepo "$REPO_PATH"/"$REPO_NAME" --service "$SVC_NAME" --branch "$BRANCH" --outdir "$MYOUTDIR""
+    case "$SVC_NAME" in
+	github) SVC_TAG=github;;
+	merproject) SVC_TAG=mer;;
+	jollamobile) SVC_TAG=jolla;;
+	*) echo "Unknown service '$SVC_NAME'"; exit 1;;
+    esac
+  REPOCMD="/usr/lib/obs/service/repo --initrepo "$REPO_PATH"/"$REPO_NAME" --service "$SVC_TAG" --branch "$BRANCH" --outdir "$MYOUTDIR""
   test -f tagged-manifest.xml && REPOCMD="$REPOCMD --manifest-name tagged-manifest.xml"
   test -x /usr/lib/obs/service/repo || error "repo service script not found at /usr/lib/obs/service/repo"
   $REPOCMD
