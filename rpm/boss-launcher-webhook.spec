@@ -19,7 +19,7 @@ BuildRequires: MySQL-python
 %else
 BuildRequires: python-mysql
 %endif
-Requires: python >= 2.5.0, python-xml, python-boss-skynet, python-flup, python-pycurl, python-requests
+Requires: python >= 2.5.0, python-xml, python-boss-skynet, python-flup, python-requests
 %if ! 0%{?use_pip}
 Requires: python-django, python-djangorestframework python-django-extensions
 %endif

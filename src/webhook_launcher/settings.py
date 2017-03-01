@@ -77,6 +77,13 @@ if config.has_option('web', 'post_ip_filter'):
         print "Allow POST from %s / %d" % (ip, bits)
         NETMASKS.append(struct.unpack('<L',socket.inet_aton(ip))[0] & ((2L<<bits-1) - 1))
 
+# Credentials for accessing Bitbucket API with HTTP basic auth
+BB_API_USER = ''
+BB_API_PASSWORD = ''
+if config.has_option('web', 'bb_api_user'):
+    BB_API_USER = config.get('web', 'bb_api_user')
+    BB_API_PASSWORD = config.get('web', 'bb_api_password')
+
 OUTGOING_PROXY = None
 if config.has_option('web', 'outgoing_proxy'):
     OUTGOING_PROXY = config.get('web', 'outgoing_proxy')
