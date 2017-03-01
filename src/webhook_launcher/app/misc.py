@@ -1,7 +1,8 @@
-from django.conf import settings
 import urlparse
-import pycurl
-import json
+
+import requests
+from django.conf import settings
+
 
 def giturlparse(repourl):
     parsed = urlparse.urlparse(repourl)
@@ -35,7 +36,7 @@ def get_or_none(model, **kwargs):
     except model.DoesNotExist:
         return None
 
-#TODO: rewrite with requests and addd new API methods
+
 class bbAPIcall(object):
     def __init__(self, slug):
         self.contents = ''
@@ -46,21 +47,28 @@ class bbAPIcall(object):
         self.contents += buf
 
     def api_call(self, endpoint, call):
-        c = pycurl.Curl()
-        c.setopt(pycurl.SSL_VERIFYPEER, 0)
-        c.setopt(pycurl.SSL_VERIFYHOST, 0)
+        proxies = {}
+        auth = None
         if settings.OUTGOING_PROXY:
-            c.setopt(pycurl.PROXY, settings.OUTGOING_PROXY)
-            c.setopt(pycurl.PROXYPORT, settings.OUTGOING_PROXY_PORT)
-        c.setopt(pycurl.NETRC, 1)
+            proxy = "%s:%s" % (
+                settings.OUTGOING_PROXY,
+                settings.OUTGOING_PROXY_PORT
+            )
+            proxies = {'http': proxy, 'https': proxy}
+        if settings.BB_API_USER:
+            auth = requests.auth.HTTPBasicAuth(
+                settings.BB_API_USER,
+                settings.BB_API_PASSWORD
+            )
         url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//", "/")
         url = self.base + url
-        c.setopt(pycurl.URL, url)
-        c.setopt(c.WRITEFUNCTION, self.body_callback)
-        c.perform()
-        c.close()
+        response = requests.get(
+            url,
+            verify=False,
+            proxies=proxies,
+            auth=auth,
+        )
+        return response.json()
 
     def branches_tags(self):
-        self.api_call('repositories', 'branches-tags')
-        return json.loads(self.contents)
-
+        return self.api_call('repositories', 'branches-tags')
