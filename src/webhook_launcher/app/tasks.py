@@ -21,6 +21,7 @@ import json
 from webhook_launcher.app.models import (LastSeenRevision, QueuePeriod)
 from webhook_launcher.app.boss import launch_notify, launch_build
 
+
 def handle_commit(mapobj, lsr, user, notify=False):
 
     lsr.tag = ""
@@ -43,19 +44,6 @@ def handle_commit(mapobj, lsr, user, notify=False):
     print message
     launch_notify(fields)
 
-def handle_pr(mapobj, data, payload):
-
-    message = "Pull request #%s by %s from %s / %s to %s %s (%s)" % (
-        data['id'], data['username'], data['source_repourl'],
-        data['source_branch'], mapobj, data['action'], data['url'])
-
-    if mapobj.notify:
-
-        fields = mapobj.to_fields()
-        fields['msg'] = message
-        fields['payload'] = payload
-        print message
-        launch_notify(fields)
 
 def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
 

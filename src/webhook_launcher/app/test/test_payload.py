@@ -6,7 +6,7 @@ from webhook_launcher.app.models import (
     BuildService, LastSeenRevision, WebHookMapping
 )
 from webhook_launcher.app.payload import (
-    BbPull, BbPush, GhPull, GhPush, get_payload
+    BbPush, GhPush, get_payload
 )
 
 from .data import get_obj
@@ -17,17 +17,9 @@ class TestPayloadDetection(TestCase):
         p = get_payload(get_obj('payload_bb_v1_push'))
         self.assertIsInstance(p, BbPush)
 
-    def test_bb_v1_pull(self):
-        p = get_payload(get_obj('payload_bb_v1_pull'))
-        self.assertIsInstance(p, BbPull)
-
     def test_gh_push(self):
         p = get_payload(get_obj('payload_gh_push'))
         self.assertIsInstance(p, GhPush)
-
-    def test_gh_pull(self):
-        p = get_payload(get_obj('payload_gh_pull'))
-        self.assertIsInstance(p, GhPull)
 
 
 @patch('webhook_launcher.app.payload.requests')

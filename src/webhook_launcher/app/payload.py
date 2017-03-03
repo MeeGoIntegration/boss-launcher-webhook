@@ -29,14 +29,12 @@ from webhook_launcher.app.misc import bbAPIcall
 from webhook_launcher.app.models import (BuildService, LastSeenRevision,
                                          Project, RelayTarget, VCSNameSpace,
                                          WebHookMapping)
-from webhook_launcher.app.tasks import handle_commit, handle_pr, trigger_build
+from webhook_launcher.app.tasks import handle_commit, trigger_build
 
 
 def get_payload(data):
     """Payload factory function"""
     for klass in [
-        BbPull,
-        GhPull,
         BbPush,
         GhPush,
         # Fallback to Payload base class which handles unknown formats
@@ -155,37 +153,6 @@ class Payload(object):
             print("Github says hi!")
         else:
             print("unknown payload")
-
-
-class GhPull(Payload):
-    # TODO: Separate github and gitlab payload handling
-    def __init__(self, data):
-        super(GhPull, self).__init__(data)
-        try:
-            self.url = data['pull_request']['base']['repo']['clone_url']
-        except KeyError:
-            raise PayloadParsingError("Not a GhPull payload")
-
-    def handle(self):
-        payload = self.data
-        repourl = self.url
-
-        pr = payload['pull_request']
-        branch = pr['base']['ref']
-
-        data = {
-            "url": pr['html_url'],
-            "source_repourl": pr['head']['repo']['clone_url'],
-            "source_branch": pr['head']['ref'],
-            "username": pr['user']['login'],
-            "action": payload['action'],
-            "id": payload['number'],
-        }
-
-        for mapobj in WebHookMapping.objects.filter(
-            repourl=repourl, branch=branch
-        ):
-            handle_pr(mapobj, data, payload)
 
 
 class GhPush(Payload):
@@ -344,42 +311,6 @@ class GhPush(Payload):
                             refname, revision, repourl, mapobj.branch)
                     )
                     trigger_build(mapobj, name, lsr=seenrev, tag=refname)
-
-
-class BbPull(Payload):
-    def __init__(self, data):
-        super(BbPull, self).__init__(data)
-        try:
-            pr = data["pullrequest_created"]
-            path = pr['destination']['repository']['full_name']
-        except KeyError:
-            raise PayloadParsingError("Not a BbPull payload")
-        self.url = urlparse.urljoin("https://bitbucket.org", path) + '.git'
-
-    def handle(self):
-        bburl = "https://bitbucket.org"
-
-        for key, values in self.data.items():
-            if "destination" not in values:
-                continue
-            branch = values['destination']['branch']['name']
-            source = urlparse.urljoin(
-                bburl, values['source']['repository']['full_name'])
-
-            data = {
-                "url": urlparse.urljoin(
-                    source + '/', "pull-request/%s" % values['id']),
-                "source_repourl": source + ".git",
-                "source_branch": values['source']['branch']['name'],
-                "username": values['author']['username'],
-                "action": key.replace("pullrequest_", ""),
-                "id": values['id'],
-            }
-
-        for mapobj in WebHookMapping.objects.filter(
-            repourl=self.url, branch=branch
-        ):
-            handle_pr(mapobj, data, self.data)
 
 
 class BbPush(Payload):
