@@ -33,84 +33,33 @@ from webhook_launcher.app.tasks import handle_commit, handle_pr, trigger_build
 
 
 def get_payload(data):
-    """Payload factory function
-    Hides the messy details of detecting payload type
-    """
-
-    bburl = "https://bitbucket.org"
-    url = None
-    klass = Payload
-    params = data.get('webhook_parameters', {})
-    repo = data.get('repository', None)
-    gh_pull_request = data.get('pull_request', None)
-    bb_pr_keys = ["pullrequest_created"]
-    # https://bitbucket.org/site/master/issue/8340/pull-request-post-hook-does-not-include
-    # "pullrequest_merged", "pullrequest_declined","pullrequest_updated"
-
-    # TODO: support more payload types
-    key = None
-    for key in bb_pr_keys:
-        bb_pull_request = data.get(key, None)
-        if bb_pull_request:
+    """Payload factory function"""
+    for klass in [
+        BbPull,
+        GhPull,
+        BbPush,
+        GhPush,
+        # Fallback to Payload base class which handles unknown formats
+        Payload,
+    ]:
+        try:
+            payload = klass(data)
             break
-
-    if key and bb_pull_request:
-        klass = BbPull
-        url = urlparse.urljoin(
-            bburl,
-            data[key]['destination']['repository']['full_name']
-        ) + '.git'
-
-    elif gh_pull_request:
-        # Github pull request event
-        klass = GhPull
-        url = data['pull_request']['base']['repo']['clone_url']
-
-    elif repo:
-        if repo.get('absolute_url', None):
-            # bitbucket type payload
-            url = repo.get('absolute_url', None)
-            canon_url = data.get('canon_url', None)
-            if canon_url and url:
-                print("bitbucket payload")
-                if url.endswith('/'):
-                    url = url[:-1]
-                url = urlparse.urljoin(canon_url, url)
-                if not url.endswith(".git"):
-                    url = url + ".git"
-                klass = BbPush
-
-        else:
-            # Try the gitlab cannonical http url first:
-            url = repo.get('git_http_url', None)
-            # github type payload
-            if not url:
-                url = repo.get('url', None)
-            if url:
-                print("github/gitlab payload")
-                if not url.endswith(".git"):
-                    url = url + ".git"
-                klass = GhPush
-
-    if not url:
-        raise Exception("Could not locate a url in the payload\n%s" % data)
-
-    payload = klass(url, params, data)
-
-    # Some hooks use the sshurl rather than the https.
-    if repo:
-        payload.sshurl = repo.get('git_ssh_url', None)
-
+        except:
+            continue
     return payload
+
+
+class PayloadParsingError(Exception):
+    pass
 
 
 class Payload(object):
 
-    def __init__(self, url, params, data):
-
-        self.url = url
-        self.params = params
+    def __init__(self, data):
+        self.url = None
         self.data = data
+        self.params = data.get('webhook_parameters', {})
 
     def create_placeholder(self, repourl, branch, packages=None):
         vcsns = VCSNameSpace.find(repourl)
@@ -209,6 +158,14 @@ class Payload(object):
 
 
 class GhPull(Payload):
+    # TODO: Separate github and gitlab payload handling
+    def __init__(self, data):
+        super(GhPull, self).__init__(data)
+        try:
+            self.url = data['pull_request']['base']['repo']['clone_url']
+        except KeyError:
+            raise PayloadParsingError("Not a GhPull payload")
+
     def handle(self):
         payload = self.data
         repourl = self.url
@@ -232,6 +189,27 @@ class GhPull(Payload):
 
 
 class GhPush(Payload):
+    # TODO: Separate github and gitlab payload handling
+    def __init__(self, data):
+        super(GhPush, self).__init__(data)
+        self.sshurl = None
+        try:
+            # gitlab payload
+            url = data['repository']['git_http_url']
+            # Some hooks use the sshurl rather than the https.
+            self.sshurl = data['repository'].get('git_ssh_url', None)
+        except KeyError:
+            try:
+                # github payload
+                url = data['repository']['url']
+            except KeyError:
+                raise PayloadParsingError("Not a GhPush payload")
+
+        print("github/gitlab payload")
+        if not url.endswith(".git"):
+            url = url + ".git"
+        self.url = url
+
     def handle(self):
         payload = self.data
         repourl = self.url
@@ -369,6 +347,15 @@ class GhPush(Payload):
 
 
 class BbPull(Payload):
+    def __init__(self, data):
+        super(BbPull, self).__init__(data)
+        try:
+            pr = data["pullrequest_created"]
+            path = pr['destination']['repository']['full_name']
+        except KeyError:
+            raise PayloadParsingError("Not a BbPull payload")
+        self.url = urlparse.urljoin("https://bitbucket.org", path) + '.git'
+
     def handle(self):
         bburl = "https://bitbucket.org"
 
@@ -396,6 +383,22 @@ class BbPull(Payload):
 
 
 class BbPush(Payload):
+    def __init__(self, data):
+        super(BbPush, self).__init__(data)
+        try:
+            url = data['repository']['absolute_url']
+            canon_url = data['canon_url']
+        except KeyError:
+            raise PayloadParsingError("Not a BbPush payload")
+
+        print("bitbucket payload")
+        if url.endswith('/'):
+            url = url[:-1]
+        url = urlparse.urljoin(canon_url, url)
+        if not url.endswith(".git"):
+            url = url + ".git"
+        self.url = url
+
     def handle(self):
         payload = self.data
         repourl = self.url
