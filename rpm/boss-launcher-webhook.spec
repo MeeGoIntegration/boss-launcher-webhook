@@ -89,21 +89,21 @@ if [ $1 -ge 1 ]; then
     skynet reload delete_webhook || true
     skynet reload handle_webhook || true
     skynet reload relay_webhook || true
-    skynet register --all
+    skynet register --all || true
 fi
 
 %post -n boss-participant-create_project
 if [ $1 -ge 1 ]; then
     skynet apply || true
     skynet reload create_project || true
-    skynet register --all
+    skynet register --all || true
 fi
 
 %post -n boss-participant-trigger_service
 if [ $1 -ge 1 ]; then
     skynet apply || true
     skynet reload trigger_service || true
-    skynet register --all
+    skynet register --all || true
 fi
 
 %files
