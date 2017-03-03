@@ -90,7 +90,8 @@ def get_payload(data):
     payload = klass(url, params, data)
 
     # Some hooks use the sshurl rather than the https.
-    payload.sshurl = repo.get('git_ssh_url', None)
+    if repo:
+        payload.sshurl = repo.get('git_ssh_url', None)
 
     return payload
 
