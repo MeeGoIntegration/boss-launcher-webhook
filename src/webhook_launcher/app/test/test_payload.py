@@ -70,6 +70,8 @@ class TestPayloadHandling(TestCase):
         payload.handle()
         launch_notify.assert_called_once()
         launch_build.assert_not_called()
+        # TODO: Test GH tag push and build trigger
+        #   Need to gerate proper test payloads for tags
 
     def _handle_first_push(
         self, data, launch_build, launch_notify, bbAPIcall, requests

@@ -13,8 +13,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc.,
+# along with this program; if not, write to the
+# Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from __future__ import print_function
 
@@ -26,9 +26,10 @@ import requests
 from django.conf import settings
 from django.contrib.auth.models import User
 from webhook_launcher.app.misc import bbAPIcall
-from webhook_launcher.app.models import (BuildService, LastSeenRevision,
-                                         Project, RelayTarget, VCSNameSpace,
-                                         WebHookMapping)
+from webhook_launcher.app.models import (
+    BuildService, LastSeenRevision, Project, RelayTarget, VCSNameSpace,
+    WebHookMapping
+)
 from webhook_launcher.app.tasks import handle_commit, trigger_build
 
 
@@ -43,7 +44,7 @@ def get_payload(data):
         try:
             payload = klass(data)
             break
-        except:
+        except PayloadParsingError:
             continue
     return payload
 
@@ -75,12 +76,14 @@ class Payload(object):
         print("no mappings, create placeholders")
         mapobjs = []
         for package in packages:
-            mapobj = WebHookMapping(repourl=repourl, branch=branch,
-                                    user=User.objects.get(id=1),
-                                    obs=BuildService.objects.all()[0],
-                                    notify=False, build=False,
-                                    project=project, package=package,
-                                    comment="Placeholder")
+            mapobj = WebHookMapping(
+                repourl=repourl, branch=branch,
+                user=User.objects.get(id=1),
+                obs=BuildService.objects.all()[0],
+                notify=False, build=False,
+                project=project, package=package,
+                comment="Placeholder",
+            )
             mapobj.save()
             mapobjs.append(mapobj)
 
@@ -94,17 +97,19 @@ class Payload(object):
 
         parsed_url = urlparse.urlparse(self.url)
         official_projects = list(
-            set(prj.name for prj in
+            set(
+                prj.name for prj in
                 Project.objects.filter(official=True, allowed=True)
-                )
+            )
         )
         official_packages = list(
-            set(mapobj.package for mapobj in
+            set(
+                mapobj.package for mapobj in
                 WebHookMapping.objects.filter(
                     repourl=self.url,
                     project__in=official_projects
                 ).exclude(package="")
-                )
+            )
         )
 
         service_path = os.path.dirname(parsed_url.path)
@@ -139,9 +144,13 @@ class Payload(object):
             # TODO: allow uploading self signed certificates
             # and client certificates
             print("Relaying event from %s to %s" % (self.url, relay))
-            response = requests.post(relay.url, data=data,
-                                     headers=headers, proxies=proxies,
-                                     verify=relay.verify_SSL)
+            response = requests.post(
+                relay.url,
+                data=data,
+                headers=headers,
+                proxies=proxies,
+                verify=relay.verify_SSL,
+            )
             if response.status_code != requests.codes.ok:
                 raise RuntimeError(
                     "%s returned %s" % (relay, response.status_code)
@@ -270,8 +279,11 @@ class GhPush(Payload):
                 mapobjs = []
                 packages = self.params.get("packages", None)
                 for branch in branches:
-                    mapobjs.extend(self.create_placeholder(repourl, branch,
-                                                           packages=packages))
+                    mapobjs.extend(
+                        self.create_placeholder(
+                            repourl, branch, packages=packages
+                        )
+                    )
 
             notified = False
             for mapobj in mapobjs:
@@ -375,8 +387,9 @@ class BbPush(Payload):
 
             if not len(mapobjs):
                 packages = self.params.get("packages", None)
-                mapobjs = self.create_placeholder(repourl, branch,
-                                                  packages=packages)
+                mapobjs = self.create_placeholder(
+                    repourl, branch, packages=packages
+                )
 
             notified = False
             for mapobj in mapobjs:
@@ -403,7 +416,8 @@ class BbPush(Payload):
                     seenrev.revision = commits[-1]
                     handle_commit(
                         mapobj, seenrev, payload["user"],
-                        notify=mapobj.notify and not notified)
+                        notify=mapobj.notify and not notified,
+                    )
                     notified = True
 
                 else:
