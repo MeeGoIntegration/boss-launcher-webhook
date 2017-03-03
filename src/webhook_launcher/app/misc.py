@@ -39,12 +39,8 @@ def get_or_none(model, **kwargs):
 
 class bbAPIcall(object):
     def __init__(self, slug):
-        self.contents = ''
         self.base = "https://api.bitbucket.org/1.0"
         self.slug = slug
-
-    def body_callback(self, buf):
-        self.contents += buf
 
     def api_call(self, endpoint, call):
         proxies = {}
