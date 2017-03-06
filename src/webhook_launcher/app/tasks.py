@@ -124,14 +124,12 @@ def handle_build(mapobj, user=None, lsr=None, force=None, skipped=False, delayed
     if mapobj.notify:
         fields = mapobj.to_fields()
         fields['msg'] = message
-        fields['payload'] = json.loads(lsr.payload)
         launch_notify(fields)
   
     if build:
         fields = mapobj.to_fields()
         fields['branch'] = mapobj.branch
         fields['revision'] = lsr.revision
-        fields['payload'] = json.loads(lsr.payload)
         launch_build(fields)
         lsr.handled = True
 
