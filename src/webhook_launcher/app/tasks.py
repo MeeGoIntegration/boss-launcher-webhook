@@ -31,16 +31,22 @@ def handle_commit(mapobj, lsr, user, notify=False):
     if not notify:
         return
 
-    # lsr.payload is already a json string
-    payload=json.loads(lsr.payload)
+    # lsr.payload is already a json string if it exists
+    try:
+        payload=json.loads(lsr.payload)
+        num_commits=len(payload["commits"])
+    except: # currently handle_commit is only called from 'real'
+            # commits and not the Admin UI so this shouldn't happen
+            # but...
+        payload = None
+        num_commits = "No payload available. Unknown number of"
 
-    message = "%s commit(s) pushed by %s to %s branch of %s" % (len(payload["commits"]), user, mapobj.branch, mapobj.repourl)
+    message = "%s commit(s) pushed by %s to %s branch of %s" % (num_commits, user, mapobj.branch, mapobj.repourl)
     if not mapobj.mapped:
         message = "%s, which is not mapped yet. Please map it." % message
 
     fields = mapobj.to_fields()
     fields['msg'] = message
-    fields['payload'] = payload
     print message
     launch_notify(fields)
 
