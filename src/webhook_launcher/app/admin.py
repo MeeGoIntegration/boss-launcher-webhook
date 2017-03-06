@@ -83,12 +83,11 @@ class WebHookMappingAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         if "_triggerbuild" in request.POST:
             opts = obj._meta
-            module_name = opts.module_name
             pk_value = obj._get_pk_val()
 
             self.trigger_build(request, [obj])
             return HttpResponseRedirect(reverse('admin:%s_%s_change' %
-                                        (opts.app_label, module_name),
+                                        (opts.app_label, opts.model_name),
                                         args=(pk_value,),
                                         current_app=self.admin_site.name))
         else:
@@ -149,12 +148,11 @@ class RelayTargetAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         if "_triggerrelay" in request.POST:
             opts = obj._meta
-            module_name = opts.module_name
             pk_value = obj._get_pk_val()
 
             self.trigger_relay(request, [obj])
             return HttpResponseRedirect(reverse('admin:%s_%s_change' %
-                                        (opts.app_label, module_name),
+                                        (opts.app_label, opts.model_name),
                                         args=(pk_value,),
                                         current_app=self.admin_site.name))
         else:
