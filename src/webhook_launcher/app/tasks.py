@@ -78,6 +78,8 @@ def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
                 print "build already handled, skipping"
                 build = False
                 skipped = True
+        if tag and not skipped:
+            lsr.tag = tag
 
         # Find possible queue period objects
         qps = QueuePeriod.objects.filter(
