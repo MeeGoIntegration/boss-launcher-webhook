@@ -95,12 +95,26 @@ def trigger_build(mapobj, user, lsr=None, tag=None, force=False):
                 delayed = True
                 break
 
-    # handle_build actually launches a build process
-    msg = handle_build(mapobj, user, lsr, force, skipped, delayed, qp)
-    return msg
+    message = _get_message(mapobj, user, lsr, force, skipped, delayed, qp)
+    fields = mapobj.to_fields()
+
+    if mapobj.notify:
+        fields['msg'] = message
+        launch_notify(fields)
+
+    if build:
+        fields = mapobj.to_fields()
+        fields['branch'] = mapobj.branch
+        fields['revision'] = lsr.revision
+        launch_build(fields)
+        lsr.handled = True
+
+    lsr.save()
+
+    return message
 
 
-def handle_build(
+def _get_message(
     mapobj, user=None, lsr=None, force=None, skipped=False, delayed=False,
     qp=None
 ):
@@ -142,19 +156,5 @@ def handle_build(
         message = "%s, which will be delayed by %s" % (message, qp)
         if qp.comment:
             message = "%s\n%s" % (message, qp.comment)
-
-    if mapobj.notify:
-        fields = mapobj.to_fields()
-        fields['msg'] = message
-        launch_notify(fields)
-
-    if build:
-        fields = mapobj.to_fields()
-        fields['branch'] = mapobj.branch
-        fields['revision'] = lsr.revision
-        launch_build(fields)
-        lsr.handled = True
-
-    lsr.save()
 
     return message
