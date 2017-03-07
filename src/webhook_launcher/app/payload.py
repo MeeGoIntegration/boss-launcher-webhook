@@ -33,11 +33,24 @@ from webhook_launcher.app.models import (
 from webhook_launcher.app.tasks import handle_commit, trigger_build
 
 
+# TODO: Split handling of commits and tags in generic methods.
+#   Specific payload classes should only handle parsing the commits, branches
+#   and tags from the payload and the handling after that should be done by a
+#   generic methods.
+
+# TODO: Don't assume handle_commit or trigger_build will save object changes.
+#   Many places here set values on the DB objects and trust the changes will
+#   be saved later by the handling functions. It is bad practice to rely on
+#   this kind of "side effects", but also saving the DB objects multiple times
+#   is not ideal.
+
+
 def get_payload(data):
     """Payload factory function"""
     for klass in [
         BbPush,
         GhPush,
+        BbPushV2,
         # Fallback to Payload base class which handles unknown formats
         Payload,
     ]:
@@ -429,3 +442,113 @@ class BbPush(Payload):
                     trigger_build(
                         mapobj, payload["user"], lsr=seenrev, tag=tag
                     )
+
+
+class BbPushV2(Payload):
+    def __init__(self, data):
+        super(BbPushV2, self).__init__(data)
+        try:
+            data['push']
+            path = data['repository']['full_name']
+        except KeyError as e:
+            raise PayloadParsingError("Not a BbPushV2 payload: %s" % e)
+
+        print("bitbucket V2 payload")
+        self.url = urlparse.urljoin("https://bitbucket.org", path) + '.git'
+
+    def handle(self):
+        branches = {}
+        tags = {}
+        user = self.data['actor']['username']
+
+        # Collect branches and tags
+        for change in self.data['push']['changes']:
+            newref = change.get('new')
+            commits = change.get('commits', [])
+            if not newref:
+                # TODO: Handle delete events
+                continue
+            name = newref['name']
+            hash = newref['target']['hash']
+            if newref['type'] == 'branch':
+                branches[name] = [hash, commits]
+            elif newref['type'] == 'tag':
+                tags[name] = [hash, set()]
+            else:
+                print("Unknown ref type '%s'" % newref['type'])
+                continue
+
+        # Find branches for tags
+        for tag, (hash, tag_branches) in tags.items():
+            # TODO: this will only find branches with head matching the tag
+            bbcall = bbAPIcall(self.data['repository']['full_name'])
+            bts = bbcall.branches_tags()
+            for branch in bts['branches']:
+                if branch['changeset'] == hash:
+                    tag_branches.add(branch['name'])
+
+        # Handle commits in branches
+        for branch, (revision, commits) in branches.iteritems():
+            mapobjs = WebHookMapping.objects.filter(
+                repourl=self.url, branch=branch,
+            )
+            if not len(mapobjs):
+                packages = self.params.get("packages", None)
+                mapobjs = self.create_placeholder(
+                    self.url, branch, packages=packages
+                )
+            notified = False
+            for mapobj in mapobjs:
+                seenrev, created = LastSeenRevision.objects.get_or_create(
+                    mapping=mapobj
+                )
+
+                emails = set()
+                for commit in commits:
+                    emails.add(commit['author']['raw'])
+                    if len(emails) == 2:
+                        break
+                if emails:
+                    seenrev.emails = json.dumps(list(emails))
+
+                if created or seenrev.revision != revision:
+                    print(
+                        "%s in %s was not seen before, notify it if enabled" %
+                        (revision, branch)
+                    )
+                    seenrev.revision = revision
+                    seenrev.payload = json.dumps(self.data)
+                    handle_commit(
+                        mapobj, seenrev, user,
+                        notify=mapobj.notify and not notified,
+                    )
+                    notified = True
+
+        # Handle tags
+        for tag, (revision, branches) in tags.iteritems():
+            if not branches:
+                print("No branch found for tag '%s'" % tag)
+                continue
+            mapobjs = WebHookMapping.objects.filter(
+                repourl=self.url, branch__in=branches,
+            )
+            for mapobj in mapobjs:
+                seenrev, created = LastSeenRevision.objects.get_or_create(
+                    mapping=mapobj
+                )
+                if created or seenrev.revision != revision:
+                    print(
+                        "Tag '%s' revision '%s' not seen before, skipping" % (
+                            tag, revision
+                        )
+                    )
+                    continue
+
+                print(
+                    "%s in %s was seen before, trigger build if enabled" % (
+                        revision, branch
+                    )
+                )
+                trigger_build(
+                    mapobj, user, lsr=seenrev, tag=tag
+                )
