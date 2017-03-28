@@ -27,10 +27,8 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from webhook_launcher.app.misc import bbAPIcall
 from webhook_launcher.app.models import (
-    BuildService, LastSeenRevision, Project, RelayTarget, VCSNameSpace,
-    WebHookMapping
+    BuildService, Project, RelayTarget, VCSNameSpace, WebHookMapping
 )
-from webhook_launcher.app.tasks import handle_commit, trigger_build
 
 
 # TODO: Split handling of commits and tags in generic methods.
@@ -300,15 +298,13 @@ class GhPush(Payload):
 
             notified = False
             for mapobj in mapobjs:
-                seenrev, created = LastSeenRevision.objects.get_or_create(
-                    mapping=mapobj
-                )
+                seenrev = mapobj.lsr
                 seenrev.payload = json.dumps(payload)
 
                 if emails:
                     seenrev.emails = json.dumps(list(emails))
 
-                if created or seenrev.revision != revision:
+                if seenrev.revision != revision:
                     if branches:
                         print(
                             "%s in %s was not seen before, "
@@ -323,8 +319,8 @@ class GhPush(Payload):
 
                 # notify new branch created or commit in branch
                 if reftype == "heads":
-                    handle_commit(
-                        mapobj, seenrev, name,
+                    mapobj.handle_commit(
+                        user=name,
                         notify=mapobj.notify and not notified,
                     )
                     notified = True
@@ -335,7 +331,10 @@ class GhPush(Payload):
                         "notify and build it if enabled" % (
                             refname, revision, repourl, mapobj.branch)
                     )
-                    trigger_build(mapobj, name, lsr=seenrev, tag=refname)
+                    mapobj.trigger_build(
+                        user=name,
+                        tag=refname,
+                    )
 
 
 class BbPush(Payload):
@@ -408,8 +407,7 @@ class BbPush(Payload):
             for mapobj in mapobjs:
                 print("found or created mapping")
 
-                seenrev, created = LastSeenRevision.objects.get_or_create(
-                    mapping=mapobj)
+                seenrev = mapobj.lsr
                 seenrev.payload = json.dumps(payload)
                 emails = set()
                 for commit in payload["commits"]:
@@ -420,15 +418,15 @@ class BbPush(Payload):
                 if emails:
                     seenrev.emails = json.dumps(list(emails))
 
-                if created or seenrev.revision != commits[-1]:
+                if seenrev.revision != commits[-1]:
 
                     print(
                         "%s in %s was not seen before, notify it if enabled" %
                         (commits[-1], branch)
                     )
                     seenrev.revision = commits[-1]
-                    handle_commit(
-                        mapobj, seenrev, payload["user"],
+                    mapobj.handle_commit(
+                        user=payload["user"],
                         notify=mapobj.notify and not notified,
                     )
                     notified = True
@@ -439,8 +437,9 @@ class BbPush(Payload):
                         "notify and build it if enabled" % (
                             commits[-1], branch)
                     )
-                    trigger_build(
-                        mapobj, payload["user"], lsr=seenrev, tag=tag
+                    mapobj.trigger_build(
+                        user=payload["user"],
+                        tag=tag,
                     )
 
 
@@ -499,9 +498,7 @@ class BbPushV2(Payload):
                 )
             notified = False
             for mapobj in mapobjs:
-                seenrev, created = LastSeenRevision.objects.get_or_create(
-                    mapping=mapobj
-                )
+                seenrev = mapobj.lsr
 
                 emails = set()
                 for commit in commits:
@@ -511,15 +508,15 @@ class BbPushV2(Payload):
                 if emails:
                     seenrev.emails = json.dumps(list(emails))
 
-                if created or seenrev.revision != revision:
+                if seenrev.revision != revision:
                     print(
                         "%s in %s was not seen before, notify it if enabled" %
                         (revision, branch)
                     )
                     seenrev.revision = revision
                     seenrev.payload = json.dumps(self.data)
-                    handle_commit(
-                        mapobj, seenrev, user,
+                    mapobj.handle_commit(
+                        user=user,
                         notify=mapobj.notify and not notified,
                     )
                     notified = True
@@ -533,10 +530,8 @@ class BbPushV2(Payload):
                 repourl=self.url, branch__in=branches,
             )
             for mapobj in mapobjs:
-                seenrev, created = LastSeenRevision.objects.get_or_create(
-                    mapping=mapobj
-                )
-                if created or seenrev.revision != revision:
+                seenrev = mapobj.lsr
+                if seenrev.revision != revision:
                     print(
                         "Tag '%s' revision '%s' not seen before, skipping" % (
                             tag, revision
@@ -549,6 +544,7 @@ class BbPushV2(Payload):
                         revision, branch
                     )
                 )
-                trigger_build(
-                    mapobj, user, lsr=seenrev, tag=tag
+                mapobj.trigger_build(
+                    user=user,
+                    tag=tag,
                 )

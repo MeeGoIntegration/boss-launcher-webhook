@@ -26,6 +26,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from webhook_launcher.app.boss import launch_notify, launch_build
 from webhook_launcher.app.misc import get_or_none, giturlparse
 
 
@@ -287,9 +288,15 @@ class WebHookMapping(models.Model):
 
     @property
     def lsr(self):
-        _lsr = self.lastseenrevision_set.all()
-        if _lsr:
-            return _lsr[0]
+        # TODO: refactor the WebHookMapping and LastSeenRevision relation
+        if not hasattr(self, '_lsr'):
+            if self.pk:
+                self._lsr, _ = LastSeenRevision.objects.get_or_create(
+                    mapping=self
+                )
+            else:
+                return None
+        return self._lsr
 
     @property
     def mapped(self):
@@ -392,24 +399,119 @@ class WebHookMapping(models.Model):
                     (project, self.user)
                 )
 
-    def trigger_build(self):
-        if not self.lsr:
-            mylsr, created = LastSeenRevision.objects.get_or_create(
-                mapping=self,
-            )
-        else:
-            mylsr = self.lsr
-        revision_to_build = self.tag
-        if not revision_to_build:
-            revision_to_build = self.branch
+    def trigger_build(self, user=None, tag=None, force=False):
 
-        # handle_tag actually launches a build process
-        # setting webuser is a way of doing a forced rebuild
-        msg = self.handle_tag(
-            mylsr, self.user.username, {}, revision_to_build,
-            webuser=self.user.username,
+        # Only fire for projects which allow webhooks. We can't just
+        # rely on validation since a Project may forbid hooks after
+        # the hook was created
+        if self.project_disabled:
+            print "Project has build disabled"
+            return
+
+        handled = self.lsr.handled and self.lsr.tag == tag and not force
+        if handled:
+            print "build already handled, skipping"
+        build = self.build and self.mapped and not handled
+        qp = None
+        if user is None:
+            user = self.user.username
+
+        if build:
+            if tag:
+                self.lsr.tag = tag
+
+            # Find possible queue period objects
+            qps = QueuePeriod.objects.filter(
+                projects__name=self.project,
+                projects__obs=self.obs,
+            )
+            for qp in qps:
+                if qp.delay() and not qp.override(webuser=user):
+                    print "Build trigger for %s delayed by %s" % (self, qp)
+                    print qp.comment
+                    build = False
+                    break
+            else:
+                qp = None
+
+        message = self._get_build_message( user, force, handled, qp)
+        fields = self.to_fields()
+        fields['msg'] = message
+
+        if self.notify:
+            launch_notify(fields)
+
+        if build:
+            fields = self.to_fields()
+            launch_build(fields)
+            self.lsr.handled = True
+
+        self.lsr.save()
+
+        return message
+
+    def _get_build_message(self, user, force=None, handled=False, qp=None):
+
+        parts = []
+        if force:
+            parts.append("Forced build trigger:")
+
+        if self.tag:
+            parts.append("Tag %s" % self.tag)
+        else:
+            parts.append(self.revision)
+
+        parts.append(
+            "by %s in %s branch of %s" % (
+                user, self.branch, self.repourl,
+            )
         )
-        return msg
+        if not self.mapped:
+            parts.append("- which is not mapped yet. Please map it.")
+
+        elif self.build:
+            parts.append(
+                "- which will trigger build in project %s package "
+                "%s (%s/package/show?package=%s&project=%s)" % (
+                    self.project, self.package, self.obs.weburl,
+                    self.package, self.project,
+                )
+            )
+
+        elif handled:
+            parts.append("- which was already handled; skipping")
+
+        elif qp:
+            parts.append("- which will be delayed by %s" % qp)
+            if qp.comment:
+                parts.append("(%s)" % qp.comment)
+
+        return " ".join(parts)
+
+    def handle_commit(self, user=None, notify=None):
+
+        if user is None:
+            user = self.user.username
+        if notify is None:
+            notify = self.notify
+
+        self.lsr.tag = ""
+        self.lsr.handled = False
+        self.lsr.save()
+
+        if not notify:
+            return
+
+        message = "Commit(s) pushed by %s to %s branch of %s" % (
+            user, self.branch, self.repourl
+        )
+        if not self.mapped:
+            message = "%s, which is not mapped yet. Please map it." % message
+
+        fields = self.to_fields()
+        fields['msg'] = message
+        print message
+        launch_notify(fields)
 
     def to_fields(self):
         fields = {}
