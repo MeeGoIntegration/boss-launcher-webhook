@@ -13,41 +13,86 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# along with this program; if not, write to
+# the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import datetime
 import os
 import re
 
+from django.conf import settings
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.conf import settings
-from django.contrib.auth.models import User, Group
 from django.utils import timezone
 
-from webhook_launcher.app.misc import giturlparse, get_or_none
+from webhook_launcher.app.misc import get_or_none, giturlparse
+
+
+# FIXME: All null=True + blank=True text fields
+#   Unless it is intentional that text field can be set to either NULL or ''
+#   (emtpy string), then it is recommended not to use null=True, to avoid
+#   situatioon where the field has two possible values for empty. As that can
+#   problematic for example in lookups where NULL and '' behave differently
 
 class BuildService(models.Model):
+    namespace = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="This is also used to identify the OBS alias "
+                  "in BOSS processes",
+    )
+    apiurl = models.CharField(
+        max_length=250,
+        unique=True,
+    )
+    weburl = models.CharField(
+        max_length=250,
+        unique=True,
+    )
 
     def __unicode__(self):
         return self.weburl
 
-    namespace = models.CharField(max_length=50, unique=True, help_text="This is also used to identify the OBS alias in BOSS processes")
-    apiurl = models.CharField(max_length=250, unique=True)
-    weburl = models.CharField(max_length=250, unique=True)
-
 
 class VCSService(models.Model):
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Friendly name of this VCS hosting service",
+    )
+    netloc = models.CharField(
+        max_length=200,
+        unique=True,
+        help_text="Network location from payload "
+                  "(for example: git@git.merproject.org:1234)",
+    )
+    ips = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Known IP adresses of this service (optional)",
+    )
 
     def __unicode__(self):
         return self.netloc
 
-    name = models.CharField(max_length=50, unique=True, help_text="Friendly name of this VCS hosting service")
-    netloc = models.CharField(max_length=200, unique=True, help_text="Network location from payload (for example: git@git.merproject.org:1234)")
-    ips = models.TextField(blank=True, null=True, help_text="Known IP adresses of this service (optional)")
 
 class VCSNameSpace(models.Model):
+    service = models.ForeignKey(
+        VCSService,
+        help_text="VCS service where this namespace is hosted",
+    )
+    path = models.CharField(
+        max_length=200,
+        help_text="the network path "
+                  "(gitlab group or github organization eg. /mer-core)",
+    )
+    default_project = models.ForeignKey(
+        "Project",
+        blank=True,
+        null=True,
+        help_text="Default project for webhook placeholder creation",
+    )
 
     def __unicode__(self):
         return "%s%s" % (self.service, self.path)
@@ -55,20 +100,60 @@ class VCSNameSpace(models.Model):
     @staticmethod
     def find(repourl):
         url = giturlparse(repourl)
-        return get_or_none(VCSNameSpace, service__netloc = url.netloc,
-                           path=os.path.dirname(url.path))
+        return get_or_none(
+            VCSNameSpace,
+            service__netloc=url.netloc,
+            path=os.path.dirname(url.path)
+        )
 
-    service = models.ForeignKey(VCSService, help_text="VCS service where this namespace is hosted")
-    path = models.CharField(max_length=200, help_text="the network path (gitlab group or github organization eg. /mer-core)")
-    default_project = models.ForeignKey("Project", blank=True, null=True, help_text="Default project for webhook placeholder creation")
 
 class Project(models.Model):
-
-    def __unicode__(self):
-        return "%s on %s" % (self.name, self.obs)
+    name = models.CharField(
+        max_length=250,
+        help_text="The OBS project name. eg nemo:mw",
+    )
+    obs = models.ForeignKey(
+        BuildService,
+    )
+    official = models.BooleanField(
+        default=True,
+        help_text="If set then only valid namespaces can be used for the "
+                  "git repo",
+    )
+    allowed = models.BooleanField(
+        default=True,
+        help_text="If not set then webhooks are not allowed for this project. "
+                  "This is useful for projects which should only have "
+                  "specific versions of packages promoted to them.",
+    )
+    gated = models.BooleanField(
+        default=False,
+        help_text="If set then webhooks pointing at this project will be "
+                  "triggered to a side project instead and then "
+                  "an autopromotion attempted. This is useful for projects "
+                  "which apply formal entry checks and/or QA.",
+    )
+    groups = models.ManyToManyField(
+        Group,
+        blank=True,
+    )
+    vcsnamespaces = models.ManyToManyField(
+        VCSNameSpace,
+        blank=True,
+    )
+    match = models.CharField(
+        max_length=250,
+        blank=True,
+        null=True,
+        help_text="If set then used as well as name to re.match() "
+                  "project names",
+    )
 
     class Meta:
         unique_together = (("name", "obs"),)
+
+    def __unicode__(self):
+        return "%s on %s" % (self.name, self.obs)
 
     def is_repourl_allowed(self, repourl):
 
@@ -76,7 +161,10 @@ class Project(models.Model):
         netloc = repourl.netloc
         path = repourl.path.rsplit("/", 1)[1]
         if self.vcsnamespaces.count():
-            return self.vcsnamespaces.filter(path=path, service__netloc=netloc).count()
+            return self.vcsnamespaces.filter(
+                path=path,
+                service__netloc=netloc,
+            ).count()
         else:
             return True
 
@@ -90,28 +178,100 @@ class Project(models.Model):
             return False
 
     def matches(self, proj_name):
-        # Update if/when https://pypi.python.org/pypi/django-regex-field/0.1.4 is used
+        # TODO Update if/when
+        # https://pypi.python.org/pypi/django-regex-field/0.1.4 is used
         if proj_name == self.name:
             return True
-        if self.match: # ie not None and not ""
-            reg = re.compile(self.match) # this is optimised to a cache in regex-field
+        if self.match:
+            # this is optimised to a cache in regex-field
+            reg = re.compile(self.match)
             if reg.match(proj_name):
                 return True
         return False
 
-    name = models.CharField(max_length=250, help_text="The OBS project name. eg nemo:mw")
-    obs = models.ForeignKey(BuildService)
-    official = models.BooleanField(default=True, help_text="If set then only valid namespaces can be used for the git repo")
-    allowed = models.BooleanField(default=True, help_text="If not set then webhooks are not allowed for this project. This is useful for projects which should only have specific versions of packages promoted to them.")
-    gated = models.BooleanField(default=False, help_text="If set then webhooks pointing at this project will be triggered to a side project instead and then an autopromotion attempted. This is useful for projects which apply formal entry checks and/or QA.")
-    groups = models.ManyToManyField(Group, blank=True)
-    vcsnamespaces = models.ManyToManyField(VCSNameSpace, blank=True)
-    match = models.CharField(max_length=250, blank=True, null=True, help_text="If set then used as well as name to re.match() project names")
 
 class WebHookMapping(models.Model):
+    # If any fields are added/removed then ensure they are handled
+    # correctly in to_fields and the webhook_diff.py
+    repourl = models.CharField(
+        max_length=200,
+        help_text="url of git repo to clone from. Should be a remote http[s]",
+    )
+    branch = models.CharField(
+        max_length=100,
+        default="master",
+        help_text="name of branch to use. If not specified default branch "
+                  "(or currently checked out one) will be used",
+    )
+    project = models.CharField(
+        max_length=250,
+        default=settings.DEFAULT_PROJECT,
+        help_text="name of an existing project under which to create "
+                  "or update the package",
+    )
+    package = models.CharField(
+        max_length=250,
+        help_text="name of the package to create or update in OBS",
+    )
+    token = models.CharField(
+        max_length=100,
+        default="",
+        null=True,
+        blank=True,
+        help_text="a token that should exist in tag names and "
+                  "changelog entry headers to enable handling them",
+    )
+    debian = models.CharField(
+        max_length=2,
+        default="",
+        null=True,
+        blank=True,
+        choices=(
+            ('N', 'N'),
+            ('Y', 'Y'),
+        ),
+        help_text="Choose Y to turn on debian packaging support",
+    )
+    dumb = models.CharField(
+        max_length=2,
+        default="",
+        null=True,
+        blank=True,
+        choices=(
+            ('N', 'N'),
+            ('Y', 'Y'),
+        ),
+        help_text="Choose Y to take content of revision as-is without "
+                  "automatic processing (example: tarballs in git)",
+    )
+    notify = models.BooleanField(
+        default=True,
+        help_text="Enable IRC notifications of events",
+    )
+    build = models.BooleanField(
+        default=True,
+        help_text="Enable OBS build triggering",
+    )
+    comment = models.TextField(
+        blank=True,
+        null=True,
+        default="",
+    )
+    user = models.ForeignKey(
+        User,
+        editable=False,
+    )
+    obs = models.ForeignKey(
+        BuildService,
+    )
+
+    class Meta:
+        unique_together = (("project", "package", "obs"),)
 
     def __unicode__(self):
-        return "%s/%s -> %s/%s" % (self.repourl, self.branch, self.project, self.package)
+        return "%s/%s -> %s/%s" % (
+            self.repourl, self.branch, self.project, self.package
+        )
 
     @property
     def tag(self):
@@ -144,15 +304,27 @@ class WebHookMapping(models.Model):
         # Just search all Projects for a match
         for project in Project.objects.all():
             if project.matches(self.project):
-                print "Project disable check: project %s matches rules in %s" %(self.project, project.name)
-                if project and not project.allowed: # Disabled if Project is marked not-allowed
+                print "Project disable check: %s matches rules in %s" % (
+                    self.project, project.name
+                )
+                if project and not project.allowed:
+                    # Disabled if Project is marked not-allowed
                     return True
-                if project and project.official: # Disabled if Project is official and namespace is not valid
+                if project and project.official:
+                    # Disabled if Project is official and namespace is not
+                    # valid
                     repourl = giturlparse(self.repourl)
-                    service = get_or_none(VCSService, netloc = repourl.netloc)
+                    service = get_or_none(
+                        VCSService,
+                        netloc=repourl.netloc,
+                    )
                     if not service:
                         return True
-                    namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
+                    namespace = get_or_none(
+                        VCSNameSpace,
+                        service=service,
+                        path=os.path.dirname(repourl.path),
+                    )
                     if not namespace:
                         return True
 
@@ -164,49 +336,79 @@ class WebHookMapping(models.Model):
         self.project = self.project.strip()
         self.package = self.package.strip()
 
-        if WebHookMapping.objects.exclude(pk=self.pk).filter(project=self.project, package=self.package, obs=self.obs).count():
-            raise ValidationError('A mapping object with the same parameters already exists')
+        if WebHookMapping.objects.exclude(pk=self.pk).filter(
+            project=self.project,
+            package=self.package,
+            obs=self.obs
+        ).count():
+            raise ValidationError(
+                'A mapping object with the same parameters already exists'
+            )
 
         repourl = giturlparse(self.repourl)
-        service = get_or_none(VCSService, netloc = repourl.netloc)
+        service = get_or_none(VCSService, netloc=repourl.netloc)
 
-        if settings.SERVICE_WHITELIST:
-            if not service:
-                raise ValidationError('%s is not an allowed service' % repourl.netloc)
+        if settings.SERVICE_WHITELIST and service is None:
+            raise ValidationError(
+                '%s is not an allowed service' % repourl.netloc
+            )
 
-        project = get_or_none(Project, name = self.project)
+        project = get_or_none(Project, name=self.project)
 
         if project and not project.allowed:
-            raise ValidationError('Project %s does not allow mappings' % project)
+            raise ValidationError(
+                'Project %s does not allow mappings' % project
+            )
 
         if project and project.official:
-            namespace = get_or_none(VCSNameSpace, service = service, path = os.path.dirname(repourl.path))
+            namespace = get_or_none(
+                VCSNameSpace,
+                service=service,
+                path=os.path.dirname(repourl.path),
+            )
             if not service or not namespace:
-                raise ValidationError('Official project %s allows mapping from known service namespaces only' % project)
+                raise ValidationError(
+                    'Official project %s allows mapping from known service '
+                    'namespaces only' % project
+                )
 
         if settings.STRICT_MAPPINGS:
-
             if project and not project.is_repourl_allowed(self.repourl):
-                raise ValidationError("Webhook mapping repourl is not allowed by %s's strict rules" % project)
-
+                raise ValidationError(
+                    "Webhook mapping repourl is not allowed by %s's "
+                    "strict rules" % project
+                )
             if project and not project.is_user_allowed(self.user):
-                raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
-
-            if not self.project.startswith("home:%s" % self.user.username) and not self.user.is_superuser:
-                raise ValidationError("Webhook mapping to %s not allowed for %s" % (project, self.user))
+                raise ValidationError(
+                    "Webhook mapping to %s not allowed for %s" %
+                    (project, self.user)
+                )
+            if (
+                not self.project.startswith("home:%s" % self.user.username) and
+                not self.user.is_superuser
+            ):
+                raise ValidationError(
+                    "Webhook mapping to %s not allowed for %s" %
+                    (project, self.user)
+                )
 
     def trigger_build(self):
         if not self.lsr:
-            mylsr, created = LastSeenRevision.objects.get_or_create(mapping=self)
+            mylsr, created = LastSeenRevision.objects.get_or_create(
+                mapping=self,
+            )
         else:
-            mylsr=self.lsr
+            mylsr = self.lsr
         revision_to_build = self.tag
         if not revision_to_build:
             revision_to_build = self.branch
 
         # handle_tag actually launches a build process
         # setting webuser is a way of doing a forced rebuild
-        msg = self.handle_tag(mylsr, self.user.username, {}, revision_to_build, webuser=self.user.username)
+        msg = self.handle_tag(
+            mylsr, self.user.username, {}, revision_to_build,
+            webuser=self.user.username,
+        )
         return msg
 
     def to_fields(self):
@@ -217,7 +419,9 @@ class WebHookMapping(models.Model):
         if self.project:
             fields['project'] = self.project
             fields['package'] = self.package
-            fields['ev'] = { 'namespace' : self.obs.namespace }
+            fields['ev'] = {
+                'namespace': self.obs.namespace
+            }
         if self.token:
             fields['token'] = self.token
         if self.debian:
@@ -230,47 +434,80 @@ class WebHookMapping(models.Model):
             fields['tag'] = self.tag
         return fields
 
-    # If any fields are added/removed then ensure they are handled
-    # correctly in to_fields and the webhook_diff
-    repourl = models.CharField(max_length=200, help_text="url of git repo to clone from. Should be a remote http[s]")
-    branch = models.CharField(max_length=100, default="master", help_text="name of branch to use. If not specified default branch (or currently checked out one) will be used")
-    project = models.CharField(max_length=250, default=settings.DEFAULT_PROJECT, help_text="name of an existing project under which to create or update the package")
-    package = models.CharField(max_length=250, help_text="name of the package to create or update in OBS")
-    token = models.CharField(max_length=100, default="", null=True, blank=True, help_text="a token that should exist in tag names and changelog entry headers to enable handling them")
-    debian = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to turn on debian packaging support")
-    dumb = models.CharField(max_length=2, default="", null=True, blank=True, choices = (('N','N'),('Y','Y')), help_text="Choose Y to take content of revision as-is without automatic processing (example: tarballs in git)")
-    notify = models.BooleanField(default=True, help_text="Enable IRC notifications of events")
-    build = models.BooleanField(default=True, help_text="Enable OBS build triggering")
-    comment = models.TextField(blank=True, null=True, default="")
-    user = models.ForeignKey(User, editable=False)
-    obs = models.ForeignKey(BuildService)
-
-    class Meta:
-        unique_together = (("project", "package", "obs"),)
 
 class LastSeenRevision(models.Model):
+    mapping = models.ForeignKey(
+        WebHookMapping,
+    )
+    revision = models.CharField(
+        max_length=250,
+    )
+    tag = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+    handled = models.BooleanField(
+        default=False,
+        editable=False,
+    )
+    timestamp = models.DateTimeField(
+        auto_now=True,
+    )
+    emails = models.TextField(
+        blank=True,
+        null=True,
+        editable=False,
+    )
+    payload = models.TextField(
+        blank=True,
+        null=True,
+        editable=False,
+    )
 
     def __unicode__(self):
-        return "%s @ %s/%s" % ( self.revision, self.mapping.repourl, self.mapping.branch )
+        return "%s @ %s/%s" % (
+            self.revision, self.mapping.repourl, self.mapping.branch
+        )
 
-    mapping = models.ForeignKey(WebHookMapping)
-    revision = models.CharField(max_length=250)
-    tag = models.CharField(max_length=50, blank=True, null=True)
-    handled = models.BooleanField(default=False, editable=False)
-    timestamp = models.DateTimeField(auto_now=True)
-    emails = models.TextField(blank=True, null=True, editable=False)
-    payload = models.TextField(blank=True, null=True, editable=False)
 
 class QueuePeriod(models.Model):
-
-    def __unicode__(self):
-        return "Queue period from %s %s to %s %s for %s" % ( self.start_date or "", self.start_time,
-                                                             self.end_date or "", self.end_time,
-                                                             ",".join([str(prj) for prj in self.projects.all()]))
+    start_time = models.TimeField(
+        default=timezone.now,
+    )
+    end_time = models.TimeField(
+        default=timezone.now,
+    )
+    start_date = models.DateField(
+        blank=True,
+        null=True,
+    )
+    end_date = models.DateField(
+        blank=True,
+        null=True,
+    )
+    recurring = models.BooleanField(
+        default=False,
+    )
+    comment = models.TextField(
+        blank=True,
+        null=True,
+    )
+    projects = models.ManyToManyField(
+        Project,
+    )
 
     class Meta:
-        permissions = (("can_override_queueperiod", "Can override queue periods"),)
+        permissions = (
+            ("can_override_queueperiod", "Can override queue periods"),
+        )
 
+    def __unicode__(self):
+        return "Queue period from %s %s to %s %s for %s" % (
+            self.start_date or "", self.start_time, self.end_date or "",
+            self.end_time,
+            ",".join([str(prj) for prj in self.projects.all()])
+        )
 
     def override(self, user):
         if not user:
@@ -282,36 +519,48 @@ class QueuePeriod(models.Model):
     def delay(self, dto=timezone.now()):
         if self.start_time <= self.end_time:
             if not (self.start_time <= dto.time() <= self.end_time):
-                return False # wrong time of day
+                # wrong time of day
+                return False
 
         if self.start_time >= self.end_time:
             if (self.start_time >= dto.time() >= self.end_time):
-                return False # wrong time of day
+                # wrong time of day
+                return False
 
         if self.start_date and (dto.date() < self.start_date):
-            return False # not started yet
+            # not started yet
+            return False
 
         if self.end_date and (dto.date() > self.end_date):
-            return False # already ended
+            # already ended
+            return False
 
         return True
 
-    start_time = models.TimeField(default=timezone.now)
-    end_time = models.TimeField(default=timezone.now)
-    start_date = models.DateField(blank=True, null=True)
-    end_date = models.DateField(blank=True, null=True)
-    recurring = models.BooleanField(default=False)
-    comment = models.TextField(blank=True, null=True)
-    projects = models.ManyToManyField(Project)
 
 class RelayTarget(models.Model):
+    active = models.BooleanField(
+        default=True,
+        help_text="Whether this relay will fire on matching events",
+    )
+    name = models.CharField(
+        max_length=50,
+        help_text="Friendly name of recipient, for example: Organization name",
+    )
+    url = models.CharField(
+        max_length=200,
+        help_text="HTTP(S) endpoint which will receive POST of GIT events "
+                  "(for example http://webhook.example.com/webhook/)",
+    )
+    verify_SSL = models.BooleanField(
+        default=True,
+        help_text="Turn on SSL certificate verification",
+    )
+    sources = models.ManyToManyField(
+        VCSNameSpace,
+        help_text="List of VCS namespaces "
+                  "(for example github organization or gitlab groups)",
+    )
 
     def __unicode__(self):
         return "%s webhook relay" % self.name
-
-    active = models.BooleanField(default=True, help_text="Whether this relay will fire on matching events")
-    name = models.CharField(max_length=50, help_text="Friendly name of recipient, for example: Organization name")
-    url = models.CharField(max_length=200, help_text="HTTP(S) endpoint which will receive POST of GIT events (for example http://webhook.example.com/webhook/)")
-    verify_SSL = models.BooleanField(default=True, help_text="Turn on SSL certificate verification")
-    sources = models.ManyToManyField(VCSNameSpace, help_text="List of VCS namespaces (for example github organization or gitlab groups)")
-
