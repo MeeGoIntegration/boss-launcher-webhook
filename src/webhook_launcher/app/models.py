@@ -1,5 +1,5 @@
-# Copyright (C) 2013 Jolla Ltd.
-# Contact: Islam Amer <islam.amer@jollamobile.com>
+# Copyright (C) 2013-2017 Jolla Ltd.
+#
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -265,9 +265,6 @@ class WebHookMapping(models.Model):
     obs = models.ForeignKey(
         BuildService,
     )
-
-    class Meta:
-        unique_together = (("project", "package", "obs"),)
 
     def __unicode__(self):
         return "%s/%s -> %s/%s" % (
