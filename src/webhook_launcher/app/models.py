@@ -206,7 +206,6 @@ class WebHookMapping(models.Model):
     )
     project = models.CharField(
         max_length=250,
-        default=settings.DEFAULT_PROJECT,
         help_text="name of an existing project under which to create "
                   "or update the package",
     )

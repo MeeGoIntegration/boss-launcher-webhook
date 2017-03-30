@@ -40,10 +40,6 @@ except Exception:
 URL_PREFIX = config.get('web', 'url_prefix')
 static_media_collect = config.get('web', 'static_media_collect')
 
-DEFAULT_PROJECT = "None"
-if config.has_option('web', 'default_project'):
-    DEFAULT_PROJECT = config.get('web', 'default_project')
-
 if config.has_option('web', 'allowed_hosts'):
     ALLOWED_HOSTS = config.get('web', 'allowed_hosts').split(None)
 else:
