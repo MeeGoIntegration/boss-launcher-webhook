@@ -20,7 +20,7 @@
 import ConfigParser
 import socket
 import struct
-from os.path import dirname
+from os.path import dirname, join
 
 PROJECT_DIR = dirname(__file__)
 
@@ -30,17 +30,16 @@ config = ConfigParser.ConfigParser()
 try:
     config.readfp(open(WEBHOOKCONF))
 except Exception:
-    try:
-        # during docs build
-        config.readfp(open("src/webhook_launcher/webhook.conf"))
-    except IOError:
-        # when developing it is in cwd
-        config.readfp(open("webhook.conf"))
+    # Devel configuration
+    config.readfp(open(join(PROJECT_DIR, "webhook.conf")))
+    # and optional local overrides
+    config.read(join(PROJECT_DIR, "local.conf"))
+    DEVEL_MODE = True
 
 URL_PREFIX = config.get('web', 'url_prefix')
 static_media_collect = config.get('web', 'static_media_collect')
 
-DEFAULT_PROJECT = ""
+DEFAULT_PROJECT = "None"
 if config.has_option('web', 'default_project'):
     DEFAULT_PROJECT = config.get('web', 'default_project')
 
@@ -148,7 +147,10 @@ elif USE_REMOTE_AUTH:
         'webhook_launcher.app.models.RemoteStaffBackend',
     )
 
-SECRET_KEY = config.get('web', 'secret_key')
+if DEVEL_MODE:
+    SECRET_KEY = 'test-key'
+else:
+    SECRET_KEY = config.get('web', 'secret_key')
 
 STRICT_MAPPINGS = False
 if config.has_option('web', 'strict_mappings'):
