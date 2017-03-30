@@ -165,6 +165,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
 
     def pre_save(self, obj):
         obj.user = self.request.user
+        obj.placeholder = False
 
     def create(self, request, **kwargs):
         user = request.data.get('user', None)

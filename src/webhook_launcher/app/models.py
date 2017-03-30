@@ -244,6 +244,11 @@ class WebHookMapping(models.Model):
         help_text="Choose Y to take content of revision as-is without "
                   "automatic processing (example: tarballs in git)",
     )
+    placeholder = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text="Marks automatically created placehollders",
+    )
     notify = models.BooleanField(
         default=True,
         help_text="Enable IRC notifications of events",

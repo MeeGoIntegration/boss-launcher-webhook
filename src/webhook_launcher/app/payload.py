@@ -89,7 +89,7 @@ class Payload(object):
                 obs=BuildService.objects.all()[0],
                 notify=False, build=False,
                 project=project, package=package,
-                comment="Placeholder",
+                placeholder=True,
             )
             mapobj.save()
             mapobjs.append(mapobj)

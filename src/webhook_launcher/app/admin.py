@@ -25,6 +25,7 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.forms import TextInput
 from django.http import HttpResponseRedirect
+from django.utils.encoding import force_text
 
 from webhook_launcher.app.models import (
     BuildService, LastSeenRevision, Project, QueuePeriod, RelayTarget,
@@ -50,6 +51,42 @@ class LastSeenRevisionInline(admin.StackedInline):
         ).formfield_for_dbfield(db_field, **kwargs)
 
 
+class PlaceholderFilter(admin.SimpleListFilter):
+    title = "Placeholder"
+    parameter_name = "placeholder"
+
+    def lookups(self, request, model_admin):
+        return (
+            ('0', 'No'),
+            ('1', 'Yes'),
+            ('all', 'All'),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == 'all':
+            return queryset
+        elif value == '1':
+            return queryset.filter(placeholder=True)
+        else:
+            # Don't show placeholders by default
+            return queryset.filter(placeholder=False)
+
+    def choices(self, changelist):
+        value = self.value()
+        for lookup, title in self.lookup_choices:
+            yield {
+                'selected': (
+                    value == force_text(lookup) or
+                    (not value and lookup == '0')
+                ),
+                'query_string': changelist.get_query_string(
+                    {self.parameter_name: lookup}, []
+                ),
+                'display': title,
+            }
+
+
 class WebHookMappingAdmin(admin.ModelAdmin):
     class Media:
         css = {
@@ -57,11 +94,12 @@ class WebHookMappingAdmin(admin.ModelAdmin):
         }
 
     list_display = (
-        'repourl', 'branch', 'project', 'package', 'notify', 'build', 'user'
+        'repourl', 'branch', 'project', 'package',
+        'placeholder', 'notify', 'build', 'user'
     )
     list_display_links = ('repourl',)
     list_filter = (
-        'project', 'user', 'notify', 'build',
+        PlaceholderFilter, 'build', 'notify', 'project', 'user',
     )
     search_fields = (
         'user__username', 'user__email', 'repourl', 'project', 'package'
@@ -77,6 +115,7 @@ class WebHookMappingAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         obj.user = request.user
+        obj.placeholder = False
         obj.save()
 
     # HACK: When creating similar webhook inline model is not saved.
