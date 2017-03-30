@@ -28,8 +28,8 @@ class TestPayloadDetection(TestCase):
 
 @patch('webhook_launcher.app.payload.requests')
 @patch('webhook_launcher.app.payload.bbAPIcall')
-@patch('webhook_launcher.app.tasks.launch_notify')
-@patch('webhook_launcher.app.tasks.launch_build')
+@patch('webhook_launcher.app.models.launch_notify')
+@patch('webhook_launcher.app.models.launch_build')
 class TestPayloadHandling(TestCase):
     def setUp(self):
         self.user = User.objects.create(username='placeholder')
