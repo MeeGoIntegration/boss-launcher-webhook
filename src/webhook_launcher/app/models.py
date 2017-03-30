@@ -434,7 +434,7 @@ class WebHookMapping(models.Model):
             else:
                 qp = None
 
-        message = self._get_build_message( user, force, handled, qp)
+        message = self._get_build_message(user, force, handled, qp)
         fields = self.to_fields()
         fields['msg'] = message
 
