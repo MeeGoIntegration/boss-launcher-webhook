@@ -340,13 +340,18 @@ class WebHookMapping(models.Model):
         self.project = self.project.strip()
         self.package = self.package.strip()
 
-        if WebHookMapping.objects.exclude(pk=self.pk).filter(
+        duplicates = WebHookMapping.objects.filter(
             project=self.project,
             package=self.package,
-            obs=self.obs
-        ).count():
+            obs=self.obs,
+        )
+        if self.pk:
+            duplicates = duplicates.exclude(pk=self.pk)
+
+        if self.build and duplicates.count():
             raise ValidationError(
-                'A mapping object with the same parameters already exists'
+                'A mapping object building in %s %s %s already exists' %
+                (self.obs, self.project, self.package)
             )
 
         repourl = giturlparse(self.repourl)
