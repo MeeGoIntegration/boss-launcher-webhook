@@ -400,6 +400,10 @@ class WebHookMapping(models.Model):
                 )
 
     def trigger_build(self, user=None, tag=None, force=False):
+        if not self.pk:
+            raise RuntimeError(
+                "trigger_build() on unsaved WebHookMapping"
+            )
 
         # Only fire for projects which allow webhooks. We can't just
         # rely on validation since a Project may forbid hooks after
@@ -489,6 +493,10 @@ class WebHookMapping(models.Model):
         return " ".join(parts)
 
     def handle_commit(self, user=None, notify=None):
+        if not self.pk:
+            raise RuntimeError(
+                "handle_commit() on unsaved WebHookMapping"
+            )
 
         if user is None:
             user = self.user.username
