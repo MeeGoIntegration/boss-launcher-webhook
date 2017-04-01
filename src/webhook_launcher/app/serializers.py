@@ -76,13 +76,13 @@ class LSRField(serializers.Field):
         mydata = data[field_name]
 
         # Try and get our existing lsr
-        if self.parent.object is None:
+        if self.parent.validated_data is None:
             print "Can't set an lsr on object creation since the lsr needs the id of the object which hasn't been created at the time the lsr is created :("
             return
-        lsr = self.parent.object.lsr
+        lsr = self.parent.validated_data.lsr
         if not lsr:
             # create a new lsr
-            lsr = LastSeenRevision(mapping = self.parent.object)
+            lsr = LastSeenRevision(mapping = self.parent.validated_data)
         # update it with the data and ensure it's valid
         # Passing lsr into LastSeenRevisionSerializer() updates it in place
         # and returns a Serializer reference to it which we use for the useful
@@ -91,7 +91,7 @@ class LSRField(serializers.Field):
         if not lsr_.is_valid() :
             raise Exception(lsr_.errors)
         # and just absolutely ensure the mapping is still to us
-        lsr_.mapping = self.parent.object
+        lsr_.mapping = self.parent.validated_data
         lsr_.save()
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
