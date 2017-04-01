@@ -172,11 +172,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
         return Response({ 'WebHookMapping Triggered by API': msg })
 
     # PATCH / update webhook
-    def partial_update(self, request, pk=None):
-        try:
-            hook = WebHookMapping.objects.get(pk=pk)
-        except WebHookMapping.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+    def partial_update(self, hook, request):
         serializer = WebHookMappingSerializer(hook)
 
         #first take the original data
@@ -239,8 +235,7 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
                 # The decorator stored our kwargs and doesn's support
                 # chaining very well so append 'pk' to self.kwargs and
                 # then call update()
-                self.kwargs['pk'] = obj.id
-                return self.update(request=request, pk=obj.id)
+                return self.partial_update(obj, request=request)
             except WebHookMapping.DoesNotExist:
                 return self.create(request=request)
         else :
