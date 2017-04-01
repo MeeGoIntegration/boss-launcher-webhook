@@ -26,6 +26,7 @@ PROJECT_DIR = dirname(__file__)
 
 WEBHOOKCONF = "/etc/skynet/webhook.conf"
 
+DEVEL_MODE = False
 config = ConfigParser.ConfigParser()
 try:
     config.readfp(open(WEBHOOKCONF))
