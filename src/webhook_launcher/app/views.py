@@ -25,7 +25,7 @@ import struct
 from collections import defaultdict
 from pprint import pprint
 
-import rest_framework_filters as filters
+import django_filters
 from django.conf import settings
 from django.db.models import Q
 from django.http import (
@@ -38,12 +38,9 @@ from rest_framework.decorators import detail_route
 from rest_framework.response import Response
 
 from webhook_launcher.app.boss import launch_queue
-from webhook_launcher.app.models import (
-    BuildService, LastSeenRevision, Project, WebHookMapping
-)
+from webhook_launcher.app.models import BuildService, Project, WebHookMapping
 from webhook_launcher.app.serializers import (
-    BuildServiceSerializer, LastSeenRevisionSerializer,
-    WebHookMappingSerializer
+    BuildServiceSerializer, WebHookMappingSerializer
 )
 
 
@@ -145,21 +142,18 @@ def index(request):
         return HttpResponseNotAllowed(['GET', 'POST'])
 
 
-class WebHookMappingFilter(filters.FilterSet):
-    package = filters.AllLookupsFilter(name='package')
-    project = filters.AllLookupsFilter(name='project')
-    repourl = filters.AllLookupsFilter(name='repourl')
-    branch = filters.AllLookupsFilter(name='branch')
-    # FIXME. This is the original line but it seems broken
-    #   after an update to either django or the filters
-    #  user = filters.AllLookupsFilter(name='user__username')
-    user = filters.AllLookupsFilter(name='user')
+class WebHookMappingFilter(django_filters.FilterSet):
+    obs = django_filters.CharFilter(name='obs__namespace')
+    user = django_filters.CharFilter(name='user__username')
 
     class Meta:
         model = WebHookMapping
-        fields = [
-            "id", "package", "project", "repourl", "user__username", "build",
-        ]
+        fields = {
+            "package": ['exact'],
+            "project": ['exact'],
+            "repourl": ['exact'],
+            "build": ['exact'],
+        }
 
 
 class WebHookMappingViewSet(viewsets.ModelViewSet):
@@ -167,150 +161,17 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     serializer_class = WebHookMappingSerializer
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     filter_class = WebHookMappingFilter
-    fields = '__all__'
 
     def pre_save(self, obj):
         obj.user = self.request.user
-
-    def post_save(self, obj, created=False):
-        request = self.get_renderer_context()['request']
-        revision = request.data.get('revision', None)
-        if revision is None:
-            return
-        tag = request.data.get('tag', None)
-
-        if created:
-            lsr = LastSeenRevision(mapping=obj, revision=revision, tag=tag)
-        else:
-            lsr = obj.lsr
-            lsr.revision = revision
-            if tag:
-                lsr.tag = tag
-
-        lsr.save()
-
-    # PUT / trigger webhook
-    def update(self, request, pk=None):
-        try:
-            hook = WebHookMapping.objects.get(pk=pk)
-        except WebHookMapping.DoesNotExist:
-            return Response(
-                {'cannot find webhook id': pk},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        msg = hook.trigger_build()
-        return Response({'WebHookMapping Triggered by API': msg})
-
-    # PATCH / update webhook
-    def partial_update(self, request, pk=None):
-        try:
-            hook = WebHookMapping.objects.get(pk=pk)
-        except WebHookMapping.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = WebHookMappingSerializer(hook)
-
-        # first take the original data
-        patched_data = serializer.data
-
-        # patch keys from request.data
-        for key, value in request.data.items():
-            patched_data[key] = value
-
-        serializer = WebHookMappingSerializer(hook, data=patched_data)
-
-        lsr_data = request.data.get('lsr', None)
-        revision = request.data.get('revision', None)
-
-        if lsr_data or revision:
-            # in rare case there is no mapping to lsr from hook we create one
-            if not hook.lsr:
-                if revision:
-                    LastSeenRevision.objects.get_or_create(
-                        mapping=hook,
-                        revision=revision,
-                    )
-                else:
-                    return Response(
-                        {"detail": "no LastSeenRevision mapped to object. "
-                                   "Please give also 'revision'",
-                         },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-            lsr_serializer = LastSeenRevisionSerializer(
-                hook.lsr, data=lsr_data,
-            )
-            lsr_patch_data = lsr_serializer.data
-
-            if lsr_data:
-                for key, value in lsr_data.items():
-                    lsr_patch_data[key] = value
-            if revision:
-                lsr_patch_data['revision'] = revision
-
-            lsr_serializer = LastSeenRevisionSerializer(
-                hook.lsr,
-                data=lsr_patch_data,
-            )
-
-        if serializer.is_valid():
-            if lsr_data or revision:
-                if lsr_serializer.is_valid():
-                    serializer.save()
-                    lsr_serializer.save()
-            else:
-                serializer.save()
-        else:
-            return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(serializer.data)
-
-    @detail_route(
-        methods=['get', 'put'],
-        permission_classes=[permissions.IsAuthenticatedOrReadOnly],
-    )
-    def find(self, request, obsname, project, package):
-        if request.method == 'GET':
-            try:
-                qs = WebHookMapping.objects.get(
-                    obs__namespace=obsname,
-                    project=project,
-                    package=package,
-                )
-                ser = WebHookMappingSerializer(qs)
-                return Response(ser.data)
-            except WebHookMapping.DoesNotExist:
-                return Response(None)
-        elif request.method == 'PUT':
-            try:
-                obj = WebHookMapping.objects.get(
-                    obs__namespace=obsname,
-                    project=project,
-                    package=package,
-                )
-                # The decorator stored our kwargs and doesn's support
-                # chaining very well so append 'pk' to self.kwargs and
-                # then call update()
-                self.kwargs['pk'] = obj.id
-                return self.update(request=request, pk=obj.id)
-            except WebHookMapping.DoesNotExist:
-                return self.create(request=request)
-        else:
-            raise Exception("Invalid method in find()")
 
     @detail_route(
         methods=['put'],
         permission_classes=[permissions.IsAuthenticatedOrReadOnly],
     )
-    def trigger(self, request, obsname, project, package):
+    def trigger(self, request, pk=None):
         try:
-            hook = WebHookMapping.objects.get(
-                obs__namespace=obsname,
-                project=project,
-                package=package,
-            )
+            hook = WebHookMapping.objects.get(pk=pk)
             msg = hook.trigger_build()
             return Response({'WebHookMapping Triggered by API': msg})
         except WebHookMapping.DoesNotExist:
@@ -318,12 +179,6 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
                 {'WebHookMapping': 'Not found'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-
-class LastSeenRevisionViewSet(viewsets.ModelViewSet):
-    queryset = LastSeenRevision.objects.all()
-    serializer_class = LastSeenRevisionSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
 
 class BuildServiceViewSet(viewsets.ReadOnlyModelViewSet):
