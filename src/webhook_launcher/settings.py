@@ -26,6 +26,7 @@ PROJECT_DIR = dirname(__file__)
 
 WEBHOOKCONF = "/etc/skynet/webhook.conf"
 
+DEVEL_MODE = False
 config = ConfigParser.ConfigParser()
 try:
     config.readfp(open(WEBHOOKCONF))
@@ -79,7 +80,6 @@ if config.has_option('web', 'post_ip_filter'):
             bits = int(bits)
         else:
             bits = 32
-        print "Allow POST from %s / %d" % (ip, bits)
         NETMASKS.append(
             struct.unpack('<L', socket.inet_aton(ip))[0] &
             ((2L << bits-1) - 1)
