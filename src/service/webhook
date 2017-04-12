@@ -1,250 +1,279 @@
-#!/bin/bash
-
-# (C) 2014 David Greaves david.greaves@jolla.com
+#!/usr/bin/env python
+# Copyright (C) 2017 Jolla Ltd.
+#
+# All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# See http://www.gnu.org/licenses/gpl-2.0.html for full license text.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to
+# the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-# The service approach uses and trusts OBS_SERVICE_PROJECT
-# OBS_SERVICE_PACKAGE env vars set by OBS
+"""
+The webhook service creates and manages a webhook which causes the package to
+be rebuilt when a tag is pushed to a git service.
 
-SERVICE="webhook"
+Use <param name="name">value</param>
 
-STORE=/srv/service/$SERVICE
-OUTDIR=""
-
-jsondiff=/usr/lib/obs/service/json_diff.py
-
-# Defaults
-WH_USER="admin"
-WH_PASSWD="root"
-OBS="mer"
-WEBHOOK_URL=http://127.0.0.1:8000/webhook/api
-LSR=""
-TOKEN=""
-DEBIAN="N"
-DUMB="N"
-NOTIFY="true"
-BUILD="true"
-COMMENT=""
-DEBUG=
-
-get_config_options () {
-  # config options for this host ?
-  if [[ -f /etc/obs/services/$SERVICE ]]; then
-    . /etc/obs/services/$SERVICE
-  fi
-  # config options for this user ?
-  if [[ -f "$HOME"/.obs/$SERVICE ]]; then
-    . "$HOME"/.obs/$SERVICE
-  fi
-}
-
-usage() {
-  cat <<EOF
-
-The webhook service creates and manages a webhook which causes the package to be rebuilt when a tag is pushed to a git service.
-
-Use <param name="name">value</param> 
-
-Required params: 
-  "repourl"  <url>           Which repo is sending events: Eg: "https://github.com/mer-hybris/libhybris.git"
-  "branch"   <branch>        Webhook branch; eg: "pkg-mer"
+Required params:
+  "repourl"  <url>         Which repo is sending events.
+                           Eg: "https://github.com/mer-hybris/libhybris.git"
+  "branch"   <branch>      Webhook branch; eg: "pkg-mer"
 
 Optional params:
-  "token"    <token>         Optional webhook filtering token
-  "debian"   <Y|N>           Is this a debian package
-  "dumb"     <Y|N>           Is this a dumb package (eg tarball in git)
-  "build"    <true|false>    "true" to enable this webhook to trigger builds (default:true)
-  "notify"   <true|false>    "true" to send notifications on action  (default:true)
-  "comment"  <comment>       Appears in the webhook list view
+  "token"    <token>       Optional webhook filtering token
+  "debian"   <Y|N>         Is this a debian package
+                           (default:N)
+  "dumb"     <Y|N>         Is this a dumb package (eg tarball in git)
+                           (default:N)
+  "build"    <true|false>  "true" to enable this webhook to trigger builds
+                           (default:true)
+  "notify"   <true|false>  "true" to send notifications on action
+                           (default:true)
+  "comment"  <comment>     Appears in the webhook list view
 
 Don't forget to make sure the git service webhook settings are set correctly
+"""
+from __future__ import print_function
+import argparse
+import requests
+import os
 
-EOF
-}
 
-fatal() {
-    echo $@
-    usage
-    exit 1
-}
+class Service(object):
+    def __init__(self, *args):
+        # config options for this host
+        self._read_conf("/etc/obs/services/webhook")
+        # config options for this user
+        self._read_conf(os.path.expanduser("~/.obs/webhook"))
+        # config options from environment
+        self._read_conf()
 
-validate() {
-    label=$1
-    val=$2
-    shift;shift
-    args=$@
-    while test $# -gt 0; do
-	[[ $val == $1 ]] && return
-	shift
-    done
-    fatal "$label is '$val' : should be one of : $args"
-}
+        self.auth = (self.WH_USER, self.WH_PASSWD)
+        self.project = os.environ['OBS_SERVICE_PROJECT']
+        self.package = os.environ['OBS_SERVICE_PACKAGE']
+        self._parse_args(args or None)
 
-get_config_options
+        self.new_whm = {
+            "obs": self.OBS,
+            "user": self.WH_USER,
+            "repourl": self.args.repourl,
+            "branch": self.args.branch,
+            "project": self.project,
+            "package": self.package,
+            "token": self.args.token,
+            "debian": self.args.debian,
+            "dumb": self.args.dumb,
+            "notify": self.args.notify == 'true',
+            "build": self.args.build == 'true',
+            "comment": self.args.comment,
+        }
 
-while test $# -gt 0; do
-  case $1 in
-    *-revision)
-      LSR="$2"
-      shift
-    ;;
-    *-repourl)
-      REPOURL="$2"
-      shift
-    ;;
-    *-branch)
-      BRANCH="$2"
-      shift
-    ;;
-    *-token)
-      TOKEN="$2"
-      shift
-    ;;
-    *-debian)
-      DEBIAN="$2"
-      validate debian "$DEBIAN" Y N
-      shift
-    ;;
-    *-dumb)
-      DUMB="$2"
-      validate dumb "$DUMB" Y N
-      shift
-    ;;
-    *-notify)
-      NOTIFY="$2"
-      validate notify "$NOTIFY" true false
-      shift
-    ;;
-    *-build)
-      BUILD="$2"
-      validate build "$BUILD" true false
-      shift
-    ;;
-    *-comment)
-      COMMENT="$2"
-      shift
-    ;;
-    *-outdir)
-      OUTDIR="$2"
-      shift
-    ;;
-    -h|*-help)
-      usage
-      exit 0
-    ;;
-    *)
-      usage
-      echo Unknown parameter $1.
-      exit 1
-    ;;
-  esac
-  shift
-done
+    def _read_conf(self, filename=None):
+        if filename:
+            if not os.path.exists(filename):
+                return
+            data = {}
+            with open(filename) as fd:
+                for line in fd.readlines():
+                    line = line.strip()
+                    if line[0] == "#":
+                        continue
+                    try:
+                        key, value = line.split("=", 1)
+                    except ValueError:
+                        continue
+                    key = key.strip()
+                    value = value.strip()
+                    data[key] = value
+        else:
+            data = os.environ
 
-if [ -z "$REPOURL" ]; then
-    fatal "ERROR: no <repourl> parameter"
-fi
-if [ -z "$BRANCH" ]; then
-    fatal "ERROR: no <branch> parameter"
-fi
-if [ -z "$OBS_SERVICE_PROJECT" ]; then
-    fatal "ERROR: no OBS_SERVICE_PROJECT environment var"
-fi
-if [ -z "$OBS_SERVICE_PACKAGE" ]; then
-    fatal "ERROR: no OBS_SERVICE_PACKAGE environment var"
-fi
-# These are optional   REPOURL BRANCH TOKEN DEBIAN DUMB NOTIFY BUILD
+        defaults = {
+            "WH_USER": "admin",
+            "WH_PASSWD": "root",
+            "OBS": "mer",
+            "WEBHOOK_URL": "http://127.0.0.1:8000/webhook/api",
+            "DEBUG": False,
+        }
+        for key, value in defaults.iteritems():
+            if key in data:
+                value = data[key]
+            setattr(self, key, value)
 
-#repourl_regexp="^[A-Za-z0-9_-]*/[A-Za-z0-9_-]*$"
-#if ! [[ $REPO =~ $repourl_regexp ]]; then
-#    fatal "ERROR: repo '$REPO'is not in area/repo format (omit .git and any http://.../ part)"
-#fi
+    def _parse_args(self, args):
+        parser = argparse.ArgumentParser(
+            description=__doc__,
+            formatter_class=argparse.RawTextHelpFormatter,
+        )
+        parser.add_argument(
+            '--repourl',
+            required=True,
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--branch',
+            required=True,
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--token',
+            default='',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--debian',
+            choices=['Y', 'N'],
+            default='N',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--dumb',
+            choices=['Y', 'N'],
+            default='N',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--build',
+            choices=['true', 'false'],
+            default='true',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--notify',
+            choices=['true', 'false'],
+            default='true',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
+            '--comment',
+            default='',
+            help=argparse.SUPPRESS,
+        )
+        self.args = parser.parse_args(args=args)
 
-#tag_regexp="^[A-Za-z0-9_.-]*$"
-#if ! [[ $TAG =~ $tag_regexp ]]; then
-#    fatal "ERROR: repo '$TAG'is not valid (must match '$tag_regexp')"
-#fi
+    @property
+    def old_whm(self):
+        if not hasattr(self, '_old_whm'):
+            params = {
+                'obs': self.OBS,
+                'project': self.project,
+                'package': self.package,
+                #'repourl': self.args.repourl,
+                #'branch': self.args.branch,
+            }
+            self._debug('Fetching old whm')
+            self._debug(params)
+            r = requests.get(
+                '%s/webhookmappings/' % self.WEBHOOK_URL,
+                auth=self.auth,
+                params=params,
+            )
+            r.raise_for_status()
+            response = r.json()
+            self._debug(response)
+            if response['count'] > 1:
+                raise Exception(
+                    'More than one webhook mapping found for %s' % (params,)
+                )
+            elif response['count'] == 0:
+                self._debug('No old whm found')
+                self._old_whm = None
+            else:
+                self._old_whm = response['results'][0]
+                self._debug('Got old whm')
+                self._debug(self._old_whm)
+        return self._old_whm
 
-if [[ ! -d $STORE ]]; then
-    echo "Note: $STORE path not found. Creating a local webhook directory."
-    STORE=./webhook.tmp
-    mkdir -p $STORE || fatal "Could not create $STORE"
-fi
-cd $STORE
+    def update_old_whm(self):
+        self._debug("Updating old whm")
+        r = requests.patch(
+            '%s/webhookmappings/%s/' % (self.WEBHOOK_URL, self.old_whm['id']),
+            auth=self.auth,
+            json=self.new_whm,
+        )
+        r.raise_for_status()
+        result = r.json()
+        self._debug(result)
+        return result
 
-mkdir -p $OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE || fatal "couldn't make $STORE/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE dir"
-cd $OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE
+    def create_new_whm(self):
+        self._debug("Creating new whm")
+        r = requests.post(
+            '%s/webhookmappings/' % self.WEBHOOK_URL,
+            auth=self.auth,
+            json=self.new_whm,
+        )
+        r.raise_for_status()
+        result = r.json()
+        self._debug(result)
+        return result
 
-# All setup and ready to go:
+    def trigger_whm(self, whm):
+        self._debug("Triggering whm %s" % whm['id'])
+        r = requests.put(
+            '%s/webhookmappings/%s/trigger/' % (self.WEBHOOK_URL, whm['id']),
+            auth=self.auth,
+        )
+        r.raise_for_status()
+        result = r.json()
+        self._debug(result)
+        return result
 
-make_new_webhook() {
-    cat <<EOF > webhook_new.json
-{
-    "obs": "$OBS", 
-    "user": "$WH_USER", 
-    "repourl": "$REPOURL", 
-    "branch": "$BRANCH", 
-    "project": "$OBS_SERVICE_PROJECT", 
-    "package": "$OBS_SERVICE_PACKAGE", 
-    "token": "$TOKEN", 
-    "debian": "$DEBIAN", 
-    "dumb": "$DUMB", 
-    "notify": $NOTIFY, 
-    "build": $BUILD, 
-    "comment": "$COMMENT"
-}
-EOF
-}
+    @property
+    def whm_needs_update(self):
+        keys = [
+            "repourl",
+            "branch",
+            "project",
+            "package",
+            "token",
+            "debian",
+            "dumb",
+            "notify",
+            "build",
+            "comment",
+        ]
+        errors = []
 
-CURL() {
-    [[ $DEBUG ]] && echo "curl -s -u WH_USER:WH_PASSWD -H \"Content-Type: application/json\" $@" >&2
-    curl -s -u $WH_USER:$WH_PASSWD -H "Content-Type: application/json" $@
-}
+        for key in keys:
+            old = self.old_whm.get(key, None)
+            new = self.new_whm.get(key, None)
+            if old != new:
+                errors.append(
+                    "%s: differs (%s != %s)" %
+                    (key, old, new)
+                )
 
-get_old_webhook() {
-    CURL -X GET $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/find/ > webhook_current.json 
-    if [[ $DEBUG ]]; then
-	echo "GOT"; cat webhook_current.json; echo
-    fi
-}
+        if len(errors) > 0:
+            self._debug("Don't match:")
+            for e in errors:
+                self._debug(" %s" % e)
+            return True
+        return False
 
-webhook_is_same() {
-    /usr/lib/obs/service/webhook_diff.py webhook_current.json webhook_new.json
-    return $?
-}
+    def _debug(self, msg):
+        if self.DEBUG:
+            print(msg)
 
-put_new_webhook() {
-    if [[ $DEBUG ]]; then
-	echo "PUTting to '/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE'"; cat webhook_new.json; echo
-    fi
-    CURL -X PUT $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/find/ -d @webhook_new.json 
-}
+    def main(self):
+        if self.old_whm and self.whm_needs_update:
+            self.update_old_whm()
+            self.trigger_whm(self.old_whm)
+        else:
+            whm = self.create_new_whm()
+            self.trigger_whm(whm)
 
-trigger_webhook() {
-    if [[ $DEBUG ]]; then
-	echo "PUTting to '/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/trigger/'"; cat webhook_new.json; echo
-    fi
-    CURL -X PUT $WEBHOOK_URL/webhookmappings/$OBS/$OBS_SERVICE_PROJECT/$OBS_SERVICE_PACKAGE/trigger/ 
-}
 
-# Check the webhook but don't touch it unless needed
-make_new_webhook
-if get_old_webhook; then
-    if webhook_is_same; then
-	echo not changed
-    else
-	echo changed
-	put_new_webhook
-	trigger_webhook
-    fi
-else
-    echo new
-    put_new_webhook
-    trigger_webhook
-fi
-exit 0
+if __name__ == '__main__':
+    s = Service()
+    s.main()
