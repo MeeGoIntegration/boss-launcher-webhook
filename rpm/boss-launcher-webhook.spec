@@ -64,6 +64,13 @@ Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
 
+%package -n boss-participant-auto_promote
+Group: Applications/Engineering
+Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
+Summary: BOSS participant to handle webhooks
+%description -n boss-participant-auto_promote
+This package provides the participant that handles promotion of gated projects, in response to webhook triggers
+
 %define python python%{?__python_ver}
 %define __python /usr/bin/%{python}
 %if ! (0%{?fedora} > 12 || 0%{?rhel} > 5)
@@ -106,6 +113,13 @@ if [ $1 -ge 1 ]; then
     skynet register --all || true
 fi
 
+%post -n boss-participant-auto_promote
+if [ $1 -ge 1 ]; then
+    skynet apply || true
+    skynet reload auto_promote || true
+    skynet register --all || true
+fi
+
 %files
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/skynet
@@ -125,6 +139,11 @@ fi
 %{_datadir}/boss-skynet/delete_webhook.py*
 %{_datadir}/boss-skynet/handle_webhook.py*
 %{_datadir}/boss-skynet/relay_webhook.py*
+
+%files -n boss-participant-auto_promote
+%defattr(-,root,root,-)
+%config(noreplace) %{svdir}/auto_promote.conf
+%{_datadir}/boss-skynet/auto_promote.py*
 
 %files -n boss-participant-create_project
 %defattr(-,root,root,-)

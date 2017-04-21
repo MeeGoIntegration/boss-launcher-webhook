@@ -5,7 +5,7 @@ install:
 
 	install -D -m 644 conf/apache_webhook.conf   $(DESTDIR)/etc/apache2/vhosts.d/webhook.conf
 
-	for p in create_project delete_webhook handle_webhook relay_webhook trigger_service ; do \
+	for p in auto_promote create_project delete_webhook handle_webhook relay_webhook trigger_service ; do \
 	  install -D -m 755 src/participants/$$p.py  $(DESTDIR)/usr/share/boss-skynet/$$p.py ; \
 	  install -D -m 644 conf/supervisor/$$p.conf $(DESTDIR)/etc/supervisor/conf.d/$$p.conf ; \
 	done
