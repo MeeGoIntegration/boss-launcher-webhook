@@ -10,16 +10,15 @@ License: GPLv2+
 URL: http://www.merproject.org
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-sphinx, python-boss-skynet, python-ruote-amqp
+BuildRequires: python, python-sphinx, python-ruote-amqp
 %if ! 0%{?use_pip}
 BuildRequires: python-django
 %endif
-Requires: python >= 2.5.0, python-xml, python-boss-skynet, python-flup, python-requests
+Requires: python >= 2.5.0, python-xml, python-flup, python-requests
 %if ! 0%{?use_pip}
 Requires: python-django, python-djangorestframework python-django-extensions
 %endif
 Requires: apache2-mod_wsgi
-Requires(post): python-boss-skynet
 BuildArch: noarch
 Summary: VCS webhook handler
 
