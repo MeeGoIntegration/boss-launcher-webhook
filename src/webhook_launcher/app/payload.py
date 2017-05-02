@@ -189,6 +189,12 @@ class GhPush(Payload):
             try:
                 # github payload
                 url = data['repository']['url']
+                if url.startswith('git@git.jollamobile.com:'):
+                    # gitlab code fills payload.url with project.url_to_repo
+                    # and homepage with project.web_url, we're doing
+                    # project.http_url_to_repo which for some reason
+                    # it's not exposing in the payload.
+                    url = data['repository']['homepage'] + '.git'
             except KeyError:
                 raise PayloadParsingError("Not a GhPush payload")
 
