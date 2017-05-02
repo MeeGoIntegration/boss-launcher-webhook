@@ -185,7 +185,7 @@ DATABASE_OPTIONS = {
 # timezone as the operating system.
 # If running in a Windows environment this must be set to the same as your
 # system time zone.
-TIME_ZONE = None
+TIME_ZONE = 'UTC'
 USE_TZ = True
 
 # Language code for this installation. All choices can be found here:
