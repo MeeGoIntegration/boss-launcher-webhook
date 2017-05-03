@@ -10,7 +10,7 @@ License: GPLv2+
 URL: http://www.merproject.org
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp
+BuildRequires: python, python-setuptools, python-sphinx, python-boss-skynet, python-ruote-amqp
 %if ! 0%{?use_pip}
 BuildRequires: python-django
 %endif
@@ -38,7 +38,7 @@ Webhook handler for gitlab, github and bitbucket that receives data as a POST ca
 
 %package -n obs-service-tar-git
 Group: Applications/Engineering
-Requires: git, obs-source_service
+Requires: git
 Summary: OBS source service to generate sources from git
 %description -n obs-service-tar-git
 This package provides the service to generate source from git inside an OBS source service
@@ -168,4 +168,4 @@ fi
 %dir /usr/lib/obs/service
 /usr/lib/obs/service/webhook
 /usr/lib/obs/service/webhook.service
-/usr/lib/obs/service/webhook_diff.py
+/usr/lib/obs/service/webhook_diff.py*
