@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from StringIO import StringIO
 from rest_framework.parsers import JSONParser
+from collections import OrderedDict
 
 class BuildServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -72,27 +73,32 @@ class LSRField(serializers.Field):
     def to_internal_value(self, data):
         field_name="lsr"
         if field_name not in data:
-            return
-        mydata = data[field_name]
+            raise Exception("No 'lsr' in data:  %s" % data)
+        lsrdata = data[field_name] # An OrderedDict
 
         # Try and get our existing lsr
-        if self.parent.validated_data is None:
-            print "Can't set an lsr on object creation since the lsr needs the id of the object which hasn't been created at the time the lsr is created :("
-            return
-        lsr = self.parent.validated_data.lsr
+        if self.parent.initial_data is None:
+            raise Exception("Can't set an lsr on object creation since the lsr needs the id of the object which hasn't been created at the time the lsr is created :(")
+
+        lsr = None
+        if "id" in  lsrdata:
+            lsr = LastSeenRevision.objects.get(pk=lsrdata["id"])
         if not lsr:
             # create a new lsr
-            lsr = LastSeenRevision(mapping = self.parent.validated_data)
+            lsr = LastSeenRevision(mapping = lsrdata["id"])
         # update it with the data and ensure it's valid
         # Passing lsr into LastSeenRevisionSerializer() updates it in place
         # and returns a Serializer reference to it which we use for the useful
         # functions
-        lsr_ = LastSeenRevisionSerializer(lsr, data=mydata, partial=True)
+        lsr_ = LastSeenRevisionSerializer(lsr, data=lsrdata, partial=True)
         if not lsr_.is_valid() :
             raise Exception(lsr_.errors)
         # and just absolutely ensure the mapping is still to us
-        lsr_.mapping = self.parent.validated_data
+        lsr_.mapping = data["id"]
         lsr_.save()
+        r=OrderedDict()
+        r["_lsr"]=lsr_.instance
+        return r
 
 class WebHookMappingSerializer(serializers.ModelSerializer):
 #    lsr = LastSeenRevisionSerializer(many=False, read_only=True)
