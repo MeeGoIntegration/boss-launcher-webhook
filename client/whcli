@@ -5,7 +5,10 @@ import json
 import subprocess
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-WEBHOOK = 'https://webhook.jollamobile.com/webhook/api/webhookmappings/'
+WEBHOOK = os.path.join(
+    os.environ.get('WEBHOOK_URL', 'http://localhost:8000/'),
+    'webhook/api/webhookmappings/'
+)
 debug = False
 
 def geturl(*arg):
@@ -32,9 +35,12 @@ def curl(*args):
         elif code.startswith("5"):
             raise RuntimeError("Received %s server error" % code)
         #http://www.django-rest-framework.org/api-guide/status-codes/#successful-2xx
-        elif code in ["200", "201", "202", "203", "204", "205", "206"]:
+        elif code in ["200", "201", "202", "203", "205", "206"]:
             response = json.loads(output[0].strip())
             return response
+        elif code in ["204"]:
+            # DELETE responds with 204 No content
+            return {}
         #else:
         #    for key, val in response.items():
         #        sys.stderr.write("%s: %s\n" % (key, ",".join(val)))
@@ -115,7 +121,8 @@ def get_hooks(opts):
             query_url += "build=%s&" % build_flag
     if query_url:
         url += "?" + query_url
-    hooklist = get(url)
+    response = get(url)
+    hooklist = response.get('results', [])
     return hooklist
 
 def print_list(hooks, verbose=False):
