@@ -149,9 +149,10 @@ class WebHookMappingFilter(django_filters.FilterSet):
     class Meta:
         model = WebHookMapping
         fields = {
-            "package": ['exact'],
-            "project": ['exact'],
-            "repourl": ['exact'],
+            "package": ['exact', 'startswith', 'endswith', 'contains'],
+            "project": ['exact', 'startswith', 'endswith', 'contains'],
+            "repourl": ['exact', 'startswith', 'endswith', 'contains'],
+            "branch": ['exact', 'startswith', 'endswith', 'contains'],
             "build": ['exact'],
         }
 
