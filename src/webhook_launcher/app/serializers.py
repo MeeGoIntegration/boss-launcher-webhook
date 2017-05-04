@@ -15,9 +15,7 @@ class BuildServiceSerializer(serializers.ModelSerializer):
 class LastSeenRevisionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LastSeenRevision
-        exclude = [
-            'id', 'payload', 'mapping', 'handled', 'timestamp', 'emails',
-        ]
+        fields = ['tag', 'revision']
 
 
 class BuildServiceField(serializers.Field):
