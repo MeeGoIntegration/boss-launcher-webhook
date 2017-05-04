@@ -166,6 +166,12 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
     def pre_save(self, obj):
         obj.user = self.request.user
 
+    def create(self, request, **kwargs):
+        user = request.data.get('user', None)
+        if user is None:
+            request.data['user'] = request.user.username
+        return super(WebHookMappingViewSet, self).create(request, **kwargs)
+
     @detail_route(
         methods=['put'],
         permission_classes=[permissions.IsAuthenticatedOrReadOnly],
