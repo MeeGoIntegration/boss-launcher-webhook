@@ -116,7 +116,7 @@ class ParticipantHandler(BuildServiceParticipant):
         project = p.project or f.project
         package = p.package or f.package
         maintainers = []
-        links = []
+        linked_projects = []
         repos = []
         paths = []
         repolinks = {}
@@ -124,7 +124,7 @@ class ParticipantHandler(BuildServiceParticipant):
         create = False
         mechanism = "localdep"
         block = "all"
-        link = None
+        linked_project = None
         summary = ""
         desc = ""
         if not project:
@@ -137,7 +137,7 @@ class ParticipantHandler(BuildServiceParticipant):
         prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
         if prjobj and prjobj.gated:
             print(prjobj, "is gated")
-            link = project
+            linked_project = project
             f.gated_project = project
             project += ":gate:%s" % package
             f.project = project
@@ -159,7 +159,7 @@ class ParticipantHandler(BuildServiceParticipant):
             #TODO: construct repos and build paths for a devel build
 
         if len(prj_parts) >= 3 and prj_parts[-3] == "feature":
-            link = ":".join(prj_parts[0:-3])
+            linked_project = ":".join(prj_parts[0:-3])
             fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
             # Go through each bugzilla we support
             for (bugzillaname, bugzilla) in self.bzs.iteritems():
@@ -174,13 +174,13 @@ class ParticipantHandler(BuildServiceParticipant):
                             raise
             if project not in project_list: create = True
 
-        if link and link in project_list:
-            links.append(link)
-            repolinks.update(self.get_repolinks(wid, link))
+        if linked_project and linked_project in project_list:
+            linked_projects.append(linked_project)
+            repolinks.update(self.get_repolinks(wid, linked_project))
 
         if create:
             result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                            links=links, maintainers=maintainers, build=build, block=block)
+                                            links=linked_projects, maintainers=maintainers, build=build, block=block)
 
             if not result:
                 raise RuntimeError("Something went wrong while creating project %s" % project)
