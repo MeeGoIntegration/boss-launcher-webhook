@@ -247,7 +247,8 @@ class WebHookMapping(models.Model):
     placeholder = models.BooleanField(
         default=False,
         editable=False,
-        help_text="Marks automatically created placehollders",
+        help_text="Marks automatically created placeholders "
+                  "for filtering in admin UI",
     )
     notify = models.BooleanField(
         default=True,
