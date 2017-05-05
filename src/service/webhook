@@ -266,9 +266,10 @@ class Service(object):
             print(msg)
 
     def main(self):
-        if self.old_whm and self.whm_needs_update:
-            self.update_old_whm()
-            self.trigger_whm(self.old_whm)
+        if self.old_whm:
+            if self.whm_needs_update:
+                self.update_old_whm()
+                self.trigger_whm(self.old_whm)
         else:
             whm = self.create_new_whm()
             self.trigger_whm(whm)
