@@ -45,7 +45,7 @@ This package provides the service to generate source from git inside an OBS sour
 
 %package -n obs-service-webhook
 Group: Applications/Engineering
-Requires: obs-source_service, python-lxml, python-json
+Requires: obs-source_service, python-argparse, python-requests
 Summary: OBS source service to manage webhooks
 %description -n obs-service-webhook
 This package provides the service to update webhooks from OBS. It ensures that only users who have access to a package can update the webhook for that package.
@@ -168,4 +168,3 @@ fi
 %dir /usr/lib/obs/service
 /usr/lib/obs/service/webhook
 /usr/lib/obs/service/webhook.service
-/usr/lib/obs/service/webhook_diff.py

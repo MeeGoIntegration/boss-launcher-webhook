@@ -270,6 +270,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django_extensions',
     'rest_framework',
+    'django_filters',
 )
 
 FORCE_SCRIPT_NAME = ''
@@ -279,8 +280,11 @@ LOGIN_REDIRECT_URL = '/' + URL_PREFIX + "/landing/"
 
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': (
-        'rest_framework_filters.backends.DjangoFilterBackend',
-    )
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100
 }
 
 if USE_LDAP:
