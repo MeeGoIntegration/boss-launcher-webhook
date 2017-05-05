@@ -168,8 +168,6 @@ class Service(object):
                 'obs': self.OBS,
                 'project': self.project,
                 'package': self.package,
-                #'repourl': self.args.repourl,
-                #'branch': self.args.branch,
             }
             self._debug('Fetching old whm')
             self._debug(params)
@@ -195,7 +193,11 @@ class Service(object):
         return self._old_whm
 
     def update_old_whm(self):
-        self._debug("Updating old whm")
+        self._debug(
+            "Updating old whm for %s %s on %s" %
+            (self.old_whm['project'], self.old_whm['package'],
+             self.old_whm['obs'])
+        )
         r = requests.patch(
             '%s/webhookmappings/%s/' % (self.WEBHOOK_URL, self.old_whm['id']),
             auth=self.auth,
@@ -207,7 +209,11 @@ class Service(object):
         return result
 
     def create_new_whm(self):
-        self._debug("Creating new whm")
+        self._debug(
+            "Creating new whm for %s %s on %s" %
+            (self.new_whm['project'], self.new_whm['package'],
+             self.new_whm['obs'])
+        )
         r = requests.post(
             '%s/webhookmappings/' % self.WEBHOOK_URL,
             auth=self.auth,
@@ -219,7 +225,10 @@ class Service(object):
         return result
 
     def trigger_whm(self, whm):
-        self._debug("Triggering whm %s" % whm['id'])
+        self._debug(
+            "Triggering whm %s for %s %s on %s" %
+            (whm['id'], whm['project'], whm['package'], whm['obs'])
+        )
         r = requests.put(
             '%s/webhookmappings/%s/trigger/' % (self.WEBHOOK_URL, whm['id']),
             auth=self.auth,
