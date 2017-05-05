@@ -348,6 +348,7 @@ class WebHookMapping(models.Model):
             project=self.project,
             package=self.package,
             obs=self.obs,
+            build=True,
         )
         if self.pk:
             duplicates = duplicates.exclude(pk=self.pk)
