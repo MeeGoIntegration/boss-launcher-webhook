@@ -115,7 +115,8 @@ class ParticipantHandler(BuildServiceParticipant):
 
         project = p.project or f.project
         package = p.package or f.package
-        maintainers = []
+        # Prime the maintainer list with the current obs user
+        maintainers = [self.obs.getUserName()]
         linked_projects = []
         repos = []
         paths = []
@@ -136,7 +137,7 @@ class ParticipantHandler(BuildServiceParticipant):
         # events for official projects that are gated get diverted to a side project
         prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
         if prjobj and prjobj.gated:
-            print(prjobj, "is gated")
+            print "%s is gated" % prjobj
             linked_project = project
             f.gated_project = project
             project += ":gate:%s" % package
