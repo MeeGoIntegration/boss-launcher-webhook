@@ -45,3 +45,5 @@ def launch_notify(fields):
 def launch_build(fields):
     launch(settings.VCSCOMMIT_BUILD, fields)
 
+def launch_mirror(fields):
+    launch(settings.VCSCOMMIT_MIRROR, fields)
