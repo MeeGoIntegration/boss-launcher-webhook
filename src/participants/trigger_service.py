@@ -174,12 +174,27 @@ class ParticipantHandler(BuildServiceParticipant):
             #self.obs.getCreatePackage(str(project), str(package))
         #else:
         try:
-            core.show_files_meta(self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+            pkginfo=core.show_files_meta(self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+            if "<entry" not in pkginfo:
+                # This is a link and it needs branching from the linked project
+                # so grab the meta and extract the project from the link
+                print "Found %s as a link in %s" %(package, project)
+                x=etree.fromstring("".join(core.show_project_meta(self.obs.apiurl, project)))
+                l=x.find('link')
+                if l is None:
+                    raise Exception("Expected a <link> in project %s." % project)
+                print "Got a link  %s" % l
+                linked_project=l.get('project')
+                print "Branching %s to overwrite _service" % package
+                core.branch_pkg(self.obs.apiurl, linked_project,
+                                str(package), target_project = str(project))
         except Exception, exc:
+            print "Doing a metatype pkg add because I caught %s" % exc
             data = core.metatypes['pkg']['template']
             data = StringIO(data % { "name" : str(package), "user" : self.obs.getUserName() }).readlines()
             u = core.makeurl(self.obs.apiurl, ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
+            print "HTTP PUT result of pkg add : %s" % x
 
         # Start with an empty XML doc
         try: # to get any existing _service file.
