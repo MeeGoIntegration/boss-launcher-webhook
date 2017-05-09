@@ -1,5 +1,4 @@
-# Copyright (C) 2013 Jolla Ltd.
-# Contact: Islam Amer <islam.amer@jollamobile.com>
+# Copyright (C) 2017 Jolla Ltd.
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -13,16 +12,16 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-"""Used to handle an queued webhook event
+"""Used to mirror a git repository
 
 :term:`Workitem` fields IN:
 
 :Parameters:
-   :payload (dict):
-      Payload of incoming event
+   :repourl (str):
+      Url of git repository to mirror
 
 :term:`Workitem` fields OUT:
 
@@ -31,6 +30,11 @@
       True if the everything went OK, False otherwise
 
 """
+
+
+import os
+import urlparse
+
 
 class ParticipantHandler(object):
     """ Participant class as defined by the SkyNET API """
@@ -48,14 +52,18 @@ class ParticipantHandler(object):
         wid.result = False
 
         if wid.fields.repourl is None:
-           raise RuntimeError("Missing mandatory field: repourl")
+            raise RuntimeError("Missing mandatory field: repourl")
 
-        GITBASE="/srv/cache/mirror_git"
+        GITBASE = "/srv/cache/mirror_git"
         upstream_url = wid.fields.repourl
         upstream_parsed_url = urlparse.urlparse(upstream_url)
-        mirror_parsed_url = upstream_parsed_url._replace(netloc="git.omprussia.ru")
+        mirror_parsed_url = upstream_parsed_url._replace(netloc="localhost")
         mirror_url = mirror_parsed_url.geturl()
-        mirror_path= os.path.join(GITBASE, upstream_parsed_url.netloc, upstream_parsed_url.path.strip("/")
+        mirror_path = os.path.join(
+            GITBASE,
+            upstream_parsed_url.netloc,
+            upstream_parsed_url.path.strip("/")
+        )
 
         if not os.path.exists(mirror_path):
             os.makedirs(mirror_path)
@@ -71,6 +79,7 @@ class ParticipantHandler(object):
         os.system("git remote update mirror")
         os.system("git remote update upstream")
         os.system("cp refs/remotes/upstream/* refs/heads/")
+        # TODO: copying tags?
         os.system("git push mirror 'refs/tags/*' 'refs/heads/*'")
 
         wid.result = True
