@@ -191,7 +191,7 @@ class ParticipantHandler(BuildServiceParticipant):
         try:
             self._set_blame_emails(project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
         except Exception, exc:
-            print exc
+            print "Ignoring exception: %s" % exc
             pass
 
     def _set_blame_emails(self, project, package, lsr):
