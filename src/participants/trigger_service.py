@@ -87,6 +87,9 @@ def find_service_repo(url):
         return "gitorious", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("merproject.org"):  # Mer
         return "Mer", "/".join(u.path.split("/")[1:3])
+    elif u.netloc.endswith("omprussia.ru"):  # omprussia
+        return "omprussia", "/".join(u.path.split("/")[1:3])
+
 
     return None, None
 
