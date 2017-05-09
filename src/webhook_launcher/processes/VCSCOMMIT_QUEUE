@@ -26,8 +26,13 @@ Ruote.process_definition 'vcsqueue' do
     # Any error will get notified by this flanked suprocess
     do_log_error :flank => true
 
-    handle_webhook
-    relay_webhook
+    maybe_mirror_git
+    _if :test => '${f:ignore_hook}' do
+      sequence do
+         handle_webhook
+         relay_webhook
+      end
+    end
   end
 
   define 'do_log_error' do

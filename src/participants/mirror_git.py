@@ -54,6 +54,7 @@ class ParticipantHandler(object):
         if wid.fields.repourl is None:
             raise RuntimeError("Missing mandatory field: repourl")
 
+        self.log.info("Mirroring %s" % wid.fields.repourl)
         GITBASE = "/srv/cache/mirror_git"
         upstream_url = wid.fields.repourl
         upstream_parsed_url = urlparse.urlparse(upstream_url)

@@ -100,19 +100,6 @@ class Payload(object):
 
         return mapobjs
 
-    def maybe_mirror(self, urls):
-        # TODO: check wheteher we have seen the commit before
-        # can get a little complicated, so let's just unconditionally
-        # refresh the mirror at first
-        parsed_url = urlparse.urlparse(self.url)
-
-        if parsed_url.netloc in ("git.omprussia.ru"):
-            # TODO: nothing import launch_ here, wrong spot?
-            launch_mirror({ "urls": urls})
-            self.mirror(repourl)
-            return True
-        return False
-
     def relay(self, relays=None):
 
         if not self.url:
@@ -213,8 +200,6 @@ class GhPush(Payload):
     def handle(self):
         payload = self.data
         repourl = self.url
-        if self.maybe_mirror():
-            return
 
         # github performs one POST per ref (tag/branch) touched
         # even if they are pushed together
@@ -372,8 +357,6 @@ class BbPush(Payload):
     def handle(self):
         payload = self.data
         repourl = self.url
-        if self.maybe_mirror():
-            return
 
         mapobj = None
         tips = {}
@@ -476,8 +459,6 @@ class BbPushV2(Payload):
         branches = {}
         tags = {}
         user = self.data['actor']['username']
-        if self.maybe_mirror():
-            return
 
         # Collect branches and tags
         for change in self.data['push']['changes']:

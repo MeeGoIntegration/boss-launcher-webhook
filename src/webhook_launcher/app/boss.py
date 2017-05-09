@@ -19,6 +19,7 @@
 from django.conf import settings
 from RuoteAMQP import Launcher
 
+
 def launch(process, fields):
     """ BOSS process launcher
 
@@ -27,14 +28,18 @@ def launch(process, fields):
     """
     with open(process, mode='r') as process_file:
         pdef = process_file.read()
+        launch_pdef(pdef, fields)
 
-    launcher = Launcher(amqp_host = settings.BOSS_HOST,
-                        amqp_user = settings.BOSS_USER,
-                        amqp_pass = settings.BOSS_PASS,
-                        amqp_vhost = settings.BOSS_VHOST)
 
-    print "launching to (%s,%s)" %(settings.BOSS_HOST, settings.BOSS_VHOST)
+def launch_pdef(pdef, fields):
+    launcher = Launcher(amqp_host=settings.BOSS_HOST,
+                        amqp_user=settings.BOSS_USER,
+                        amqp_pass=settings.BOSS_PASS,
+                        amqp_vhost=settings.BOSS_VHOST)
+
+    print "launching to (%s,%s)" % (settings.BOSS_HOST, settings.BOSS_VHOST)
     launcher.launch(pdef, fields)
+
 
 def launch_queue(fields):
     launch(settings.VCSCOMMIT_QUEUE, fields)
@@ -45,5 +50,3 @@ def launch_notify(fields):
 def launch_build(fields):
     launch(settings.VCSCOMMIT_BUILD, fields)
 
-def launch_mirror(fields):
-    launch(settings.VCSCOMMIT_MIRROR, fields)
