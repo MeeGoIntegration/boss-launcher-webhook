@@ -180,7 +180,25 @@ class ParticipantHandler(BuildServiceParticipant):
             repolinks.update(self.get_repolinks(wid, linked_project))
 
         if create:
-            result = self.obs.createProject(project, repolinks, desc=desc, title=summary, mechanism=mechanism,
+            if not repolinks:
+                # Creating a project with no repos makes no sense
+                # as we are only doing this to perform a test build
+                #
+                # It is debatable that we could want to create
+                # projects that have no repos to build against but
+                # there have been real-world issues where such
+                # projects are not properly detected and reported by
+                # the workflow.
+                #
+                # If this participant is developed to be a general
+                # purpose create_project then existing usage should be
+                # audited.
+                raise RuntimeError(
+                    "No suitable repos found in %s (must contain an arch in the name)"
+                    % project)
+
+            result = self.obs.createProject(
+                project, repolinks, desc=desc, title=summary, mechanism=mechanism,
                                             links=linked_projects, maintainers=maintainers, build=build, block=block)
 
             if not result:
