@@ -193,6 +193,7 @@ class ParticipantHandler(BuildServiceParticipant):
                                 str(package), target_project = str(project))
         except Exception, exc:
             print "Doing a metatype pkg add because I caught %s" % exc
+            print "Creating package %s in project %s" %(package, project)
             data = core.metatypes['pkg']['template']
             data = StringIO(data % { "name" : str(package), "user" : self.obs.getUserName() }).readlines()
             u = core.makeurl(self.obs.apiurl, ['source', str(project), str(package), "_meta"])
