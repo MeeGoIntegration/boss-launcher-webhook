@@ -356,8 +356,8 @@ class WebHookMapping(models.Model):
 
         if self.build and duplicates.count():
             raise ValidationError(
-                'A mapping object building in %s %s %s already exists' %
-                (self.obs, self.project, self.package)
+                'A mapping object (%s) building in %s %s %s already exists' %
+                (duplicates[0].pk, self.obs, self.project, self.package)
             )
 
         repourl = giturlparse(self.repourl)
