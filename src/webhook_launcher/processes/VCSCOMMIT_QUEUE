@@ -33,6 +33,7 @@ Ruote.process_definition 'vcsqueue' do
         notify_irc :irc_channel => '${f:log_channel}',
                    :msg => 'Mirroring ${f:repourl}'
       end
+      #else should_mirror is false, handle the webhook normally
       sequence do
          handle_webhook
          relay_webhook
