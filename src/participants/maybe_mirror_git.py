@@ -27,9 +27,8 @@
 :term:`Workitem` fields OUT:
 
 :Returns:
-   :ignore_hook (Boolean):
-      True if VCSCOMMIT_QUEUE should not do any further processing of
-      the webhook event
+   :should_mirror (Boolean):
+      True if VCSCOMMIT_QUEUE should mirror the repository
 
    :result (Boolean):
       True if the everything went OK, False otherwise
@@ -49,19 +48,6 @@ from webhook_launcher.app.payload import get_payload
 from webhook_launcher.app.boss import launch_pdef
 
 
-vcsmirror_pdef = """
-Ruote.process_definition 'vcsmirror' do
-  sequence do
-    set :f => 'log_channel', :value => '#mer-boss'
-    set :f => 'debug_dump', :value => 'true'
-    mirror_git
-    notify_irc :irc_channel => '${f:log_channel}',
-               :msg => 'Mirroring ${f:repourl}'
-  end
-end
-"""
-
-
 class ParticipantHandler(object):
     """ Participant class as defined by the SkyNET API """
 
@@ -76,7 +62,7 @@ class ParticipantHandler(object):
     def handle_wi(self, wid):
         """ Workitem handling function """
         wid.result = False
-        wid.fields.ignore_hook = False
+        wid.fields.should_mirror = False
 
         if wid.fields.payload is None:
             raise RuntimeError("Missing mandatory field: payload")
@@ -84,12 +70,8 @@ class ParticipantHandler(object):
         payload = get_payload(wid.fields.payload.as_dict())
         payload_url = payload.url
         parsed_url = urlparse.urlparse(payload_url)
-        # TODO: payload.url is not set to the canonical repository
-        self.log.info("Received payload for %s: %s", payload_url, payload)
+
         if parsed_url.netloc not in ("git.omprussia.ru",):
-            launch_pdef(vcsmirror_pdef, {
-                "repourl": payload_url
-            })
-            wid.fields.ignore_hook = True
+            wid.fields.should_mirror = True
 
         wid.result = True
