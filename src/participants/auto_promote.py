@@ -97,6 +97,7 @@ class ParticipantHandler(BuildServiceParticipant):
                         "tgt_project" : gated_project, "tgt_package" : package}]
             description = "%s @ %s" % (webhook.tag or webhook.rev_or_head, str(webhook))
             comment = ""
+            print "Requesting actions: %s\ndesc: %s" %(actions, description)
             result = self.obs.createRequest(options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
 
             if not result:
