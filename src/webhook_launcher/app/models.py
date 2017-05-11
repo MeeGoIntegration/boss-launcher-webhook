@@ -1,5 +1,5 @@
-# Copyright (C) 2013 Jolla Ltd.
-# Contact: Islam Amer <islam.amer@jollamobile.com>
+# Copyright (C) 2013-2017 Jolla Ltd.
+#
 # All rights reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -206,7 +206,6 @@ class WebHookMapping(models.Model):
     )
     project = models.CharField(
         max_length=250,
-        default=settings.DEFAULT_PROJECT,
         help_text="name of an existing project under which to create "
                   "or update the package",
     )
@@ -245,6 +244,12 @@ class WebHookMapping(models.Model):
         help_text="Choose Y to take content of revision as-is without "
                   "automatic processing (example: tarballs in git)",
     )
+    placeholder = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text="Marks automatically created placeholders "
+                  "for filtering in admin UI",
+    )
     notify = models.BooleanField(
         default=True,
         help_text="Enable IRC notifications of events",
@@ -265,9 +270,6 @@ class WebHookMapping(models.Model):
     obs = models.ForeignKey(
         BuildService,
     )
-
-    class Meta:
-        unique_together = (("project", "package", "obs"),)
 
     def __unicode__(self):
         return "%s/%s -> %s/%s" % (
@@ -343,13 +345,19 @@ class WebHookMapping(models.Model):
         self.project = self.project.strip()
         self.package = self.package.strip()
 
-        if WebHookMapping.objects.exclude(pk=self.pk).filter(
+        duplicates = WebHookMapping.objects.filter(
             project=self.project,
             package=self.package,
-            obs=self.obs
-        ).count():
+            obs=self.obs,
+            build=True,
+        )
+        if self.pk:
+            duplicates = duplicates.exclude(pk=self.pk)
+
+        if self.build and duplicates.count():
             raise ValidationError(
-                'A mapping object with the same parameters already exists'
+                'A mapping object (%s) building in %s %s %s already exists' %
+                (duplicates[0].pk, self.obs, self.project, self.package)
             )
 
         repourl = giturlparse(self.repourl)

@@ -20,6 +20,7 @@
 import ConfigParser
 import socket
 import struct
+import warnings
 from os.path import dirname, join
 
 PROJECT_DIR = dirname(__file__)
@@ -40,9 +41,8 @@ except Exception:
 URL_PREFIX = config.get('web', 'url_prefix')
 static_media_collect = config.get('web', 'static_media_collect')
 
-DEFAULT_PROJECT = "None"
 if config.has_option('web', 'default_project'):
-    DEFAULT_PROJECT = config.get('web', 'default_project')
+    warnings.warn("default_project option in config is no longer supported")
 
 if config.has_option('web', 'allowed_hosts'):
     ALLOWED_HOSTS = config.get('web', 'allowed_hosts').split(None)

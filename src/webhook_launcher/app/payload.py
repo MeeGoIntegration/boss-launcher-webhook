@@ -73,14 +73,10 @@ class Payload(object):
 
     def create_placeholder(self, repourl, branch, packages=None):
         vcsns = VCSNameSpace.find(repourl)
-        project = None
+        project = ""
         if vcsns and vcsns.default_project:
             project = vcsns.default_project.name
-        elif settings.DEFAULT_PROJECT:
-            project = settings.DEFAULT_PROJECT
 
-        if not project:
-            return []
         if not packages:
             packages = [""]
 
@@ -93,7 +89,7 @@ class Payload(object):
                 obs=BuildService.objects.all()[0],
                 notify=False, build=False,
                 project=project, package=package,
-                comment="Placeholder",
+                placeholder=True,
             )
             mapobj.save()
             mapobjs.append(mapobj)

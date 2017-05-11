@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.utils import model_meta
 
 from webhook_launcher.app.models import (
     BuildService, LastSeenRevision, WebHookMapping
@@ -83,3 +84,24 @@ class WebHookMappingSerializer(serializers.ModelSerializer):
             lsr.save()
 
         return whm
+
+    def validate(self, attrs):
+        # Since DRF 3.0 the model clean() method is no longer called
+        # automatically. And this is probably not the best solution to do the
+        # validation, but at the moment it's the simplest one.
+        if self.instance is None:
+            instance = WebHookMapping(**attrs)
+            instance.clean()
+        else:
+            info = model_meta.get_field_info(self.instance)
+            for attr, value in attrs.items():
+                if attr in info.relations and info.relations[attr].to_many:
+                    # We don't have any to-many relations at the moment, but
+                    # this is to avoid setting them in the future if they are
+                    # added. Manipulating to-many relation directly changes
+                    # the DB so it can't be done here.
+                    continue
+                else:
+                    setattr(self.instance, attr, value)
+                self.instance.clean()
+        return attrs
