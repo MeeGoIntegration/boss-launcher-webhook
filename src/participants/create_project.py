@@ -135,7 +135,7 @@ class ParticipantHandler(BuildServiceParticipant):
             return
 
         # events for official projects that are gated get diverted to a side project
-        prjobj = get_or_none(Project, name=project, obs__apiurl=self.obs.apiurl)
+        prjobj = Project.get_matching(project, self.obs.apiurl)
         if prjobj and prjobj.gated:
             print "%s is gated" % prjobj
             linked_project = project

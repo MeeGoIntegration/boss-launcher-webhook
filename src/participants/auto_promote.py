@@ -78,7 +78,7 @@ class ParticipantHandler(BuildServiceParticipant):
     @BuildServiceParticipant.setup_obs
     def handle_wi(self, wid):
         """ Workitem handling function """
-        wid.result = True
+        wid.result = False
         f = wid.fields
 
         project = f.project
@@ -86,11 +86,12 @@ class ParticipantHandler(BuildServiceParticipant):
         gated_project = f.gated_project
 
         if not project or not gated_project:
+            print "Nothing to do, no project or gated_project in the fields"
             wid.result = True
             return
 
         # events for official projects that are gated get diverted to a side project
-        prjobj = get_or_none(Project, name=gated_project, obs__apiurl=self.obs.apiurl)
+        prjobj = Project.get_matching(gated_project, self.obs.apiurl)
         if prjobj and prjobj.gated:
             webhook = get_or_none(WebHookMapping, pk=f.pk)
             actions = [{"action" : "submit", "src_project" : project, "src_package" : package,
@@ -102,5 +103,7 @@ class ParticipantHandler(BuildServiceParticipant):
 
             if not result:
                 raise RuntimeError("Something went wrong while creating project %s" % project)
-
+            print "Created submit request from %s/%s to %s/%s : %s" %(project,package,gated_project,package,description)
+        else:
+            print "No gated Project matching gated_project: %s" % (gated_project)
         wid.result = True
