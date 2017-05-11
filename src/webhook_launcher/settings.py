@@ -120,6 +120,13 @@ if USE_LDAP:
     from django_auth_ldap.config import LDAPSearch
     import logging
 
+    AUTH_LDAP_BIND_DN = ""
+    if config.has_option('ldap', 'ldap_bind_dn'):
+        AUTH_LDAP_BIND_DN = config.get('ldap', 'ldap_bind_dn', raw=True)
+    AUTH_LDAP_BIND_PASSWORD = ""
+    if config.has_option('ldap', 'ldap_bind_pw'):
+        AUTH_LDAP_BIND_PASSWORD = config.get('ldap', 'ldap_bind_pw', raw=True)
+
     LDAP_SERVER = config.get('ldap', 'ldap_server')
     ldap_verify_cert = config.getboolean('ldap', 'verify_certificate')
 
@@ -142,6 +149,34 @@ if USE_LDAP:
         "last_name": lname_attr,
         "email": mail_attr,
     }
+
+    # Need to specify ldap_group_search_dn for any of this to work
+    if config.has_option('ldap', 'ldap_group_search_dn'):
+        AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
+            config.get('ldap', 'ldap_group_search_dn', raw=True),
+            ldap.SCOPE_SUBTREE, "(objectClass=group)")
+
+        # Dynamic access to a suitable group type
+        MY_LDAP_GROUP_TYPE = "NestedActiveDirectoryGroupType"
+        if config.has_option('ldap', 'ldap_group_type'):
+            MY_LDAP_GROUP_TYPE = config.get(
+                'ldap',
+                'ldap_group_type',
+                raw=True)
+        import django_auth_ldap.config
+        MyLDAPGroupType = getattr(django_auth_ldap.config, MY_LDAP_GROUP_TYPE)
+        AUTH_LDAP_GROUP_TYPE = MyLDAPGroupType()
+
+        AUTH_LDAP_CACHE_GROUPS = True
+        AUTH_LDAP_GROUP_CACHE_TIMEOUT = 300
+        AUTH_LDAP_USER_FLAGS_BY_GROUP = {}
+        if config.has_option('ldap', 'ldap_staff_group'):
+            AUTH_LDAP_USER_FLAGS_BY_GROUP["is_staff"]= config.get('ldap', 'ldap_staff_group', raw=True)
+            AUTH_LDAP_FIND_GROUP_PERMS = True
+        if config.has_option('ldap', 'ldap_superuser_group'):
+            AUTH_LDAP_USER_FLAGS_BY_GROUP["is_superuser"]= config.get('ldap', 'ldap_superuser_group', raw=True)
+            AUTH_LDAP_FIND_GROUP_PERMS = True
+
 elif USE_REMOTE_AUTH:
     AUTHENTICATION_BACKENDS = (
         'webhook_launcher.app.models.RemoteStaffBackend',
