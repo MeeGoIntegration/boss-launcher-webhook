@@ -194,14 +194,16 @@ class Project(models.Model):
     def get_matching(cls, name, apiurl):
         # Search all Projects for a match
         # Exception raised if more than one match found
-        found=None
+        found = None
         for project in Project.objects.filter(obs__apiurl=apiurl):
             if project.matches(name):
                 if found is not None:
-                    raise MultipleObjectsReturned("Project %s matches both %s and %s (possibly more)" %
-                                                  (name, found.name, project.name))
+                    raise MultipleObjectsReturned(
+                        "Project %s matches both %s and %s (possibly more)" %
+                        (name, found.name, project.name))
                 found = project
         return found
+
 
 class WebHookMapping(models.Model):
     # If any fields are added/removed then ensure they are handled
