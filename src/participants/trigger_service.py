@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 """Used to trigger service of an OBS project / package :
 
@@ -72,6 +73,7 @@ git_pkg_service = """
 </service>
 """
 
+
 def find_service_repo(url):
     """
     Given url = 'https://github.com/mer-tools/git-pkg'
@@ -87,10 +89,14 @@ def find_service_repo(url):
         return "gitorious", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("merproject.org"):  # Mer
         return "Mer", "/".join(u.path.split("/")[1:3])
+    elif u.netloc.endswith("omprussia.ru"):  # omprussia
+        return "omprussia", "/".join(u.path.split("/")[1:3])
 
     return None, None
 
+
 class ParticipantHandler(BuildServiceParticipant):
+
     """ Participant class as defined by the SkyNET API """
 
     def handle_wi_control(self, ctrl):
@@ -121,10 +127,11 @@ class ParticipantHandler(BuildServiceParticipant):
             package = p.package
 
         if not project or not package:
-           raise RuntimeError("Missing mandatory field or parameter: package, project")
+            raise RuntimeError(
+                "Missing mandatory field or parameter: package, project")
 
         if not f.repourl and not p.repourl:
-           raise RuntimeError("Missing mandatory field or parameter: repourl")
+            raise RuntimeError("Missing mandatory field or parameter: repourl")
 
         params = {}
 
@@ -164,29 +171,52 @@ class ParticipantHandler(BuildServiceParticipant):
 
         if "branch" in params and params["branch"].startswith("pkg-"):
             if not "service" in params or not "repo" in params:
-                raise RuntimeError("Service/Repo not found in repourl %s " % p.repourl)
+                raise RuntimeError(
+                    "Service/Repo not found in repourl %s " % p.repourl)
             service = git_pkg_service
         else:
             service = tar_git_service
 
         # the simple approach doesn't work with project links
-        #if self.obs.isNewPackage(project, package):
-            #self.obs.getCreatePackage(str(project), str(package))
-        #else:
+        # if self.obs.isNewPackage(project, package):
+            # self.obs.getCreatePackage(str(project), str(package))
+        # else:
         try:
-            core.show_files_meta(self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+            pkginfo = core.show_files_meta(
+                self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+            if "<entry" not in pkginfo:
+                # This is a link and it needs branching from the linked project
+                # so grab the meta and extract the project from the link
+                print "Found %s as a link in %s" % (package, project)
+                x = etree.fromstring(
+                    "".join(core.show_project_meta(self.obs.apiurl, project)))
+                l = x.find('link')
+                if l is None:
+                    raise Exception(
+                        "Expected a <link> in project %s." % project)
+                print "Got a link  %s" % l
+                linked_project = l.get('project')
+                print "Branching %s to overwrite _service" % package
+                core.branch_pkg(self.obs.apiurl, linked_project,
+                                str(package), target_project=str(project))
         except Exception, exc:
+            print "Doing a metatype pkg add because I caught %s" % exc
+            print "Creating package %s in project %s" % (package, project)
             data = core.metatypes['pkg']['template']
-            data = StringIO(data % { "name" : str(package), "user" : self.obs.getUserName() }).readlines()
-            u = core.makeurl(self.obs.apiurl, ['source', str(project), str(package), "_meta"])
+            data = StringIO(
+                data % {"name": str(package), "user": self.obs.getUserName()}).readlines()
+            u = core.makeurl(
+                self.obs.apiurl, ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
+            print "HTTP PUT result of pkg add : %s" % x
 
         # Start with an empty XML doc
-        try: # to get any existing _service file.
+        try:  # to get any existing _service file.
              # We use expand=0 as otherwise a failed service run won't
              # return the _service file
             print "Trying to get _service file for %s/%s" % (project, package)
-            services_xml = self.obs.getFile(project, package, "_service", expand=0)
+            services_xml = self.obs.getFile(
+                project, package, "_service", expand=0)
         except urllib2.HTTPError, e:
             print "Exception %s trying to get _service file for %s/%s" % (e, project, package)
             if e.code == 404:
