@@ -82,7 +82,7 @@ if config.has_option('web', 'post_ip_filter'):
             bits = 32
         NETMASKS.append(
             struct.unpack('<L', socket.inet_aton(ip))[0] &
-            ((2L << bits-1) - 1)
+            ((2 << bits - 1) - 1)
         )
 
 # Credentials for accessing Bitbucket API with HTTP basic auth
@@ -171,10 +171,18 @@ if USE_LDAP:
         AUTH_LDAP_GROUP_CACHE_TIMEOUT = 300
         AUTH_LDAP_USER_FLAGS_BY_GROUP = {}
         if config.has_option('ldap', 'ldap_staff_group'):
-            AUTH_LDAP_USER_FLAGS_BY_GROUP["is_staff"]= config.get('ldap', 'ldap_staff_group', raw=True)
+            AUTH_LDAP_USER_FLAGS_BY_GROUP[
+                "is_staff"] = config.get(
+                    'ldap',
+                    'ldap_staff_group',
+                    raw=True)
             AUTH_LDAP_FIND_GROUP_PERMS = True
         if config.has_option('ldap', 'ldap_superuser_group'):
-            AUTH_LDAP_USER_FLAGS_BY_GROUP["is_superuser"]= config.get('ldap', 'ldap_superuser_group', raw=True)
+            AUTH_LDAP_USER_FLAGS_BY_GROUP[
+                "is_superuser"] = config.get(
+                    'ldap',
+                    'ldap_superuser_group',
+                    raw=True)
             AUTH_LDAP_FIND_GROUP_PERMS = True
 
 elif USE_REMOTE_AUTH:
