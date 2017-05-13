@@ -48,7 +48,6 @@ django.setup()
 
 
 from webhook_launcher.app.payload import get_payload
-from webhook_launcher.app.boss import launch_pdef
 
 
 class ParticipantHandler(object):
