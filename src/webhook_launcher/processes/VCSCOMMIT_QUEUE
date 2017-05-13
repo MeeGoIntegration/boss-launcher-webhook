@@ -31,7 +31,7 @@ Ruote.process_definition 'vcsqueue' do
       sequence do
         mirror_git
         notify_irc :irc_channel => '${f:log_channel}',
-                   :msg => 'Mirroring ${f:repourl}'
+                   :msg => 'Mirroring ${f:mirror_repourl}'
       end
       #else should_mirror is false, handle the webhook normally
       sequence do
@@ -46,7 +46,7 @@ Ruote.process_definition 'vcsqueue' do
       listen :to => :errors
       echo 'process ${wfid}: SR#${ev.id} ERROR'
       notify_irc :if => '"${log_channel}" != ""',
-                 :msg => '${highlight} process ${wfid} ERROR',
+                 :msg => '${highlight} process ${wfid} ERROR ${f:__error__.message}',
                  :irc_channel => '${log_channel}'
       #notify :template => '${template.error}', :mail_to => "$f:admin_emails",
       #       :subject => '[${pname}] ${wfid} SR#${req.id} ERROR'
