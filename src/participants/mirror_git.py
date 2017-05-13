@@ -20,7 +20,7 @@
 :term:`Workitem` fields IN:
 
 :Parameters:
-   :repourl (str):
+   :mirror_repourl (str):
       Url of git repository to mirror
 
 :term:`Workitem` fields OUT:
@@ -52,11 +52,11 @@ class ParticipantHandler(object):
         wid.result = False
 
         if wid.fields.repourl is None:
-            raise RuntimeError("Missing mandatory field: repourl")
+            raise RuntimeError("Missing mandatory field: mirror_repourl")
 
-        self.log.info("Mirroring %s" % wid.fields.repourl)
+        upstream_url = wid.fields.mirror_repourl
+        self.log.info("Mirroring %s" % upstream_url)
         GITBASE = "/srv/cache/mirror_git"
-        upstream_url = wid.fields.repourl
         upstream_parsed_url = urlparse.urlparse(upstream_url)
         mirror_parsed_url = upstream_parsed_url._replace(netloc="localhost")
         mirror_url = mirror_parsed_url.geturl()
