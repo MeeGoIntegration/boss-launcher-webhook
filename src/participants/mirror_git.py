@@ -51,7 +51,7 @@ class ParticipantHandler(object):
         """ Workitem handling function """
         wid.result = False
 
-        if wid.fields.repourl is None:
+        if wid.fields.mirror_repourl is None:
             raise RuntimeError("Missing mandatory field: mirror_repourl")
 
         upstream_url = wid.fields.mirror_repourl
