@@ -135,6 +135,7 @@ class ParticipantHandler(BuildServiceParticipant):
             # TODO: deduce project name from "official" mappings of the same repo
             # for now just short circuit here
             wid.result = True
+            print "No project given. Continuing"
             return
 
         # events for official projects that are gated get diverted to a side
@@ -212,6 +213,9 @@ class ParticipantHandler(BuildServiceParticipant):
             if not result:
                 raise RuntimeError(
                     "Something went wrong while creating project %s" % project)
+            print "Created project %s" % project
+        else:
+            print "Didn't need to create project %s" % project
 
         wid.result = True
 
