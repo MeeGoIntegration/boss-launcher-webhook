@@ -50,9 +50,9 @@ Ruote.process_definition 'vcscommit' do
     sequence do
       do_log :msg => 'Waiting for ${project} to build'
       repeat :timeout => '48h', :on_timeout => 'error' do
+        wait '2m'
         is_repo_published :project => '${project}', :package => '$package'
         _break :if => '${f:__result__}'
-        wait '2m'
       end
     end
   end
