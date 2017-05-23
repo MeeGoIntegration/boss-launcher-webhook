@@ -59,21 +59,21 @@ This package provides the participant that handles creating and/or triggering  _
 
 %package -n boss-participant-create_project
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
+Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
 
 %package -n boss-participant-get_src_state
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
+Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-get_src_state
 This package provides the participant that checks that there is src is ready to build in OBS projects. Usually this means the service has succeeded.
 
 %package -n boss-participant-auto_promote
 Group: Applications/Engineering
-Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
+Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-auto_promote
 This package provides the participant that handles promotion of gated projects, in response to webhook triggers
