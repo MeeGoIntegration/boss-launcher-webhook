@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-Ruote.process_definition 'vcsqueue' do
+Ruote.process_definition 'wh_handle_event' do
 
   sequence do
     set :f => 'debug_dump', :value => 'true'
