@@ -315,8 +315,7 @@ class GhPush(Payload):
                         # mapping with a matching revision
                         print(
                             "LastSeenRevision %s was not the same as for this"
-                            " tag: %s"
-                            % (seenrev.revision, revision)
+                            " tag: %s" % (seenrev.revision, revision)
                         )
                         continue
 
