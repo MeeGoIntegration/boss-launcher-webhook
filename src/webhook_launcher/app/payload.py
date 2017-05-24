@@ -54,6 +54,7 @@ def get_payload(data):
     ]:
         try:
             payload = klass(data)
+            print("Parsed payload as %s" % klass)
             break
         except PayloadParsingError:
             continue
@@ -82,11 +83,12 @@ class Payload(object):
 
         print("no mappings, create placeholders")
         mapobjs = []
+        user = User.objects.get(id=1)
+        obs = BuildService.objects.all()[0]
         for package in packages:
             mapobj = WebHookMapping(
                 repourl=repourl, branch=branch,
-                user=User.objects.get(id=1),
-                obs=BuildService.objects.all()[0],
+                user=user, obs=obs,
                 notify=False, build=False,
                 project=project, package=package,
                 placeholder=True,
@@ -311,6 +313,10 @@ class GhPush(Payload):
                     else:
                         # annotated tag. only continue if we already had a
                         # mapping with a matching revision
+                        print(
+                            "LastSeenRevision %s was not the same as for this"
+                            " tag: %s" % (seenrev.revision, revision)
+                        )
                         continue
 
                 # notify new branch created or commit in branch

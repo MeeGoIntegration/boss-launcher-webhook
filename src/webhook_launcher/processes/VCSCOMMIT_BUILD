@@ -1,22 +1,22 @@
 # Copyright (C) 2013 Jolla Ltd.
 # Contact: Islam Amer <islam.amer@jollamobile.com>
 # All rights reserved.
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-Ruote.process_definition 'vcscommit' do
+Ruote.process_definition 'wh_trigger_build' do
 
   sequence do
     set :f => 'priority', :value => 'high'
@@ -30,6 +30,10 @@ Ruote.process_definition 'vcscommit' do
     # This should be conditional though
     create_project
     trigger_service
+    # We wait for the source before checking the build results as
+    # is_repo_published can fail if the service is still running
+    do_wait_for_src
+
     _if '"${gated_project}" != ""' do
       sequence do
         do_wait_for_build
@@ -46,13 +50,27 @@ Ruote.process_definition 'vcscommit' do
     end
   end
 
+  define 'do_wait_for_src' do
+    sequence do
+      do_log :msg => 'Waiting for ${project}/${package} source'
+      repeat :timeout => '4h', :on_timeout => 'error' do
+        wait '2m'
+        get_src_state :project => '${project}', :package => '$package'
+        _break :if => '${f:service_state}' != "running"
+      end
+      _if '"${service_state}" != "succeeded"' do
+        error "Failed to get source for ${project}/${package}"
+      end
+    end
+  end
+
   define 'do_wait_for_build' do
     sequence do
       do_log :msg => 'Waiting for ${project} to build'
       repeat :timeout => '48h', :on_timeout => 'error' do
+        wait '2m'
         is_repo_published :project => '${project}', :package => '$package'
         _break :if => '${f:__result__}'
-        wait '2m'
       end
     end
   end
