@@ -173,7 +173,7 @@ class ParticipantHandler(BuildServiceParticipant):
                 for match in bugzilla['compiled_re'].finditer(fea):
                     try:
                         summary = bugzilla['interface'].bug_get(
-                            match.group('key'), 0)['summary']
+                            match.group('key'))['summary']
                         desc = bugzilla['interface'].comment_get(
                             match.group('key'), 0)['text']
                     except BugzillaError, error:
