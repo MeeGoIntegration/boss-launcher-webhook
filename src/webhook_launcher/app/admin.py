@@ -17,6 +17,7 @@
 # the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+import json
 import operator
 
 from django.contrib import admin, messages
@@ -221,7 +222,8 @@ class RelayTargetAdmin(admin.ModelAdmin):
             for mapobj in mapobjs:
                 lsr = mapobj.lsr
                 if lsr and lsr.payload:
-                    payloads.append(get_payload(lsr.payload))
+                    data = json.loads(lsr.payload)
+                    payloads.append(get_payload(data))
 
         for pld in payloads:
             pld.relay(relays=relaytargets)
