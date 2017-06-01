@@ -107,7 +107,7 @@ class ParticipantHandler(BuildServiceParticipant):
                 repolinks[repo].append(arch)
             if not repolinks[repo]:
                 del repolinks[repo]
-        return repolinks
+        return repolinks, prjmeta.find('build')
 
     @BuildServiceParticipant.setup_obs
     def handle_wi(self, wid):
@@ -125,6 +125,7 @@ class ParticipantHandler(BuildServiceParticipant):
         paths = []
         repolinks = {}
         build = True
+        flags = []
         create = False
         mechanism = "localdep"
         block = "all"
@@ -186,7 +187,10 @@ class ParticipantHandler(BuildServiceParticipant):
 
         if linked_project and linked_project in project_list:
             linked_projects.append(linked_project)
-            repolinks.update(self.get_repolinks(wid, linked_project))
+            links, build_flag = self.get_repolinks(wid, linked_project)
+            repolinks.update(links)
+            if build_flag:
+                flags.append(build_flag)
 
         if create:
             if not repolinks:
@@ -207,8 +211,11 @@ class ParticipantHandler(BuildServiceParticipant):
                     % project)
 
             result = self.obs.createProject(
-                project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                            links=linked_projects, maintainers=maintainers, build=build, block=block)
+                project, repolinks, desc=desc, title=summary,
+                mechanism=mechanism, links=linked_projects,
+                maintainers=maintainers, build=build, block=block,
+                flags=flags,
+            )
 
             if not result:
                 raise RuntimeError(
