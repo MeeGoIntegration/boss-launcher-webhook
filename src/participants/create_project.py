@@ -238,6 +238,6 @@ class ParticipantHandler(BuildServiceParticipant):
             return
         emails = json.loads(lsr.emails)
         self.log.info("Setting %s %s blame emails %s" %
-                      (project, package, ", ".join(emails)))
+                      (project, package, u", ".join(emails).enocde('utf-8')))
         self.obs.createProjectAttribute(
             project, "BlameEmails", package=package, namespace="GIT", values=emails)
