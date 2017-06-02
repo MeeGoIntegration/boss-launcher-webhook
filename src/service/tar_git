@@ -46,6 +46,9 @@ set_default_params () {
   SVC_NAME=""
   REPO_PATH=""
   GIT_SUBSTITUTIONS=()
+  # if LOCAL_SUBMODULES are enabled then any submodules with paths
+  # *not* in the LOCAL_GROUPS or mirror will be forcibly rewritten to
+  # use a mirror repository (url formed by substituting / -> _ )
   LOCAL_SUBMODULES="N"
   LOCAL_GROUPS="mer-core mer-core-attic mer-crosshelpers mer-obs mer-tools"  
   LOCAL_MIRROR_GROUP="mirror"
@@ -730,6 +733,9 @@ handle_submodules() {
             parent_url=$(git config --get remote.origin.url)
             url_host=$(echo $parent_url | cut -d'/' -f3)
             url_proto=$(echo $parent_url | cut -d'/' -f-2)
+	    # Now check to see if the url_path is in the 'local' lists
+	    # and if not, replace it with a mirror url following the
+	    # substitution rule / -> _
 	    case "$url" in
 		http://* | https://* | ssh://* | git://* )
 		    if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f4)$"
