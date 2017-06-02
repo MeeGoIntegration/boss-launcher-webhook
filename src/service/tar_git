@@ -53,6 +53,11 @@ set_default_params () {
   LOCAL_SUBMODULES="N"
   LOCAL_GROUPS="mer-core mer-core-attic mer-crosshelpers mer-obs mer-tools"  
   LOCAL_MIRROR_GROUP="mirror"
+  # Allow running supplied *.changes.run executable to generate changelog.
+  ALLOW_CHANGES_RUN="Y"
+  # Use the given exec wrapper for running *.changes.run to protect against malware.
+  # The wrapper can be a command with initial list of arguments
+  CHANGES_RUN_WRAPPER=(git-change-log --script)
 }
 
 get_config_options () {
@@ -227,6 +232,13 @@ find_changes_file () {
   [[ -z $CHANGESFILE ]] || cp "$CHANGESFILE" ..
 }
 
+find_changes_run_file () {
+
+  CHANGESRUNFILE="$(find $1 -type f -name '*.changes.run')"
+
+  [[ "$(echo $CHANGESRUNFILE | wc -w)" -le 1 ]] || error "Need single changes.run file in rpm"
+}
+
 find_yaml_file () {
 
   YAMLFILE="$(basename $SPECFILE .spec).yaml"
@@ -237,7 +249,7 @@ find_yaml_file () {
 
 find_other_files () {
 
-  for i in $(find rpm/ -type f -not -name '*.yaml' -not -name '*.changes' -not -name '*.spec'); do
+  for i in $(find rpm/ -type f -not -name '*.yaml' -not -name '*.changes' -not -name '*.changes.run' -not -name '*.spec'); do
 
     cp -v $i ..
 
@@ -531,6 +543,17 @@ do_changelog_block () {
 }
 
 generate_changes () {
+
+  if test -n "$CHANGESRUNFILE"; then
+    if test "$ALLOW_CHANGES_RUN" != "Y" ; then
+      error "Not allowed to run supplied executable to generate changelog"
+    fi
+    CHANGESFILE=../$(basename "${CHANGESRUNFILE%.run}")
+    if ! command "${CHANGES_RUN_WRAPPER[@]}" "$CHANGESRUNFILE" > "$CHANGESFILE"; then
+      error "Unable to generate changelog entries using '$CHANGESRUNFILE'"
+    fi
+    return
+  fi
 
   CHANGES=""
   ENTRIES=""
@@ -979,6 +1002,7 @@ rpm_pkg () {
   expand_spec_file "$SPECFILE"
   cp -v "$SPECFILE" ..
   find_changes_file rpm
+  find_changes_run_file rpm
   find_yaml_file
   find_other_files
   find_compression "$SPECFILE"
@@ -1029,6 +1053,7 @@ run_android_repo_service () {
   $REPOCMD
   find_spec_file "$MYOUTDIR"
   find_changes_file "$MYOUTDIR"
+  find_changes_run_file "$MYOUTDIR"
   find_package_name "$SPECFILE"
   echo "package name is $PACKAGE_NAME"
   set_versha
