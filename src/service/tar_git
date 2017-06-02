@@ -680,8 +680,7 @@ git_ls_files () {
 
 cache_prefetch () {
 
-  NAME=$1
-  URL=$2
+  URL=$1
 
   if [ x"$CACHE_DIR" = "x" ]; then
       return
@@ -691,6 +690,7 @@ cache_prefetch () {
       error "$CACHE_DIR doesn't exist ..."
   fi
 
+  NAME="$(basename $URL)"
   SERVER_SUBDIR="$(dirname $URL)"
   [[ "$SERVER_SUBDIR" = "." ]] && SERVER_SUBDIR=$URL
   
@@ -759,7 +759,7 @@ handle_submodules() {
       path=$(git config -f .gitmodules --get submodule.$name.path | cut -d= -f2)
     
       URL=$url
-      cache_prefetch $name $URL
+      cache_prefetch $URL
     
       REFERENCE=""
       [ -d "$URL" ] && REFERENCE="--reference $URL"
@@ -846,7 +846,7 @@ clone () {
 
   echo "Handling $CLONE_NAME"
   URL=$MYURL
-  cache_prefetch $CLONE_NAME $URL
+  cache_prefetch $URL
   MYURL=$URL
 
   if [ -d $CLONE_NAME ]; then
