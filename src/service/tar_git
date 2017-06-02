@@ -724,37 +724,34 @@ handle_submodules() {
     ../*)
       url=${baseurl%/*}${url:2};;
     ./*)
-      url=${baseurl}${url:1};;
-    http://* | https://* | ssh://* | git://* )
-      if [ "$LOCAL_SUBMODULES" == "Y" ] ; then
-        parent_url=$(git config --get remote.origin.url)
-        url_host=$(echo $parent_url | cut -d'/' -f3)
-        url_proto=$(echo $parent_url | cut -d'/' -f-2)
-        if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f4)$"
-        then
-          url_path=$(echo $url | cut -d'/' -f4-)
-        else
-          url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d'/' -f4- | tr '/' '_')
-        fi
-        url=$url_proto/$url_host/$url_path
-        git config -f .gitmodules submodule.$name.url $url
-      fi
-	;;
-    *@*:* )
-	if [ "$LOCAL_SUBMODULES" == "Y" ] ; then
-        parent_url=$(git config --get remote.origin.url)
-        url_host=$(echo $parent_url | cut -d'/' -f3)
-        url_proto=$(echo $parent_url | cut -d'/' -f-2)
-        if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f1 | cut -d':' -f2-)$"
-        then
-          url_path=$(echo $url | cut -d':' -f2-)
-        else
-          url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d':' -f2- | tr '/' '_')
-        fi
-        url=$url_proto/$url_host/$url_path
-        git config -f .gitmodules submodule.$name.url $url
+	url=${baseurl}${url:1};;
+    *)
+	if [ "$LOCAL_SUBMODULES" == "Y" ]; then
+            parent_url=$(git config --get remote.origin.url)
+            url_host=$(echo $parent_url | cut -d'/' -f3)
+            url_proto=$(echo $parent_url | cut -d'/' -f-2)
+	    case "$url" in
+		http://* | https://* | ssh://* | git://* )
+		    if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f4)$"
+		    then
+			url_path=$(echo $url | cut -d'/' -f4-)
+		    else
+			url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d'/' -f4- | tr '/' '_')
+		    fi
+		    ;;
+		*@*:* )
+		    if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f1 | cut -d':' -f2-)$"
+		    then
+			url_path=$(echo $url | cut -d':' -f2-)
+		    else
+			url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d':' -f2- | tr '/' '_')
+		    fi
+		    ;;
+	    esac
+            url=$url_proto/$url_host/$url_path
+            git config -f .gitmodules submodule.$name.url $url
 	fi
-      ;;
+	;;
     esac
     path=$(git config -f .gitmodules --get submodule.$name.path | cut -d= -f2)
   
