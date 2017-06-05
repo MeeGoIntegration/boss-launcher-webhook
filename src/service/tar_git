@@ -46,6 +46,9 @@ set_default_params () {
   SVC_NAME=""
   REPO_PATH=""
   GIT_SUBSTITUTIONS=()
+  # if LOCAL_SUBMODULES are enabled then any submodules with paths
+  # *not* in the LOCAL_GROUPS or mirror will be forcibly rewritten to
+  # use a mirror repository (url formed by substituting / -> _ )
   LOCAL_SUBMODULES="N"
   LOCAL_GROUPS="mer-core mer-core-attic mer-crosshelpers mer-obs mer-tools"  
   LOCAL_MIRROR_GROUP="mirror"
@@ -713,68 +716,66 @@ cache_prefetch () {
 
 handle_submodules() {
  
-  if [ -f .gitmodules ] ; then
-    local submod url url_host url_proto url_path baseurl path URL REFERENCE
-    baseurl=${1%/}
-    for submod in $(git config -f .gitmodules -l | grep -P 'submodule\..*\.url' | xargs); do
-      url=$(echo $submod | cut -d= -f2)
-      name=$(echo $submod | cut -d= -f1 | cut -d. -f2)
-      # Handle relative URLs and optionally configure local submodules
-      case "$url" in
-      ../*)
-        url=${baseurl%/*}${url:2};;
-      ./*)
-        url=${baseurl}${url:1};;
-      http://* | https://* | ssh://* | git://* )
-        if [ "$LOCAL_SUBMODULES" == "Y" ] ; then
-          parent_url=$(git config --get remote.origin.url)
-          url_host=$(echo $parent_url | cut -d'/' -f3)
-          url_proto=$(echo $parent_url | cut -d'/' -f-2)
-          if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f4)$"
-          then
-            url_path=$(echo $url | cut -d'/' -f4-)
-          else
-            url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d'/' -f4- | tr '/' '_')
-          fi
-          url=$url_proto/$url_host/$url_path
-          git config -f .gitmodules submodule.$name.url $url
-        fi
-	;;
-      *@*:* )
-	if [ "$LOCAL_SUBMODULES" == "Y" ] ; then
-          parent_url=$(git config --get remote.origin.url)
-          url_host=$(echo $parent_url | cut -d'/' -f3)
-          url_proto=$(echo $parent_url | cut -d'/' -f-2)
-          if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f1 | cut -d':' -f2-)$"
-          then
-            url_path=$(echo $url | cut -d':' -f2-)
-          else
-            url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d':' -f2- | tr '/' '_')
-          fi
-          url=$url_proto/$url_host/$url_path
-          git config -f .gitmodules submodule.$name.url $url
+  [ -f .gitmodules ] || return
+  local submod url url_host url_proto url_path baseurl path URL REFERENCE
+  baseurl=${1%/}
+  for submod in $(git config -f .gitmodules -l | grep -P 'submodule\..*\.url' | xargs); do
+    url=$(echo $submod | cut -d= -f2)
+    name=$(echo $submod | cut -d= -f1 | cut -d. -f2)
+    # Handle relative URLs and optionally configure local submodules
+    case "$url" in
+    ../*)
+      url=${baseurl%/*}${url:2};;
+    ./*)
+	url=${baseurl}${url:1};;
+    *)
+	if [ "$LOCAL_SUBMODULES" == "Y" ]; then
+            parent_url=$(git config --get remote.origin.url)
+            url_host=$(echo $parent_url | cut -d'/' -f3)
+            url_proto=$(echo $parent_url | cut -d'/' -f-2)
+	    # Now check to see if the url_path is in the 'local' lists
+	    # and if not, replace it with a mirror url following the
+	    # substitution rule / -> _
+	    case "$url" in
+		http://* | https://* | ssh://* | git://* )
+		    if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f4)$"
+		    then
+			url_path=$(echo $url | cut -d'/' -f4-)
+		    else
+			url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d'/' -f4- | tr '/' '_')
+		    fi
+		    ;;
+		*@*:* )
+		    if echo "$LOCAL_GROUPS $LOCAL_MIRROR_GROUP" | tr ' ' '\n' | grep -q "^$(echo $url | cut -d'/' -f1 | cut -d':' -f2-)$"
+		    then
+			url_path=$(echo $url | cut -d':' -f2-)
+		    else
+			url_path=$LOCAL_MIRROR_GROUP/$(echo $url | sed 's;/$;;' | cut -d':' -f2- | tr '/' '_')
+		    fi
+		    ;;
+	    esac
+            url=$url_proto/$url_host/$url_path
+            git config -f .gitmodules submodule.$name.url $url
 	fi
-        ;;
-      esac
-      path=$(git config -f .gitmodules --get submodule.$name.path | cut -d= -f2)
-    
-      URL=$url
-      cache_prefetch $name $URL
-    
-      REFERENCE=""
-      [ -d "$URL" ] && REFERENCE="--reference $URL"
-    
-      git submodule --quiet update --init --force $REFERENCE -- $path
+	;;
+    esac
+    path=$(git config -f .gitmodules --get submodule.$name.path | cut -d= -f2)
+  
+    URL=$url
+    cache_prefetch $name $URL
+  
+    REFERENCE=""
+    [ -d "$URL" ] && REFERENCE="--reference $URL"
+  
+    git submodule --quiet update --init --force $REFERENCE -- $path
 
-      test -d $path || error "Something went wrong handling submodule $name from $url"
+    test -d $path || error "Something went wrong handling submodule $name from $url"
 
-      pushd $path >/dev/null
-        handle_submodules $url
-      popd >/dev/null
-     
-    done
-  fi
- 
+    pushd $path >/dev/null
+      handle_submodules $url
+    popd >/dev/null
+   
+  done 
 }
 
 parse_url () {
