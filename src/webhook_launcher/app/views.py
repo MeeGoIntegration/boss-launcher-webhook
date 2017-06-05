@@ -22,7 +22,7 @@
 import json
 import socket
 import struct
-from collections import defaultdict
+from collections import OrderedDict
 from pprint import pprint
 
 import django_filters
@@ -62,19 +62,45 @@ def index(request):
         ):
             return HttpResponseRedirect(settings.LOGIN_URL)
 
-        mappings = defaultdict(dict)
-        off_prjs = set([
-            prj.name for prj in
+        # Get all the webhook project names
+        all_wh_project_names = list(WebHookMapping.objects.exclude(
+            package="").values_list("project", flat=True).distinct())
+
+        # and all the official Project objects
+        official_Projects = set(
             Project.objects.filter(official=True, allowed=True)
-        ])
+        )
+
+        # And create a set of project names that match a project
+        official_wh_project_names = set()
+
+        def collect_pname(P1, pname1):
+                if P1.matches(pname1):
+                    official_wh_project_names.add(pname1)
+                    return True
+                return False
+        for P in official_Projects:
+            # re-create the list so we only check names we haven't
+            # collected next time round
+            all_wh_project_names = [pname for pname in all_wh_project_names
+                                    if not collect_pname(P, pname)]
+
+        # Get all the webhooks for official Projects and the logged in
+        # user (sorted by project to make it look nice)
         maps = WebHookMapping.objects.exclude(package="").filter(
-            Q(project__in=off_prjs) | Q(user=request.user)
-        ).prefetch_related("obs", "lastseenrevision_set")
+            Q(project__in=official_wh_project_names) | Q(user=request.user)
+        ).order_by("project").prefetch_related("obs", "lastseenrevision_set")
+
+        # and create an ordered collection of project names pointing
+        # to a data structures to be used by the template
+        # FYI: A profile of this code showed ~0.1 sec to this point and
+        # 8 seconds in the following loop.
+        mappings = OrderedDict()
         for mapobj in maps:
             if mapobj.project not in mappings:
                 mappings[mapobj.project] = {
                     "personal": mapobj.user.pk == request.user.pk,
-                    "official": mapobj.project in off_prjs,
+                    "official": mapobj.project in official_wh_project_names,
                     "obsweburl": mapobj.obs.weburl,
                     "packages": []
                 }
@@ -82,7 +108,7 @@ def index(request):
             mappings[mapobj.project]["packages"].append(mapobj.to_fields())
 
         return render(
-            request, 'app/index.html', {'mappings': dict(mappings)}
+            request, 'app/index.html', {'mappings': mappings}
         )
 
     elif request.method == 'POST':
