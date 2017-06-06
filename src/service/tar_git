@@ -779,6 +779,12 @@ handle_submodules() {
 }
 
 parse_url () {
+  # Breaks MYURL up into :
+  #   SCHEME://REPO_URL/REPO_PATH/REPO_NAME
+  # REPO_NAME has no .git and is duplicated as CLONE_NAME
+  # REPO_URL (the plain service FQDN without user/port info) also produces
+  #   something.SVC_NAME.something
+
 
   # parse git URLs of various forms:
   # ssh://[user@]host.xz[:port]/path/to/repo.git/
@@ -813,7 +819,7 @@ parse_url () {
   REPO_URL="${REPO_URL##*@}"
   # remove possible port
   REPO_URL="${REPO_URL%:*}"
-  # extract service name
+  # extract service name (Assumes a 3 part FQDN - git.SVC_NAME.something)
   SVC_NAME="${REPO_URL%.*}"
   SVC_NAME="${SVC_NAME#*.}"
   CLONE_NAME="$REPO_NAME"
