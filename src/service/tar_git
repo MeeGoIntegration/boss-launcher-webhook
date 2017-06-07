@@ -1011,7 +1011,7 @@ run_android_repo_service () {
     svc_url="${svc_url%.*}"   # remove trailing .something
     svc_name="${svc_url#*.}"  # remove leading something.
     if [[ "$svc_name" == "$SVC_NAME" ]]; then
-      SVC_TAG=svc_tag
+      SVC_TAG=$svc_tag
       break
     fi
   done < $REPOCONFIG
