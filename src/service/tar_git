@@ -45,6 +45,7 @@ set_default_params () {
   CLONE_NAME=""
   SVC_NAME=""
   REPO_PATH=""
+  REPOCONFIG=/etc/obs/services/repo
   GIT_SUBSTITUTIONS=()
   # if LOCAL_SUBMODULES are enabled then any submodules with paths
   # *not* in the LOCAL_GROUPS or mirror will be forcibly rewritten to
@@ -779,6 +780,12 @@ handle_submodules() {
 }
 
 parse_url () {
+  # Breaks MYURL up into :
+  #   SCHEME://REPO_URL/REPO_PATH/REPO_NAME
+  # REPO_NAME has no .git and is duplicated as CLONE_NAME
+  # REPO_URL (the plain service FQDN without user/port info) also produces
+  #   something.SVC_NAME.something
+
 
   # parse git URLs of various forms:
   # ssh://[user@]host.xz[:port]/path/to/repo.git/
@@ -813,7 +820,7 @@ parse_url () {
   REPO_URL="${REPO_URL##*@}"
   # remove possible port
   REPO_URL="${REPO_URL%:*}"
-  # extract service name
+  # extract service name (Assumes a 3 part FQDN - git.SVC_NAME.something)
   SVC_NAME="${REPO_URL%.*}"
   SVC_NAME="${SVC_NAME#*.}"
   CLONE_NAME="$REPO_NAME"
@@ -990,12 +997,29 @@ rpm_pkg () {
 }
 
 run_android_repo_service () {
-    case "$SVC_NAME" in
-	github) SVC_TAG=github;;
-	merproject) SVC_TAG=mer;;
-	jollamobile) SVC_TAG=jolla;;
-	*) echo "Unknown service '$SVC_NAME'"; exit 1;;
-    esac
+  if [[ ! -f $REPOCONFIG ]] ; then
+    echo "Missing repo config file $REPOCONFIG"
+    exit 1
+  fi
+  SVC_TAG=
+  while read svc_tag svc_url
+  do
+    svc_url="${svc_url#*://}" # remove scheme
+    svc_url="${svc_url%/*}"   # remove path
+    svc_url="${svc_url##*@}"  # remove username
+    svc_url="${svc_url%:*}"   # remove port
+    svc_url="${svc_url%.*}"   # remove trailing .something
+    svc_name="${svc_url#*.}"  # remove leading something.
+    if [[ "$svc_name" == "$SVC_NAME" ]]; then
+      SVC_TAG=$svc_tag
+      break
+    fi
+  done < $REPOCONFIG
+  if [ -z "$SVC_TAG" ]; then
+    echo "Sorry, $SVC_REPO is not whitelisted. please contact ask your OBS administrator to add it to the repo config file $REPOCONFIG if you need it."
+    exit 1
+  fi
+
   REPOCMD="/usr/lib/obs/service/repo --initrepo "$REPO_PATH"/"$REPO_NAME" --service "$SVC_TAG" --branch "$BRANCH" --outdir "$MYOUTDIR""
   test -f tagged-manifest.xml && REPOCMD="$REPOCMD --manifest-name tagged-manifest.xml"
   test -x /usr/lib/obs/service/repo || error "repo service script not found at /usr/lib/obs/service/repo"
