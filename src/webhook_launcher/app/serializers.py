@@ -95,6 +95,9 @@ class WebHookMappingSerializer(serializers.ModelSerializer):
         else:
             info = model_meta.get_field_info(self.instance)
             for attr, value in attrs.items():
+                if attr == 'lsr':
+                    # lsr can not be set directly at the moment, so skip it
+                    continue
                 if attr in info.relations and info.relations[attr].to_many:
                     # We don't have any to-many relations at the moment, but
                     # this is to avoid setting them in the future if they are
