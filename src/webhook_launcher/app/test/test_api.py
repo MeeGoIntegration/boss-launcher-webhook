@@ -39,6 +39,10 @@ TEST_WHM_DATA = {
     "debian": 'N',
     "notify": True,
     "build": True,
+    "lsr": {
+        "revision": "xyz",
+        "tag": "0.1",
+    },
 }
 
 
@@ -81,8 +85,8 @@ class TestWebhookMappingApi(TestCase):
         self.assertEqual(whm.obs, self.build_service)
         self.assertEqual(whm.user, self.admin)
 
-        self.assertEqual(whm.lsr.revision, '')
-        self.assertEqual(whm.lsr.tag, None)
+        self.assertEqual(whm.lsr.revision, 'xyz')
+        self.assertEqual(whm.lsr.tag, '0.1')
 
     def test_update(self):
         self.client.force_login(self.admin)

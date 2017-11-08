@@ -90,8 +90,11 @@ class WebHookMappingSerializer(serializers.ModelSerializer):
         # automatically. And this is probably not the best solution to do the
         # validation, but at the moment it's the simplest one.
         if self.instance is None:
+            lsr = attrs.pop('lsr', None)
             instance = WebHookMapping(**attrs)
             instance.clean()
+            if lsr is not None:
+                attrs['lsr'] = lsr
         else:
             info = model_meta.get_field_info(self.instance)
             for attr, value in attrs.items():
