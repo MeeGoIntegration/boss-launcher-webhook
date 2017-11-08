@@ -40,13 +40,10 @@
 """
 
 from boss.obs import BuildServiceParticipant
-import osc
-from urlparse import urlparse
+from urllib2 import HTTPError
 import os
-from lxml import etree
 
 from boss.bz.config import parse_bz_config
-from boss.bz.rest import BugzillaError
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
@@ -105,8 +102,14 @@ class ParticipantHandler(BuildServiceParticipant):
                 webhook.tag or webhook.rev_or_head, str(webhook))
             comment = ""
             print "Requesting actions: %s\ndesc: %s" % (actions, description)
-            result = self.obs.createRequest(
-                options_list=actions, description=description, comment=comment, supersede=True, opt_sourceupdate="cleanup")
+            try:
+                result = self.obs.createRequest(
+                    options_list=actions, description=description,
+                    comment=comment, supersede=True,
+                    opt_sourceupdate="cleanup")
+            except HTTPError as e:
+                print "%s\n%s" % (e, e.read())
+                result = None
 
             if not result:
                 raise RuntimeError(
