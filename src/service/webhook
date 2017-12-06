@@ -18,8 +18,7 @@
 # the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-"""
-The webhook service creates and manages a webhook which causes the package to
+"""The webhook service creates and manages a webhook which causes the package to
 be rebuilt when a tag is pushed to a git service.
 
 Use <param name="name">value</param>
@@ -42,6 +41,12 @@ Optional params:
   "comment"  <comment>     Appears in the webhook list view
 
 Don't forget to make sure the git service webhook settings are set correctly
+
+The WH_USER, WH_PASSWD, OBS, WEBHOOK_URL & DEBUG config settings are
+set in /etc/obs/services/webhook or in ~/.obs/webhook or passed in the
+environment and set in that order (so environment overrides the
+others).
+
 """
 from __future__ import print_function
 import argparse
@@ -50,13 +55,17 @@ import os
 
 
 class Service(object):
+    # Our config keys
+    _config_keys = ["WH_USER", "WH_PASSWD", "OBS", "WEBHOOK_URL","DEBUG"]
     def __init__(self, *args):
         # config options for this host
-        self._read_conf("/etc/obs/services/webhook")
+        self._read_conf(filename="/etc/obs/services/webhook")
         # config options for this user
-        self._read_conf(os.path.expanduser("~/.obs/webhook"))
+        self._read_conf(filename=os.path.expanduser("~/.obs/webhook"))
         # config options from environment
-        self._read_conf()
+        self._read_conf(environment=True)
+
+        self._check_conf()
 
         self.auth = (self.WH_USER, self.WH_PASSWD)
         self.project = os.environ['OBS_SERVICE_PROJECT']
@@ -78,7 +87,7 @@ class Service(object):
             "comment": self.args.comment,
         }
 
-    def _read_conf(self, filename=None):
+    def _read_conf(self, filename=None, environment=False):
         if filename:
             if not os.path.exists(filename):
                 return
@@ -95,20 +104,26 @@ class Service(object):
                     key = key.strip()
                     value = value.strip()
                     data[key] = value
-        else:
+        elif environment:
             data = os.environ
+        else:
+            raise(Exception(
+                "Neither filename nor environment args passsed in"))
 
-        defaults = {
-            "WH_USER": "admin",
-            "WH_PASSWD": "root",
-            "OBS": "mer",
-            "WEBHOOK_URL": "http://127.0.0.1:8000/webhook/api",
-            "DEBUG": False,
-        }
-        for key, value in defaults.iteritems():
+        for key in self._config_keys:
             if key in data:
-                value = data[key]
-            setattr(self, key, value)
+                setattr(self, key, data[key])
+
+    def _check_conf(self):
+        missingconfig=[]
+        for key in self._config_keys:
+            if not hasattr(self, key):
+                missingconfig.append(key)
+        if missingconfig:
+            raise(Exception(
+                "The following config items were not provided: %s" %
+                ", ".join(missingconfig)))
+
 
     def _parse_args(self, args):
         parser = argparse.ArgumentParser(
@@ -116,12 +131,12 @@ class Service(object):
             formatter_class=argparse.RawTextHelpFormatter,
         )
         parser.add_argument(
-            '--repourl',
-            required=True,
+            '--outdir',
             help=argparse.SUPPRESS,
         )
         parser.add_argument(
-            '--outdir',
+            '--repourl',
+            required=True,
             help=argparse.SUPPRESS,
         )
         parser.add_argument(
