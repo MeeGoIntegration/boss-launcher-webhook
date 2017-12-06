@@ -108,6 +108,10 @@ class Service(object):
         for key, value in defaults.iteritems():
             if key in data:
                 value = data[key]
+            try:
+                value = getattr(self, key)
+            except AttributeError:
+                pass
             setattr(self, key, value)
 
     def _parse_args(self, args):
@@ -116,12 +120,12 @@ class Service(object):
             formatter_class=argparse.RawTextHelpFormatter,
         )
         parser.add_argument(
-            '--repourl',
-            required=True,
+            '--outdir',
             help=argparse.SUPPRESS,
         )
         parser.add_argument(
-            '--outdir',
+            '--repourl',
+            required=True,
             help=argparse.SUPPRESS,
         )
         parser.add_argument(
