@@ -86,7 +86,7 @@ class Service(object):
             with open(filename) as fd:
                 for line in fd.readlines():
                     line = line.strip()
-                    if line[0] == "#":
+                    if len(line) > 0 and line[0] == "#":
                         continue
                     try:
                         key, value = line.split("=", 1)
