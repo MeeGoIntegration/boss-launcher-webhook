@@ -86,7 +86,7 @@ class Service(object):
             with open(filename) as fd:
                 for line in fd.readlines():
                     line = line.strip()
-                    if line[0] == "#":
+                    if len(line) > 0 and line[0] == "#":
                         continue
                     try:
                         key, value = line.split("=", 1)
@@ -108,12 +108,20 @@ class Service(object):
         for key, value in defaults.iteritems():
             if key in data:
                 value = data[key]
+            try:
+                value = getattr(self, key)
+            except AttributeError:
+                pass
             setattr(self, key, value)
 
     def _parse_args(self, args):
         parser = argparse.ArgumentParser(
             description=__doc__,
             formatter_class=argparse.RawTextHelpFormatter,
+        )
+        parser.add_argument(
+            '--outdir',
+            help=argparse.SUPPRESS,
         )
         parser.add_argument(
             '--repourl',
