@@ -121,6 +121,10 @@ class Service(object):
             help=argparse.SUPPRESS,
         )
         parser.add_argument(
+            '--outdir',
+            help=argparse.SUPPRESS,
+        )
+        parser.add_argument(
             '--branch',
             required=True,
             help=argparse.SUPPRESS,
