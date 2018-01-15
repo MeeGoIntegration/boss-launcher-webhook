@@ -45,7 +45,9 @@ class WebhookServiceTestCase(LiveServerTestCase):
             'OBS': self.obs.namespace,
             'OBS_SERVICE_PROJECT': 'example:test',
             'OBS_SERVICE_PACKAGE': 'test',
-            "WEBHOOK_URL": "%s/webhook/api" % self.live_server_url,
+            'WEBHOOK_URL': '%s/webhook/api' % self.live_server_url,
+            'WH_USER': 'admin',
+            'WH_PASSWD': 'root',
         }
 
     def _call_service(self, *args):

@@ -13,6 +13,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp
 %if ! 0%{?use_pip}
 BuildRequires: python-django
+%else
+Conflicts: python-django, python-Django
 %endif
 %if 0%{?fedora}
 BuildRequires: MySQL-python
