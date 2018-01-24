@@ -63,7 +63,7 @@ class WebhookServiceTestCase(LiveServerTestCase):
 
     def test_create(self):
         self._call_service(
-            '--repourl', 'https://example.com/',
+            '--repourl', 'https://example.com/project',
             '--branch', 'master',
         )
         self.assertEqual(
@@ -73,7 +73,7 @@ class WebhookServiceTestCase(LiveServerTestCase):
         whm = WebHookMapping.objects.last()
         self.assertEqual(
             whm.repourl,
-            'https://example.com/',
+            'https://example.com/project.git',
         )
 
     def test_update(self):
@@ -85,7 +85,7 @@ class WebhookServiceTestCase(LiveServerTestCase):
             repourl='https://something.else.com/'
         )
         self._call_service(
-            '--repourl', 'https://example.com/',
+            '--repourl', 'https://example.com/project',
             '--branch', 'master',
         )
         whm = WebHookMapping.objects.get(
@@ -94,5 +94,5 @@ class WebhookServiceTestCase(LiveServerTestCase):
         )
         self.assertEqual(
             whm.repourl,
-            'https://example.com/',
+            'https://example.com/project.git',
         )
