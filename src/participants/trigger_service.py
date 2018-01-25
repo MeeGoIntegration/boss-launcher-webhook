@@ -47,7 +47,6 @@
 """
 
 from boss.obs import BuildServiceParticipant
-import osc
 from urlparse import urlparse
 from osc import core
 from StringIO import StringIO
@@ -82,7 +81,7 @@ def find_service_repo(url):
     if url.endswith(".git"):
         url = url[:-4]
     u = urlparse(url)
-    print u
+    print(u)
     if u.netloc.endswith("github.com"):  # github
         return "github", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("gitorious.org"):  # gitorious
@@ -170,7 +169,7 @@ class ParticipantHandler(BuildServiceParticipant):
             params["dumb"] = f.dumb
 
         if "branch" in params and params["branch"].startswith("pkg-"):
-            if not "service" in params or not "repo" in params:
+            if "service" not in params or "repo" not in params:
                 raise RuntimeError(
                     "Service/Repo not found in repourl %s " % p.repourl)
             service = git_pkg_service
@@ -183,48 +182,55 @@ class ParticipantHandler(BuildServiceParticipant):
         # else:
         try:
             pkginfo = core.show_files_meta(
-                self.obs.apiurl, str(project), str(package), expand=False, meta=True)
+                self.obs.apiurl, str(project), str(package),
+                expand=False, meta=True)
             if "<entry" not in pkginfo:
                 # This is a link and it needs branching from the linked project
                 # so grab the meta and extract the project from the link
-                print "Found %s as a link in %s" % (package, project)
+                print("Found %s as a link in %s" % (package, project))
                 x = etree.fromstring(
                     "".join(core.show_project_meta(self.obs.apiurl, project)))
-                l = x.find('link')
-                if l is None:
+                link = x.find('link')
+                if link is None:
                     raise Exception(
                         "Expected a <link> in project %s." % project)
-                print "Got a link  %s" % l
-                linked_project = l.get('project')
-                print "Branching %s to overwrite _service" % package
+                print("Got a link  %s" % link)
+                linked_project = link.get('project')
+                print("Branching %s to overwrite _service" % package)
                 core.branch_pkg(self.obs.apiurl, linked_project,
                                 str(package), target_project=str(project))
-        except Exception, exc:
-            print "Doing a metatype pkg add because I caught %s" % exc
-            print "Creating package %s in project %s" % (package, project)
+        except Exception as exc:
+            print("Doing a metatype pkg add because I caught %s" % exc)
+            print("Creating package %s in project %s" % (package, project))
             data = core.metatypes['pkg']['template']
             data = StringIO(
-                data % {"name": str(package), "user": self.obs.getUserName()}).readlines()
+                data % {
+                    "name": str(package),
+                    "user": self.obs.getUserName()}
+            ).readlines()
             u = core.makeurl(
-                self.obs.apiurl, ['source', str(project), str(package), "_meta"])
+                self.obs.apiurl,
+                ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
-            print "HTTP PUT result of pkg add : %s" % x
+            print("HTTP PUT result of pkg add : %s" % x)
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
-             # We use expand=0 as otherwise a failed service run won't
-             # return the _service file
-            print "Trying to get _service file for %s/%s" % (project, package)
+            # We use expand=0 as otherwise a failed service run won't
+            # return the _service file
+            print("Trying to get _service file for %s/%s" % (project, package))
             services_xml = self.obs.getFile(
                 project, package, "_service", expand=0)
-        except urllib2.HTTPError, e:
-            print "Exception %s trying to get _service file for %s/%s" % (e, project, package)
+        except urllib2.HTTPError as e:
+            print("Exception %s trying to get _service file for %s/%s" %
+                  (e, project, package))
             if e.code == 404:
                 services_xml = "<services></services>"
             elif e.code == 400:
                 # HTTP Error 400: service in progress error
                 wid.result = True
-                print "Service in progress, could not get _service file. Not triggering another run."
+                print("Service in progress, could not get _service file. "
+                      "Not triggering another run.")
                 return
             else:
                 raise e
@@ -248,7 +254,7 @@ class ParticipantHandler(BuildServiceParticipant):
             services.append(new_service)
 
         svc_file = etree.tostring(services, pretty_print=True)
-        print "New _service file:\n%s" % svc_file
+        print("New _service file:\n%s" % svc_file)
 
         # And send our new service file
         self.obs.setupService(project, package, svc_file)
