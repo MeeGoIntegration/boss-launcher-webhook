@@ -233,7 +233,12 @@ class ParticipantHandler(BuildServiceParticipant):
         new_service_xml = service % params
 
         # Replace the matching one:
-        services = etree.fromstring(services_xml)
+        try:
+            services = etree.fromstring(services_xml)
+        except etree.XMLSyntaxError as e:
+            print(e)
+            services = etree.Element('services')
+
         new_service = etree.fromstring(new_service_xml)
         svcname = new_service.find(".").get("name")
         old_service = services.find("./service[@name='%s']" % svcname)
