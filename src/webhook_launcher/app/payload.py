@@ -281,7 +281,11 @@ class GhPush(Payload):
             if "pusher" in payload:
                 emails.add(payload["pusher"]["email"])
 
-            if not revision or not name:
+            if not revision:
+                print("No revision. Giving up.")
+                return
+            if not name:
+                print("No name. Giving up.")
                 return
 
             if not len(mapobjs):
