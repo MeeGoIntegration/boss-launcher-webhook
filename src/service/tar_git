@@ -992,7 +992,7 @@ rpm_pkg () {
      echo -n $VERSHA > .tarball-version
   fi
   
-  commitdate=$(git log -1 --date=short --pretty=format:%cd)
+  commitdate=$(git log -1 --date=short-local --pretty=format:%cd)
   git_ls_files | tar --mtime "$commitdate" --null --no-recursion -c --transform "s#^#$PACKAGE_NAME-$VERSHA/#S" -T - | $COMPRESS_COMMAND > $MYOUTDIR/$PACKAGE_NAME-$VERSHA.$COMPRESS_EXT
 
   set_spec_version
