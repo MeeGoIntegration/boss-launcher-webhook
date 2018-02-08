@@ -171,11 +171,12 @@ class ParticipantHandler(BuildServiceParticipant):
             # Go through each bugzilla we support
             for (bugzillaname, bugzilla) in self.bzs.iteritems():
                 for match in bugzilla['compiled_re'].finditer(fea):
+                    bugnum = match.group('key')
                     try:
                         summary = bugzilla['interface'].bug_get(
-                            match.group('key'), 0)['summary']
+                            bugnum)['summary']
                         desc = bugzilla['interface'].comment_get(
-                            match.group('key'), 0)['text']
+                            bugnum, 0)['text']
                     except BugzillaError, error:
                         if error.code == 101:
                             print "Bug %s not found" % bugnum
