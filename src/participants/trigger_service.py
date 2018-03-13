@@ -53,6 +53,8 @@ from StringIO import StringIO
 from lxml import etree
 import urllib2
 
+empty_service = "<services></services>"
+
 tar_git_service = """
 <service name="tar_git">
   <param name="url">%(url)s</param>
@@ -225,7 +227,7 @@ class ParticipantHandler(BuildServiceParticipant):
             print("Exception %s trying to get _service file for %s/%s" %
                   (e, project, package))
             if e.code == 404:
-                services_xml = "<services></services>"
+                services_xml = empty_service
             elif e.code == 400:
                 # HTTP Error 400: service in progress error
                 wid.result = True
@@ -235,16 +237,17 @@ class ParticipantHandler(BuildServiceParticipant):
             else:
                 raise e
 
-        # Create our new service (not services anymore)
-        new_service_xml = service % params
+        services_xml = services_xml.strip() or empty_service
 
         # Replace the matching one:
         try:
             services = etree.fromstring(services_xml)
         except etree.XMLSyntaxError as e:
             print(e)
-            services = etree.Element('services')
+            raise
 
+        # Create our new service (not services anymore)
+        new_service_xml = service % params
         new_service = etree.fromstring(new_service_xml)
         svcname = new_service.find(".").get("name")
         old_service = services.find("./service[@name='%s']" % svcname)
