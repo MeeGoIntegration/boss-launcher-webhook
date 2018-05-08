@@ -53,10 +53,10 @@ def launch(process, fields):
     with open(process, mode='r') as process_file:
         pdef = process_file.read()
 
-    launcher = Launcher(amqp_host = settings.BOSS_HOST,
-                        amqp_user = settings.BOSS_USER,
-                        amqp_pass = settings.BOSS_PASS,
-                        amqp_vhost = settings.BOSS_VHOST)
+    launcher = Launcher(amqp_host=settings.BOSS_HOST,
+                        amqp_user=settings.BOSS_USER,
+                        amqp_pass=settings.BOSS_PASS,
+                        amqp_vhost=settings.BOSS_VHOST)
 
     fields_dict = get_process_params(process)
     fields_dict.update(fields)
@@ -68,9 +68,10 @@ def launch(process, fields):
 def launch_queue(fields):
     launch(settings.VCSCOMMIT_QUEUE, fields)
 
+
 def launch_notify(fields):
     launch(settings.VCSCOMMIT_NOTIFY, fields)
 
+
 def launch_build(fields):
     launch(settings.VCSCOMMIT_BUILD, fields)
-
