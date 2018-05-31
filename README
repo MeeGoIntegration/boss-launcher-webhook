@@ -142,3 +142,112 @@ OBS participants. Then:
   skynet apply
   skynet register trigger_service
 
+Behaviour
+=========
+
+When a git action takes place on a git web service (github, gitlab,
+bitbucket) an event or webhook is generated and directed to one or
+more webhook services.
+
+boss-launcher-webhook (Webhook for short) is intended to launch boss
+processes when a suitable git webhook event is received.
+
+Webhook is focused on triggering obs build events. It contains
+multiple obs-project/package pairs which listen to events from a
+specific git repository. When a tag event from that repository is
+received a build is triggered (if other criteria are met) based on the
+tag commit sha1.
+
+The target information is:
+* obs
+* project
+* package
+
+These must be unique.
+
+The criteria are:
+
+* branch
+* token
+* tag branch indicator (tbi)
+
+branch
+------
+This is deprecated. It cannot be set if tbi is set.
+
+If specified then when a tag event is seen if it is 'on'
+the specified branch a build is triggered.
+
+In order to determine that the tag is 'on' the branch webhooks keeps
+track of the last non-tag commit events for the repo. These are known
+as last-seen-revisions and they contain the branch refs that the
+revision is pointed to by. If the LSR was for the same sha1 as the tag
+then the branches the tag is on are known. This algorithm is racey and
+highly unreliable; it fails if a tag is re-pushed or if additional
+commits are pushed between a relevant LSR and the tag event.
+
+token
+-----
+The token value is overloaded and serves two purposes.
+
+tag filter
+..........
+
+The token value is used alongside the branch and serves as a filter by
+ignoring any tags that do not contain the token as a sub-tag.
+
+Changelog filter
+................
+
+Git log entries which do not contain '[token]' will be ignored when
+tar_git constructs a changelog.
+
+tag branch indicator
+--------------------
+
+If specified then only tags containing a sub-tag matching the tbi will trigger a build.
+If the tbi is specified then 'branch' must be empty.
+
+
+If branch is empty then tbi is taken as the empty sub-tag and there must be no unused sub-tags present.
+
+Examples
+--------
+
+if token is A and tbi is B
+A/B/Ver will trigger 
+B/A/Ver will trigger 
+A/Ver will not trigger 
+B/Ver will not trigger 
+
+if token is A and tbi is empty
+A/B/Ver will not trigger (B is not used) 
+A/Ver will trigger 
+B/Ver will not trigger 
+
+Algorithm
+---------
+Break tag into subtags and version
+If token is given check for token in sub tag list
+  If not present match failed
+  If present remove token from subtag list
+If tbi is given check for tbi in sub tag list
+  If present match succeeded
+If branch is empty
+  If subtag list is empty match succeeded
+  If subtag list is not empty match failed
+If branch is given then ensure tag sha1 matches sha1 of LSR and LSR contains branch as a ref
+
+Tag Semantics
+-------------
+
+Tags are broken into sub-tags and a version using / characters
+
+A/B/C/Ver
+
+Only and all text following the final (optional) / is used as the tag
+version number.
+
+To guard against git repos where the tags contain / characters Webhook
+could have an 'ignore n /s' field. Eg for n=2
+A/B/C/Ver would identify a sub-tag of A and the version would be B/C/Ver
