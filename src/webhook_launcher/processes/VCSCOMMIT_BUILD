@@ -29,7 +29,7 @@ Ruote.process_definition 'wh_trigger_build' do
     # Mer projects are not created by this process
     # This should be conditional though
     create_project
-    trigger_service
+    trigger_service :on_error => "do_service_error"
     # We wait for the source before checking the build results as
     # is_repo_published can fail if the service is still running
     do_wait_for_src
@@ -40,6 +40,12 @@ Ruote.process_definition 'wh_trigger_build' do
         auto_promote
       end
     end
+  end
+
+  define 'do_service_error' do
+    notify_irc :msg => 'Error triggering service in ${project}/${package}. Check cibot has access.',
+               :irc_channel => '#mer-boss'
+    terminate
   end
 
   define 'do_log' do
@@ -53,7 +59,8 @@ Ruote.process_definition 'wh_trigger_build' do
   define 'do_wait_for_src' do
     sequence do
       do_log :msg => 'Waiting for ${project}/${package} source'
-      repeat :timeout => '4h', :on_timeout => 'error' do
+      set 'v:timeout_step' => "getting source state"
+      repeat :timeout => '4h', :on_timeout => 'do_log_timeout' do
         wait '2m'
         get_src_state :project => '${project}', :package => '$package'
         _break :if => '${f:service_state}' != "running"
@@ -67,7 +74,8 @@ Ruote.process_definition 'wh_trigger_build' do
   define 'do_wait_for_build' do
     sequence do
       do_log :msg => 'Waiting for ${project} to build'
-      repeat :timeout => '48h', :on_timeout => 'error' do
+      set 'v:timeout_step' => "wating for repo publish"
+      repeat :timeout => '48h', :on_timeout => 'do_log_timeout' do
         wait '2m'
         is_repo_published :project => '${project}', :package => '$package'
         _break :if => '${f:__result__}'
@@ -86,6 +94,14 @@ Ruote.process_definition 'wh_trigger_build' do
       #       :subject => '[${pname}] ${wfid} SR#${req.id} ERROR'
       rewind
     end
+  end
+
+  define 'do_log_timeout' do
+    echo 'process ${wfid}: SR#${ev.id} TIMEOUT'
+    notify_irc :if => '"${log_channel}" != ""',
+               :msg => '${highlight} TIMEOUT for ${project}/${package} ${v:timeout_step}',
+               :irc_channel => '${log_channel}'
+    terminate
   end
 
 end
