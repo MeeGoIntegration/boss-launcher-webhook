@@ -24,7 +24,7 @@ Ruote.process_definition 'wh_trigger_build' do
     set :f => 'log_channel', :value => '#mer-boss'
     set :f => 'highlight', :value => ''
     # Any error will get notified by this flanked suprocess
-    do_log_error :flank => true
+    on_error "do_log_error"
 
     # Mer projects are not created by this process
     # This should be conditional though
@@ -49,51 +49,42 @@ Ruote.process_definition 'wh_trigger_build' do
   end
 
   define 'do_log' do
-    sequence do
-      echo 'process ${wfid}: ${v:msg}'
-      notify_irc :msg => 'process ${wfid} ${v:msg}',
-                 :irc_channel => '#mer-boss'
-    end
+    echo 'process ${wfid}: ${v:msg}'
+    notify_irc :msg => 'process ${wfid} ${v:msg}',
+               :irc_channel => '#mer-boss'
   end
 
   define 'do_wait_for_src' do
-    sequence do
-      do_log :msg => 'Waiting for ${project}/${package} source'
-      set 'v:timeout_step' => "getting source state"
-      repeat :timeout => '4h', :on_timeout => 'do_log_timeout' do
-        wait '2m'
-        get_src_state :project => '${project}', :package => '$package'
-        _break :if => '${f:service_state}' != "running"
-      end
-      _if '"${service_state}" != "succeeded"' do
-        error "Failed to get source for ${project}/${package}"
-      end
+    do_log :msg => 'Waiting for ${project}/${package} source'
+    set 'v:timeout_step' => "getting source state"
+    repeat :timeout => '4h', :on_timeout => 'do_log_timeout' do
+      wait '2m'
+      get_src_state :project => '${project}', :package => '$package'
+      _break :if => '${f:service_state}' != "running"
+    end
+    _if '"${service_state}" != "succeeded"' do
+      error "Failed to get source for ${project}/${package}"
     end
   end
 
   define 'do_wait_for_build' do
-    sequence do
-      do_log :msg => 'Waiting for ${project} to build'
-      set 'v:timeout_step' => "wating for repo publish"
-      repeat :timeout => '48h', :on_timeout => 'do_log_timeout' do
-        wait '2m'
-        is_repo_published :project => '${project}', :package => '$package'
-        _break :if => '${f:__result__}'
-      end
+    do_log :msg => 'Waiting for ${project} to build'
+    set 'v:timeout_step' => "wating for repo publish"
+    repeat :timeout => '48h', :on_timeout => 'do_log_timeout' do
+      wait '2m'
+      is_repo_published :project => '${project}', :package => '$package'
+      _break :if => '${f:__result__}'
     end
   end
 
   define 'do_log_error' do
-    cursor do
-      listen :to => :errors
-      echo 'process ${wfid}: SR#${ev.id} ERROR'
-      notify_irc :if => '"${log_channel}" != ""',
-                 :msg => '${highlight} process ${wfid} ERROR',
-                 :irc_channel => '${log_channel}'
-      #notify :template => '${template.error}', :mail_to => "$f:admin_emails",
-      #       :subject => '[${pname}] ${wfid} SR#${req.id} ERROR'
-      rewind
-    end
+    echo 'process ${wfid}: SR#${ev.id} ERROR'
+    notify_irc :if => '"${log_channel}" != ""',
+               :msg => '${highlight} process ${wfid} ERROR ${__error__.message}',
+               :irc_channel => '${log_channel}'
+    #notify :template => '${template.error}', :mail_to => "$f:admin_emails",
+    #       :subject => '[${pname}] ${wfid} SR#${req.id} ERROR'
+    terminate
   end
 
   define 'do_log_timeout' do
