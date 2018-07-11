@@ -431,7 +431,11 @@ class BbPush(Payload):
                         user=payload["user"],
                         notify=mapobj.notify and not notified,
                     )
-                    notified = True
+                    # For many mappings, notified is set when one
+                    # mapobj has notify==True; subsequent
+                    # notify==False won't clear it. This results in
+                    # just one call to handle_commit with notify=True
+                    notified = mapobj.notify or notified
 
                 else:
                     print(

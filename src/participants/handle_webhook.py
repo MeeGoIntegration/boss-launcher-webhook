@@ -34,6 +34,8 @@
 """
 
 import os
+import hashlib
+import json
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
 django.setup()
@@ -59,9 +61,18 @@ class ParticipantHandler(object):
         if wid.fields.payload is None:
             raise RuntimeError("Missing mandatory field: payload")
 
-        print "Handling a payload"
+        md5 = hashlib.md5(json.dumps(wid.fields.payload.as_dict(),
+                                     sort_keys=True)).hexdigest()
+        if md5 in self.seen:
+            print("Ignoring duplicate webhook (possible resend or "
+                  "github hook set at both repo and orginisation level)")
+            wid.result = True
+            return
+        self.seen[md5] = True
+
+        print("Handling a webhook payload")
         payload = get_payload(wid.fields.payload.as_dict())
         payload.handle()
-        print "done"
+        print("Webhook handled")
 
         wid.result = True
