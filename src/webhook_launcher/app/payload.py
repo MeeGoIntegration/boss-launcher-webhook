@@ -221,8 +221,9 @@ class GhPush(Payload):
                 # unfortunately github doesn't send info about the branch that
                 # an annotated tag is in nor the commit sha1 it points at.
                 # The tag itself is enough to tell what to pull and build but
-                # we wouldn't know which project / package to trigger try to
-                # use the head sha1sum to detect
+                # we wouldn't know which project / package to trigger. Instead
+                # try to use the head sha1sum in the lsr and hope that the lsr
+                # was for the same commit and get the branch from there.
                 print("annotated tag on %s" % repourl)
                 branches = []
 
@@ -281,7 +282,11 @@ class GhPush(Payload):
             if "pusher" in payload:
                 emails.add(payload["pusher"]["email"])
 
-            if not revision or not name:
+            if not revision:
+                print("No revision. Giving up.")
+                return
+            if not name:
+                print("No name. Giving up.")
                 return
 
             if not len(mapobjs):
@@ -296,6 +301,10 @@ class GhPush(Payload):
 
             notified = False
             for mapobj in mapobjs:
+                # seenrev is modified in place here and assumed to be
+                # saved later by trigger_build. Note that this doesn't
+                # actually happen all the time (eg when the project is
+                # disabled)
                 seenrev = mapobj.lsr
                 seenrev.payload = json.dumps(payload)
 
@@ -315,9 +324,16 @@ class GhPush(Payload):
                         # mapping with a matching revision
                         print(
                             "LastSeenRevision %s was not the same as for this"
-                            " tag: %s" % (seenrev.revision, revision)
+                            " tag: %s so the branch is unknown and nothing"
+                            " can be triggered.\nTry deleting and re-pushing"
+                            " the branch to set the lsr.\n"
+                            " CAN'T TRIGGER A BUILD" %
+                            (seenrev.revision, revision)
                         )
                         continue
+                else:
+                    print("This tag matches the last branch pushed so the"
+                          " branch is known")
 
                 # notify new branch created or commit in branch
                 if reftype == "heads":

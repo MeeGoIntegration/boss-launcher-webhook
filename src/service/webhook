@@ -229,16 +229,30 @@ class Service(object):
 
     def create_new_whm(self):
         self._debug(
-            "Creating new whm for %s %s on %s" %
+            "Creating new whm for %s %s on %s\n%s" %
             (self.new_whm['project'], self.new_whm['package'],
-             self.new_whm['obs'])
+             self.new_whm['obs'], self.new_whm)
         )
         r = requests.post(
             '%s/webhookmappings/' % self.WEBHOOK_URL,
             auth=self.auth,
             json=self.new_whm,
         )
-        r.raise_for_status()
+        if not r.ok:
+            try:
+                import json
+                info = json.loads(r.content)
+                if "non_field_errors" in info:
+                    validation = info["non_field_errors"][0]
+                    if "does not allow mappings" in validation:
+                        self._debug("Ignoring validation failure but not triggering : %s" % validation)
+                        return None
+            except Exception as e:
+                pass # probably json conversion :)
+            # raise_for_status does not print the useful content
+            # that django api sends us :/
+            self._debug("Error %s : %s : %s" %(r, r.content))
+            r.raise_for_status()
         result = r.json()
         self._debug(result)
         return result
@@ -300,7 +314,8 @@ class Service(object):
                 self.trigger_whm(self.old_whm)
         else:
             whm = self.create_new_whm()
-            self.trigger_whm(whm)
+            if whm:
+                self.trigger_whm(whm)
 
 
 if __name__ == '__main__':
