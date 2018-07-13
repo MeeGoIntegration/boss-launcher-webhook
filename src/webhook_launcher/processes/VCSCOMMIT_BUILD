@@ -43,15 +43,17 @@ Ruote.process_definition 'wh_trigger_build' do
   end
 
   define 'do_service_error' do
-    notify_irc :msg => 'Error triggering service in ${project}/${package}. Check cibot has access.',
-               :irc_channel => '#mer-boss'
+    notify_irc :if => '"${log_channel}" != ""',
+               :msg => 'Error triggering service in ${project}/${package}. Check cibot has access.',
+               :irc_channel => '${log_channel}'
     terminate
   end
 
   define 'do_log' do
     echo 'process ${wfid}: ${v:msg}'
-    notify_irc :msg => 'process ${wfid} ${v:msg}',
-               :irc_channel => '#mer-boss'
+    notify_irc :if => '"${log_channel}" != ""',
+               :msg => 'process ${wfid} ${v:msg}',
+               :irc_channel => '${log_channel}'
   end
 
   define 'do_wait_for_src' do
