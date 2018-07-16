@@ -52,7 +52,8 @@ class ParticipantHandler(object):
 
     def handle_lifecycle_control(self, ctrl):
         """ participant control thread """
-        pass
+        if ctrl.message == "start":
+            self.seen = {}
 
     def handle_wi(self, wid):
         """ Workitem handling function """
