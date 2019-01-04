@@ -1,0 +1,8 @@
+django>=1.11.0,<2
+mock==2.0.0
+git+https://github.com/MeeGoIntegration/python-ruote-amqp
+amqplib==1.0.2
+django-extensions==2.1.4
+django-rest-framework==0.1.0
+django-filter==1.1.0
+requests==2.21.0
