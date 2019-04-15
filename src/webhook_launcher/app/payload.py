@@ -262,6 +262,7 @@ class GhPush(Payload):
             name = None
             emails = set()
             if 'head_commit' in payload:
+                # Github
                 revision = payload['head_commit']['id']
                 name = payload["pusher"]["name"]
                 try:
@@ -271,13 +272,20 @@ class GhPush(Payload):
                     # do not fail if head_commit does not have "author" or
                     # "committer" info
                     pass
+            elif 'checkout_sha' in payload:
+                # Gitlab
+                revision = payload['checkout_sha']
+                name = payload["user_name"]
             else:
+                # Fallback, should not be needed?
                 revision = payload['after']
                 name = payload["user_name"]
-                for commit in payload.get("commits", []):
-                    emails.add(commit["author"]["email"])
-                    if len(emails) == 2:
-                        break
+
+            for commit in payload.get("commits", []):
+                emails.add(commit["author"]["email"])
+                # I assume this is just to limit the amount of emails we get
+                if len(emails) == 2:
+                    break
 
             if "pusher" in payload:
                 emails.add(payload["pusher"]["email"])
