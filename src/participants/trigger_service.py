@@ -52,6 +52,8 @@ from osc import core
 from StringIO import StringIO
 from lxml import etree
 import urllib2
+import yaml
+import re
 
 empty_service = "<services></services>"
 
@@ -74,6 +76,43 @@ git_pkg_service = """
 </service>
 """
 
+constraints_filename = '/etc/skynet/trigger_service_constraints.yaml'
+
+def make_constraint(package):
+    # lookup package/pattern in yaml file
+    # keys are patterns with implicit ^ and $ anchors to prevent
+    # partial matches.
+    # qtbase:
+    #    disk: 6
+    constraint = None
+    try:
+        with open(constraints_filename) as constraints_file:
+            constraints_y = yaml.load(constraints_file)
+            for pattern in constraints_y.keys():
+                # Add the required ^ and $ anchors
+                if re.search("^%s$" % pattern, package):
+                    constraint = constraints_y[pattern]
+                    print("Package %s matched constraint %s: %s" %
+                          (package, pattern, constraint))
+    except IOError as err:
+        print("Error opening %s: %s" % (constraints_filename, err))
+
+    if not constraint:
+        return None
+
+    # add constraints for ram and disk
+    constraints = etree.Element("constraints")
+    hardware = etree.SubElement(constraints, "hardware")
+    # make: <disk/ram>
+    #         <size unit="G">XXX</size> ...
+    # (Yes we could fully define the constraint in yaml but this keeps
+    # the syntax simple and clean for now)
+    for elem in ["disk", "ram"]:
+        if elem in constraint:
+            node = etree.SubElement(hardware, elem)
+            etree.SubElement(node, "size", unit="G").text = unicode(constraint[elem])
+
+    return etree.tostring(constraints, pretty_print=True)
 
 def find_service_repo(url):
     """
@@ -215,6 +254,18 @@ class ParticipantHandler(BuildServiceParticipant):
                 ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
             print("HTTP PUT result of pkg add : %s" % x)
+
+        # Set any constraint before we set the service file
+        constraint_xml = make_constraint(package)
+        if constraint_xml:
+            # obs module only exposed the putFile by filepath so
+            # this is a reimplement to avoid writing a tmpfile
+            u = core.makeurl(self.obs.apiurl,
+                             ['source', project, package, "_constraints"])
+            core.http_PUT(u, data=constraint_xml)
+            print "New _constraints file:\n%s" % constraint_xml
+        else:
+            print "No _constraints for %s" % package
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
