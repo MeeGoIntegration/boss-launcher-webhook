@@ -540,7 +540,7 @@ class WebHookMapping(models.Model):
 
         fields = self.to_fields()
         fields['msg'] = message
-        print message
+        print message.encode('utf-8')
         launch_notify(fields)
 
     def to_fields(self):
