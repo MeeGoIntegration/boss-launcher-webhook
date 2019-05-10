@@ -36,6 +36,7 @@
 import os
 import hashlib
 import json
+import time
 os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
 django.setup()
@@ -64,12 +65,19 @@ class ParticipantHandler(object):
 
         md5 = hashlib.md5(json.dumps(wid.fields.payload.as_dict(),
                                      sort_keys=True)).hexdigest()
+        now = time.time()
+        # purge seen hashes
+        for seen_md5, seen_time in self.seen.items():
+            if now - seen_time > 30:
+                del self.seen[seen_md5]
+
         if md5 in self.seen:
             print("Ignoring duplicate webhook (possible resend or "
                   "github hook set at both repo and orginisation level)")
+            print("Last seen %ss ago" % now - seen_time)
             wid.result = True
             return
-        self.seen[md5] = True
+        self.seen[md5] = now
 
         print("Handling a webhook payload")
         payload = get_payload(wid.fields.payload.as_dict())
