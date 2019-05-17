@@ -25,17 +25,13 @@ from webhook_launcher.app.models import (
     BuildService, LastSeenRevision, WebHookMapping
 )
 from webhook_launcher.app.payload import (
-    BbPush, BbPushV2, GhPush, get_payload
+    BbPushV2, GhPush, get_payload
 )
 
 from .data import get_obj
 
 
 class TestPayloadDetection(TestCase):
-    def test_bb_v1_push(self):
-        p = get_payload(get_obj('payload_bb_v1_push'))
-        self.assertIsInstance(p, BbPush)
-
     def test_bb_v2_push(self):
         p = get_payload(get_obj('payload_bb_v2_push'))
         self.assertIsInstance(p, BbPushV2)
@@ -57,31 +53,6 @@ class TestPayloadHandling(TestCase):
             apiurl='api.example.com',
             weburl='build.example.com',
         )
-
-    def test_bb_v1_push(self, *mocks):
-        payload = self._handle_first_push(
-            get_obj('payload_bb_v1_push'), *mocks
-        )
-        launch_build, launch_notify, bbAPIcall = mocks[:3]
-        # Fake another commit
-        payload.data['commits'][0]['raw_node'] = 'otherrevision'
-        payload.handle()
-        launch_notify.assert_called_once()
-        launch_build.assert_not_called()
-        # Prepare api response and fake tag push
-        api_mock = bbAPIcall.return_value
-        api_mock.branches_tags.return_value = {
-            'branches': [
-                {'name': 'master', 'changeset': 'otherrevision'}
-            ],
-            'tags': [
-                {'name': '1.0', 'changeset': 'otherrevision'}
-            ]
-        }
-        payload.data['commits'] = []
-        payload.handle()
-        api_mock.branches_tags.assert_called_once()
-        launch_build.assert_called_once()
 
     def test_bb_v2_push(self, *mocks):
         payload = self._handle_first_push(

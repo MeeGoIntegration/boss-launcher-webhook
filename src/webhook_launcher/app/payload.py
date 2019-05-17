@@ -46,7 +46,6 @@ from webhook_launcher.app.models import (
 def get_payload(data):
     """Payload factory function"""
     for klass in [
-        BbPush,
         GhPush,
         BbPushV2,
         # Fallback to Payload base class which handles unknown formats
@@ -360,116 +359,6 @@ class GhPush(Payload):
                     mapobj.trigger_build(
                         user=name,
                         tag=refname,
-                    )
-
-
-class BbPush(Payload):
-    def __init__(self, data):
-        super(BbPush, self).__init__(data)
-        try:
-            url = data['repository']['absolute_url']
-            canon_url = data['canon_url']
-        except KeyError:
-            raise PayloadParsingError("Not a BbPush payload")
-
-        print("bitbucket payload")
-        if url.endswith('/'):
-            url = url[:-1]
-        url = urlparse.urljoin(canon_url, url)
-        if not url.endswith(".git"):
-            url = url + ".git"
-        self.url = url
-
-    def handle(self):
-        payload = self.data
-        repourl = self.url
-
-        mapobj = None
-        tips = {}
-
-        # generate pairs of branch : commits in this commit
-        for comm in payload['commits']:
-            if not comm['branch']:
-                print("Dangling commit !")
-            else:
-                if not comm['branch'] in tips:
-                    tips[comm['branch']] = []
-                tips[comm['branch']].append(comm['raw_node'])
-
-        if not len(tips.keys()):
-            print("no tips due to empty event, calling api")
-            bbcall = bbAPIcall(payload['repository']['absolute_url'])
-            bts = bbcall.branches_tags()
-            for branch in bts['branches']:
-                print(branch)
-                for tag in bts['tags']:
-                    print(tag)
-                    if tag['changeset'] == branch['changeset']:
-                        print("found tagged branch")
-                        tips[branch['name']] = (
-                            [branch['changeset']], tag['name']
-                        )
-
-        print(tips)
-
-        for branch, ct in tips.items():
-            if isinstance(ct, tuple):
-                commits = ct[0]
-                tag = ct[1]
-            else:
-                commits = ct
-                tag = None
-
-            mapobjs = WebHookMapping.objects.filter(
-                repourl=repourl, branch=branch)
-
-            if not len(mapobjs):
-                packages = self.params.get("packages", None)
-                mapobjs = self.create_placeholder(
-                    repourl, branch, packages=packages
-                )
-
-            notified = False
-            for mapobj in mapobjs:
-                print("found or created mapping")
-
-                seenrev = mapobj.lsr
-                seenrev.payload = json.dumps(payload)
-                emails = set()
-                for commit in payload["commits"]:
-                    emails.add(commit["raw_author"])
-                    if len(emails) == 2:
-                        break
-
-                if emails:
-                    seenrev.emails = json.dumps(list(emails))
-
-                if seenrev.revision != commits[-1]:
-
-                    print(
-                        "%s in %s was not seen before, notify it if enabled" %
-                        (commits[-1], branch)
-                    )
-                    seenrev.revision = commits[-1]
-                    mapobj.handle_commit(
-                        user=payload["user"],
-                        notify=mapobj.notify and not notified,
-                    )
-                    # For many mappings, notified is set when one
-                    # mapobj has notify==True; subsequent
-                    # notify==False won't clear it. This results in
-                    # just one call to handle_commit with notify=True
-                    notified = mapobj.notify or notified
-
-                else:
-                    print(
-                        "%s in %s was seen before, "
-                        "notify and build it if enabled" % (
-                            commits[-1], branch)
-                    )
-                    mapobj.trigger_build(
-                        user=payload["user"],
-                        tag=tag,
                     )
 
 
