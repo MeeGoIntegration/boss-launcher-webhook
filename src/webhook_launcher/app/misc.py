@@ -41,10 +41,10 @@ def get_or_none(model, **kwargs):
 
 class bbAPIcall(object):
     def __init__(self, slug):
-        self.base = "https://api.bitbucket.org/1.0"
+        self.base = "https://api.bitbucket.org/2.0"
         self.slug = slug
 
-    def api_call(self, endpoint, call):
+    def _call_api(self, url):
         proxies = {}
         auth = None
         if settings.OUTGOING_PROXY:
@@ -58,15 +58,19 @@ class bbAPIcall(object):
                 settings.BB_API_USER,
                 settings.BB_API_PASSWORD
             )
-        url = str("/%s/%s/%s" % (endpoint, self.slug, call)).replace("//", "/")
-        url = self.base + url
         response = requests.get(
             url,
-            verify=False,
             proxies=proxies,
             auth=auth,
         )
+        response.raise_for_status()
         return response.json()
 
-    def branches_tags(self):
-        return self.api_call('repositories', 'branches-tags')
+    def branches(self):
+        url = "%s/repositories/%s/refs/branches" % (self.base, self.slug)
+        values = []
+        while url:
+            response = self._call_api(url)
+            values.extend(response['values'])
+            url = response.get('next')
+        return values

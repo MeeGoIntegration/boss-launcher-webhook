@@ -65,23 +65,18 @@ class TestPayloadHandling(TestCase):
         launch_build.assert_not_called()
         # Prepare api response and push tag
         api_mock = bbAPIcall.return_value
-        api_mock.branches_tags.return_value = {
-            'branches': [
-                {
-                    'name': 'master',
-                    'changeset': 'fd0af720f9465c98ed795b544b82334b0b5cc9b4'
-                }
-            ],
-            'tags': [
-                {
-                    'name': '0.0.1',
-                    'changeset': 'fd0af720f9465c98ed795b544b82334b0b5cc9b4'
-                }
-            ]
-        }
+        api_mock.branches.return_value = [
+            # Actual response has more stuf but only these are currently used
+            {
+                "name": "master",
+                "target": {
+                    "hash": "fd0af720f9465c98ed795b544b82334b0b5cc9b4"
+                },
+            },
+        ]
         payload = get_payload(get_obj('payload_bb_v2_push_tag'))
         payload.handle()
-        api_mock.branches_tags.assert_called_once()
+        api_mock.branches.assert_called_once()
         launch_build.assert_called_once()
 
     def test_gh_push(self, *mocks):

@@ -400,9 +400,8 @@ class BbPushV2(Payload):
         for tag, (hash, tag_branches) in tags.items():
             # TODO: this will only find branches with head matching the tag
             bbcall = bbAPIcall(self.data['repository']['full_name'])
-            bts = bbcall.branches_tags()
-            for branch in bts['branches']:
-                if branch['changeset'] == hash:
+            for branch in bbcall.branches():
+                if branch['target']['hash'] == hash:
                     tag_branches.add(branch['name'])
 
         # Handle commits in branches
