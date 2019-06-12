@@ -459,7 +459,7 @@ class BbPushV2(Payload):
 
                 print(
                     "%s in %s was seen before, trigger build if enabled" % (
-                        revision, branch
+                        revision, mapobj.branch
                     )
                 )
                 mapobj.trigger_build(
