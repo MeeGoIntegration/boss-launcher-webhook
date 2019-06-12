@@ -40,7 +40,8 @@ class WebhookServiceTestCase(LiveServerTestCase):
         self.obs = BuildService.objects.create(
             namespace='mer',
         )
-        self.env = {
+        self.env = dict(os.environ)
+        self.env.update({
             'DEBUG': '1',
             'OBS': self.obs.namespace,
             'OBS_SERVICE_PROJECT': 'example:test',
@@ -48,7 +49,7 @@ class WebhookServiceTestCase(LiveServerTestCase):
             'WEBHOOK_URL': '%s/webhook/api' % self.live_server_url,
             'WH_USER': 'admin',
             'WH_PASSWD': 'root',
-        }
+        })
 
     def _call_service(self, *args):
         cmd = [self.service]
