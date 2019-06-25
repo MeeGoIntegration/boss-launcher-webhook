@@ -377,7 +377,7 @@ class BbPushV2(Payload):
     def handle(self):
         branches = {}
         tags = {}
-        user = self.data['actor']['username']
+        user = self.data['actor']['nickname']
 
         # Collect branches and tags
         for change in self.data['push']['changes']:
