@@ -74,7 +74,7 @@ class ParticipantHandler(object):
         if md5 in self.seen:
             print("Ignoring duplicate webhook (possible resend or "
                   "github hook set at both repo and orginisation level)")
-            print("Last seen %ss ago" % (now - seen_time))
+            print("Last seen %ss ago" % (now - self.seen[md5]))
             wid.result = True
             return
         self.seen[md5] = now
