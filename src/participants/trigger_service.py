@@ -103,11 +103,11 @@ def make_constraint(package):
     # add constraints for ram and disk
     constraints = etree.Element("constraints")
     hardware = etree.SubElement(constraints, "hardware")
-    # make: <disk/ram>
+    # make: <disk/memory>
     #         <size unit="G">XXX</size> ...
     # (Yes we could fully define the constraint in yaml but this keeps
     # the syntax simple and clean for now)
-    for elem in ["disk", "ram"]:
+    for elem in ["disk", "memory"]:
         if elem in constraint:
             node = etree.SubElement(hardware, elem)
             etree.SubElement(node, "size", unit="G").text = unicode(constraint[elem])
