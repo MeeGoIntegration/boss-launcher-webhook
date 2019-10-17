@@ -773,6 +773,33 @@ handle_submodules() {
   
     git submodule --quiet update --init --force $REFERENCE -- $path
 
+    # This handle_submodules() function relies on .gitmodules file for fetching the
+    # submodules. However if a repository has no submodules BUT still contains
+    # .gitmodules file, git submodule update will fail here with error "pathspec
+    # foo did not match any file(s) known to git", since submodule parsed in the
+    # first for-loop is parsed from .gitmodules, not really queried from the
+    # repository .git/config. As a workaround if submodule update fails here check
+    # from the git-dir whether the submodule really exists in the repository or
+    # not and in case the repository is not listed in git-dir config continue
+    # with next submodule.
+    # Real world case is with gnutls packaging as submodule, where tlsfuzzer submodule
+    # of gnutls repository contains .gitmodules file even though the repository
+    # doesn't have any submodules.
+    # See: https://github.com/tomato42/tlsfuzzer/pull/600
+    local submodule_update_ret=$?
+    if [ $submodule_update_ret -ne 0 ]; then
+      local git_dir_path="$(git rev-parse --git-dir)"
+      pushd "$git_dir_path" >/dev/null
+      local submodule_lookup="$(git config -f config -l | grep "$submod")"
+      popd >/dev/null
+      if [ -z "$submodule_lookup" ]; then
+        echo "Workaround for non-existing submodule (.gitmodules file and .git/config have different content)."
+        continue
+      else
+        error "Something went wrong handling submodule $name from $url (submodule update return code $submodule_update_ret)."
+      fi
+    fi
+
     test -d $path || error "Something went wrong handling submodule $name from $url"
 
     pushd $path >/dev/null
