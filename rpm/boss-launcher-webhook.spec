@@ -12,6 +12,7 @@ Source: %{name}-%{version}.tar.gz
 BuildArch: noarch
 
 BuildRequires: python-setuptools
+BuildRequires: python-rpm-macros
 
 Requires: apache2-mod_wsgi
 Requires: python-requests
@@ -64,24 +65,17 @@ Summary: BOSS participant to handle webhooks
 %description -n boss-participant-auto_promote
 This package provides the participant that handles promotion of gated projects, in response to webhook triggers
 
-%define python python%{?__python_ver}
-%define __python /usr/bin/%{python}
-%if ! (0%{?fedora} > 12 || 0%{?rhel} > 5)
-%{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-%{!?python_sitearch: %global python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-%endif
 
 %prep
 %setup -q %{name}-%{version}
 
 %build
+%python2_build
 
 %install
-rm -rf %{buildroot}
+%python2_install
 make PREFIX=%{_prefix} DESTDIR=%{buildroot} install
 
-%clean
-rm -rf %{buildroot}
 
 %post
 if [ $1 -ge 1 ]; then
