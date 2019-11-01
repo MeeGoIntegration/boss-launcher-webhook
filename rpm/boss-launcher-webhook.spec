@@ -1,5 +1,4 @@
 %define svdir %{_sysconfdir}/supervisor/conf.d/
-%define use_pip 1
 
 Name: boss-launcher-webhook
 Version: 0.2.0
@@ -7,74 +6,59 @@ Release: 1
 
 Group: Applications/Engineering
 License: GPLv2+
-URL: http://www.merproject.org
+URL: https://github.com/MeeGoIntegration/boss-launcher-webhook
 Source: %{name}-%{version}.tar.gz
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python, python-distribute, python-sphinx, python-boss-skynet, python-ruote-amqp
-%if ! 0%{?use_pip}
-BuildRequires: python-django
-%else
-Conflicts: python-django, python-Django
-%endif
-%if 0%{?fedora}
-BuildRequires: MySQL-python
-%else
-BuildRequires: python-mysql
-%endif
-Requires: python >= 2.5.0, python-xml, python-boss-skynet, python-flup, python-requests
-%if ! 0%{?use_pip}
-Requires: python-django, python-djangorestframework python-django-extensions
-%endif
-%if 0%{?fedora}
-Requires: MySQL-python
-%else
-Requires: python-mysql
-%endif
-Requires: apache2-mod_wsgi
-Requires(post): python-boss-skynet
+
 BuildArch: noarch
+
+BuildRequires: python-setuptools
+
+Requires: apache2-mod_wsgi
+Requires: python-requests
+Requires: python-xml
+Requires: python-boss-skynet
+Requires: python-Django
+Requires: python-djangorestframework
+Requires: python-django-extensions
+Requires(post): python-boss-skynet
+
+
 Summary: VCS webhook handler
 
 %description
 Webhook handler for gitlab, github and bitbucket that receives data as a POST callback and launches a ruote process
 
 %package -n obs-service-tar-git
-Group: Applications/Engineering
 Requires: git, obs-source_service
 Summary: OBS source service to generate sources from git
 %description -n obs-service-tar-git
 This package provides the service to generate source from git inside an OBS source service
 
 %package -n obs-service-webhook
-Group: Applications/Engineering
 Requires: obs-source_service, python-argparse, python-requests
 Summary: OBS source service to manage webhooks
 %description -n obs-service-webhook
 This package provides the service to update webhooks from OBS. It ensures that only users who have access to a package can update the webhook for that package.
 
 %package -n boss-participant-trigger_service
-Group: Applications/Engineering
 Requires: python-boss-skynet >= 0.6.0, boss-standard-workflow-common, python-lxml, python-yaml, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-trigger_service
 This package provides the participant that handles creating and/or triggering  _service files in OBS, in response to webhook triggers
 
 %package -n boss-participant-create_project
-Group: Applications/Engineering
 Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
 
 %package -n boss-participant-get_src_state
-Group: Applications/Engineering
 Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-get_src_state
 This package provides the participant that checks that there is src is ready to build in OBS projects. Usually this means the service has succeeded.
 
 %package -n boss-participant-auto_promote
-Group: Applications/Engineering
 Requires: python-boss-skynet >= 0.6.0, python-boss-common, boss-standard-workflow-common, python-lxml, boss-launcher-webhook, python-buildservice >= 0.5.3
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-auto_promote
