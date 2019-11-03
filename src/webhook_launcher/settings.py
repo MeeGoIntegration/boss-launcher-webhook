@@ -311,7 +311,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'webhook_launcher.app',
     'django.contrib.admin',
-    'django_extensions',
     'rest_framework',
     'django_filters',
 )
