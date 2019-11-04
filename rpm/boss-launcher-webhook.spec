@@ -20,6 +20,7 @@ Requires: python-xml
 Requires: python-boss-skynet
 Requires: python-Django
 Requires: python-djangorestframework
+Requires: python2-django-filter
 Requires(post): python-boss-skynet
 
 
