@@ -55,12 +55,9 @@ PUBLIC_LANDING_PAGE = False
 if config.has_option('web', 'public_landing_page'):
     PUBLIC_LANDING_PAGE = config.getboolean('web', 'public_landing_page')
 
-SERVICE_WHITELIST = False
-if config.has_option('web', 'service_whitelist'):
-    SERVICE_WHITELISTt = [
-        service.strip() for service in
-        config.get('web', 'service_whitelist').split(",")
-    ]
+ONLY_KNOWN_SERVICES = False
+if config.has_option('web', 'only_known_services'):
+    ONLY_KNOWN_SERVICES = config.getboolean('web', 'service_whitelist')
 
 # IP filtering for POST
 POST_IP_FILTER = False
