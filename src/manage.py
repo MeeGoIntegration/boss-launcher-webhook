@@ -43,6 +43,7 @@ def main(launch_mock):
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE", "webhook_launcher.settings"
     )
+    os.environ.setdefault("WEBHOOK_DEVEL", "1")
     try:
         from django.core.management import execute_from_command_line
     except ImportError:
