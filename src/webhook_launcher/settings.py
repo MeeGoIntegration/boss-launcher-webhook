@@ -201,7 +201,10 @@ STRICT_MAPPINGS = False
 if config.has_option('web', 'strict_mappings'):
     STRICT_MAPPINGS = config.getboolean('web', 'strict_mappings')
 
-DEBUG = True
+if config.has_option('web', 'strict_mappings'):
+    DEBUG = config.getboolean('web', 'debug')
+else:
+    DEBUG = False
 
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
