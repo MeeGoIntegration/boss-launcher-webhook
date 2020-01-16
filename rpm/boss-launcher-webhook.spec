@@ -14,7 +14,6 @@ BuildArch: noarch
 BuildRequires: python-setuptools
 BuildRequires: python-rpm-macros
 
-Requires: apache2-mod_wsgi
 Requires: python-requests
 Requires: python-xml
 Requires: python-boss-skynet
@@ -116,14 +115,12 @@ fi
 
 %files
 %defattr(-,root,root,-)
+%doc example/apache_webhook.conf
 %dir %{_sysconfdir}/skynet
-%dir %{_sysconfdir}/apache2
-%dir %{_sysconfdir}/apache2/vhosts.d
 %dir %{_sysconfdir}/supervisor
 %dir %{svdir}
 %dir %{_datadir}/boss-skynet
 %config(noreplace) %{_sysconfdir}/skynet/webhook.conf
-%config(noreplace) %{_sysconfdir}/apache2/vhosts.d/webhook.conf
 %config(noreplace) %{svdir}/delete_webhook.conf
 %config(noreplace) %{svdir}/handle_webhook.conf
 %config(noreplace) %{svdir}/relay_webhook.conf
