@@ -116,10 +116,7 @@ fi
 %files
 %defattr(-,root,root,-)
 %doc example/apache_webhook.conf
-%dir %{_sysconfdir}/skynet
-%dir %{_sysconfdir}/supervisor
-%dir %{svdir}
-%dir %{_datadir}/boss-skynet
+%doc README
 %config(noreplace) %{_sysconfdir}/skynet/webhook.conf
 %config(noreplace) %{svdir}/delete_webhook.conf
 %config(noreplace) %{svdir}/handle_webhook.conf
