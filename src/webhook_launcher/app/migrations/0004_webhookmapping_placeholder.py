@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='webhookmapping',
             name='placeholder',
-            field=models.BooleanField(default=False, editable=False, help_text=b'Marks automatically created placehollders'),
+            field=models.BooleanField(default=False, editable=False, help_text=b'Marks automatically created placeholders for filtering in admin UI'),
         ),
     ]
