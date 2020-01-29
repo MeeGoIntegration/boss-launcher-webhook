@@ -189,7 +189,7 @@ if USE_LDAP:
 
 elif USE_REMOTE_AUTH:
     AUTHENTICATION_BACKENDS = (
-        'webhook_launcher.app.models.RemoteStaffBackend',
+        'webhook_launcher.app.auth.RemoteStaffBackend',
     )
 
 if DEVEL_MODE:
