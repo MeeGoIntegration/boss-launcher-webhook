@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.backends import RemoteUserBackend
 from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 from rest_framework import authentication
 from rest_framework import exceptions
@@ -26,9 +28,8 @@ class RemoteStaffBackend(RemoteUserBackend):
         default_perms(User, created=True, instance=user)
         return user
 
-post_save.connect(default_perms, sender=User, weak=False,
-                  dispatch_uid="default_perms")
 
+@receiver(post_save, sender=User, weak=False, dispatch_uid="default_perms")
 def default_perms(sender, **kwargs):
     if kwargs['created']:
         user = kwargs['instance']
@@ -37,13 +38,10 @@ def default_perms(sender, **kwargs):
         User.objects.filter(id=user.id).update(is_staff=True)
         user.is_staff = True
         try:
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_add_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_change_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=WebHookMapping._meta.get_delete_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_add_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_change_permission()))
-            user.user_permissions.add(Permission.objects.get(codename=LastSeenRevision._meta.get_delete_permission()))
-        except Permission.DoesNotExist:
+            whm_ct = ContentType.objects.get_for_model(WebHookMapping)
+            lsr_ct = ContentType.objects.get_for_model(LastSeenRevision)
+            user.user_permissions.add(*whm_ct.permission_set.all())
+            user.user_permissions.add(*lsr_ct.permission_set.all())
+        except ContentType.DoesNotExist:
             # we're probably creating the superuser during syncdb
             pass
-

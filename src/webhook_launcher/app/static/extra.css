@@ -1,4 +1,10 @@
 .submit-row .dupelink {
-    background: url("copy.gif") no-repeat scroll 0px 50% transparent;
-    padding-left: 14px;
+    display: block;
+    background: #79aec8;
+    border-radius: 4px;
+    padding: 10px 15px;
+    margin-left: 5px;
+    height: 15px;
+    line-height: 15px;
+    color: #fff;
 }

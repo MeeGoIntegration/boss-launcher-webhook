@@ -18,25 +18,29 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import ConfigParser
+import os
 import socket
 import struct
 import warnings
-from os.path import dirname, join
 
-PROJECT_DIR = dirname(__file__)
+PROJECT_DIR = os.path.dirname(__file__)
 
-WEBHOOKCONF = "/etc/skynet/webhook.conf"
-
-DEVEL_MODE = False
 config = ConfigParser.ConfigParser()
-try:
-    config.readfp(open(WEBHOOKCONF))
-except Exception:
-    # Devel configuration
-    config.readfp(open(join(PROJECT_DIR, "webhook.conf")))
-    # and optional local overrides
-    config.read(join(PROJECT_DIR, "local.conf"))
-    DEVEL_MODE = True
+DEVEL_MODE = os.environ.get('WEBHOOK_DEVEL') is not None
+if DEVEL_MODE:
+    config.read([
+        # Devel configuration
+        os.path.join(PROJECT_DIR, "webhook.conf"),
+        # and optional local overrides
+        os.path.join(PROJECT_DIR, "local.conf"),
+    ])
+else:
+    config.read([
+        # Base skynet config for boss amqp
+        "/etc/skynet/skynet.conf",
+        # Webhook config
+        "/etc/skynet/webhook.conf",
+    ])
 
 URL_PREFIX = config.get('web', 'url_prefix')
 static_media_collect = config.get('web', 'static_media_collect')
@@ -55,12 +59,9 @@ PUBLIC_LANDING_PAGE = False
 if config.has_option('web', 'public_landing_page'):
     PUBLIC_LANDING_PAGE = config.getboolean('web', 'public_landing_page')
 
-SERVICE_WHITELIST = False
-if config.has_option('web', 'service_whitelist'):
-    SERVICE_WHITELISTt = [
-        service.strip() for service in
-        config.get('web', 'service_whitelist').split(",")
-    ]
+ONLY_KNOWN_SERVICES = False
+if config.has_option('web', 'only_known_services'):
+    ONLY_KNOWN_SERVICES = config.getboolean('web', 'service_whitelist')
 
 # IP filtering for POST
 POST_IP_FILTER = False
@@ -97,10 +98,11 @@ if config.has_option('web', 'outgoing_proxy'):
     OUTGOING_PROXY = config.get('web', 'outgoing_proxy')
     OUTGOING_PROXY_PORT = int(config.get('web', 'outgoing_proxy_port'))
 
-BOSS_HOST = config.get('boss', 'boss_host')
-BOSS_USER = config.get('boss', 'boss_user')
-BOSS_PASS = config.get('boss', 'boss_pass')
-BOSS_VHOST = config.get('boss', 'boss_vhost')
+if not DEVEL_MODE:
+    BOSS_HOST = config.get('boss', 'amqp_host')
+    BOSS_USER = config.get('boss', 'amqp_user')
+    BOSS_PASS = config.get('boss', 'amqp_pwd')
+    BOSS_VHOST = config.get('boss', 'amqp_vhost')
 
 db_engine = config.get('db', 'db_engine')
 db_name = config.get('db', 'db_name')
@@ -187,7 +189,7 @@ if USE_LDAP:
 
 elif USE_REMOTE_AUTH:
     AUTHENTICATION_BACKENDS = (
-        'webhook_launcher.app.models.RemoteStaffBackend',
+        'webhook_launcher.app.auth.RemoteStaffBackend',
     )
 
 if DEVEL_MODE:
@@ -199,7 +201,10 @@ STRICT_MAPPINGS = False
 if config.has_option('web', 'strict_mappings'):
     STRICT_MAPPINGS = config.getboolean('web', 'strict_mappings')
 
-DEBUG = True
+if config.has_option('web', 'strict_mappings'):
+    DEBUG = config.getboolean('web', 'debug')
+else:
+    DEBUG = False
 
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
@@ -256,8 +261,6 @@ MEDIA_URL = ''
 
 STATIC_ROOT = static_media_collect
 
-# STATIC_ROOT = join(PROJECT_DIR, "site_media")
-
 STATIC_URL = '/' + URL_PREFIX + '/site_media/'
 
 TEMPLATES = [
@@ -311,7 +314,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'webhook_launcher.app',
     'django.contrib.admin',
-    'django_extensions',
     'rest_framework',
     'django_filters',
 )

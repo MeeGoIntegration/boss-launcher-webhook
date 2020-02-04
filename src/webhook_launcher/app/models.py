@@ -377,7 +377,7 @@ class WebHookMapping(models.Model):
         repourl = giturlparse(self.repourl)
         service = get_or_none(VCSService, netloc=repourl.netloc)
 
-        if settings.SERVICE_WHITELIST and service is None:
+        if settings.ONLY_KNOWN_SERVICES and service is None:
             raise ValidationError(
                 '%s is not an allowed service' % repourl.netloc
             )
