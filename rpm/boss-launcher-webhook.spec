@@ -14,14 +14,14 @@ BuildArch: noarch
 BuildRequires: python-setuptools
 BuildRequires: python-rpm-macros
 
+Requires(post): boss-standard-workflow-common
+Requires(post): python-boss-skynet >= 0.6.6
+Requires: python-Django
+Requires: python-boss-common >= 0.27.10
+Requires: python-djangorestframework
 Requires: python-requests
 Requires: python-xml
-Requires: python-boss-skynet
-Requires: python-Django
-Requires: python-djangorestframework
 Requires: python2-django-filter
-Requires(post): python-boss-skynet
-Requires(post): boss-standard-workflow-common
 
 Summary: VCS webhook handler
 
@@ -45,9 +45,9 @@ This package provides the service to update webhooks from OBS. It ensures that o
 
 %package -n boss-participant-trigger_service
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.0
+Requires(post): python-boss-skynet >= 0.6.6
 Requires: osc
-Requires: python-boss-common >= 0.27.0
+Requires: python-boss-common >= 0.27.10
 Requires: python-lxml
 Requires: python-yaml
 Summary: BOSS participant to handle webhooks
@@ -56,28 +56,28 @@ This package provides the participant that handles creating and/or triggering  _
 
 %package -n boss-participant-create_project
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.0
+Requires(post): python-boss-skynet >= 0.6.6
 Requires: boss-launcher-webhook
 Requires: osc
-Requires: python-boss-common >= 0.27.0
+Requires: python-boss-common >= 0.27.10
 Requires: python-lxml
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
 
 %package -n boss-participant-get_src_state
-Requires(post): python-boss-skynet >= 0.6.0
 Requires(post): boss-standard-workflow-common
-Requires: python-boss-common >= 0.27.0
+Requires(post): python-boss-skynet >= 0.6.6
+Requires: python-boss-common >= 0.27.10
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-get_src_state
 This package provides the participant that checks that there is src is ready to build in OBS projects. Usually this means the service has succeeded.
 
 %package -n boss-participant-auto_promote
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.0
+Requires(post): python-boss-skynet >= 0.6.6
 Requires: boss-launcher-webhook
-Requires: python-boss-common >= 0.27.0
+Requires: python-boss-common >= 0.27.10
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-auto_promote
 This package provides the participant that handles promotion of gated projects, in response to webhook triggers
