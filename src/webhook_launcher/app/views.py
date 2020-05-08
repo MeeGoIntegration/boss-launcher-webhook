@@ -34,7 +34,7 @@ from django.http import (
 )
 from django.shortcuts import render
 from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import detail_route
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from webhook_launcher.app.boss import launch_queue
@@ -119,9 +119,8 @@ def index(request):
             if settings.POST_IP_FILTER_HAS_REV_PROXY:
                 # Take the last value only to avoid spoofing
                 ip = request.META["HTTP_X_FORWARDED_FOR"].split(",")[-1]
-                print "Using %s as IP from HTTP_X_FORWARDED_FOR: %s" % (
-                    ip, request.META["HTTP_X_FORWARDED_FOR"]
-                )
+                print("Using %s as IP from HTTP_X_FORWARDED_FOR: %s" %
+                    (ip, request.META["HTTP_X_FORWARDED_FOR"]))
             else:
                 ip = request.META["REMOTE_IP"]
             ipaddr = struct.unpack('<L', socket.inet_aton(ip))[0]
@@ -131,7 +130,7 @@ def index(request):
                     ip_ok = True
                     break
             if not ip_ok:
-                print "POST from %s not in settings.post_ip_filter" % (ip,)
+                print("POST from %s not in settings.post_ip_filter" % ip)
                 return HttpResponseBadRequest()
 
         ctype = request.META.get("CONTENT_TYPE", None)
@@ -140,7 +139,7 @@ def index(request):
         elif ctype == "application/x-www-form-urlencoded":
             payload = request.POST.get("payload", None)
         else:
-            print "POST with unknown content type %s" % (ctype)
+            print("POST with unknown content type %s" % ctype)
             return HttpResponseBadRequest()
 
         try:
@@ -151,15 +150,15 @@ def index(request):
                 get[key] = values
             data['webhook_parameters'] = get
 
-            print "Payload to launch:"
+            print("Payload to launch:")
             pprint(data, indent=2, width=80, depth=6)
             launch_queue({"payload": data})
-            print "launched"
+            print("launched")
 
         except Exception as e:
-            print e
-            print "POST with invalid payload from %s" % \
-                request.META.get("REMOTE_HOST", None)
+            print(e)
+            print("POST with invalid payload from %s" % \
+                request.META.get("REMOTE_HOST", None))
             return HttpResponseBadRequest()
 
         return HttpResponse()
@@ -199,10 +198,8 @@ class WebHookMappingViewSet(viewsets.ModelViewSet):
             request.data['user'] = request.user.username
         return super(WebHookMappingViewSet, self).create(request, **kwargs)
 
-    @detail_route(
-        methods=['put'],
-        permission_classes=[permissions.IsAuthenticatedOrReadOnly],
-    )
+    @action(detail=True, methods=['put'],
+        permission_classes=[permissions.IsAuthenticatedOrReadOnly],)
     def trigger(self, request, pk=None):
         try:
             hook = WebHookMapping.objects.get(pk=pk)

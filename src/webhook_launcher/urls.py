@@ -18,6 +18,6 @@
 
 from django.conf.urls import include, url
 from django.conf import settings
-import app.urls
+import webhook_launcher.app.urls
 
-urlpatterns = [url(r''+settings.URL_PREFIX+'/', include(app.urls))]
+urlpatterns = [url(r''+settings.URL_PREFIX+'/', include(webhook_launcher.app.urls))]
