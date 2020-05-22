@@ -17,7 +17,7 @@
 # the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import ConfigParser
+import configparser
 import os
 import socket
 import struct
@@ -25,7 +25,7 @@ import warnings
 
 PROJECT_DIR = os.path.dirname(__file__)
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 DEVEL_MODE = os.environ.get('WEBHOOK_DEVEL') is not None
 if DEVEL_MODE:
     config.read([

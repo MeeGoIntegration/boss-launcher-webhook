@@ -33,7 +33,7 @@ def launch_log(*args, **kwargs):
         ", ".join(repr(x) for x in args),
         ", ".join("\n%s=%s" % (k, repr(v)) for k, v in kwargs.items()),
     ] if x)
-    print "launch(%s)" % params
+    print("launch(%s)" % params)
     return DEFAULT
 
 

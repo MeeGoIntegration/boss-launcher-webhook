@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import json
 import os
-import urlparse
+import urllib.parse as urlparse
 
 import requests
 from django.conf import settings

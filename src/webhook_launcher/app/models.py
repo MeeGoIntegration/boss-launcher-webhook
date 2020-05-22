@@ -327,9 +327,8 @@ class WebHookMapping(models.Model):
         # Just search all Projects for a match
         for project in Project.objects.all():
             if project.matches(self.project):
-                print "Project disable check: %s matches rules in %s" % (
-                    self.project, project.name
-                )
+                print("Project disable check: %s matches rules in %s" %
+                    (self.project, project.name))
                 if project and not project.allowed:
                     # Disabled if Project is marked not-allowed
                     return True
@@ -431,12 +430,12 @@ class WebHookMapping(models.Model):
         # rely on validation since a Project may forbid hooks after
         # the hook was created
         if self.project_disabled:
-            print "Project has build disabled"
+            print("Project has build disabled")
             return
 
         handled = self.lsr.handled and self.lsr.tag == tag and not force
         if handled:
-            print "build already handled, skipping"
+            print("build already handled, skipping")
         build = self.build and self.mapped and not handled
         qp = None
         if user is None:
@@ -453,8 +452,8 @@ class WebHookMapping(models.Model):
             )
             for qp in qps:
                 if qp.delay() and not qp.override(webuser=user):
-                    print "Build trigger for %s delayed by %s" % (self, qp)
-                    print qp.comment
+                    print("Build trigger for %s delayed by %s" % (self, qp))
+                    print(qp.comment)
                     build = False
                     break
             else:
@@ -540,7 +539,7 @@ class WebHookMapping(models.Model):
 
         fields = self.to_fields()
         fields['msg'] = message
-        print message.encode('utf-8')
+        print(message.encode('utf-8'))
         launch_notify(fields)
 
     def to_fields(self):
