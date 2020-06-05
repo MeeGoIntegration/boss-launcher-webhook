@@ -40,7 +40,7 @@
 """
 
 from boss.obs import BuildServiceParticipant
-from urllib2 import HTTPError
+from urllib.error import HTTPError
 import os
 
 from boss.bz.config import parse_bz_config
@@ -86,7 +86,7 @@ class ParticipantHandler(BuildServiceParticipant):
         gated_project = f.gated_project
 
         if not project or not gated_project:
-            print "Nothing to do, no project or gated_project in the fields"
+            print("Nothing to do, no project or gated_project in the fields")
             wid.result = True
             return
 
@@ -101,21 +101,21 @@ class ParticipantHandler(BuildServiceParticipant):
             description = "%s @ %s" % (
                 webhook.tag or webhook.rev_or_head, str(webhook))
             comment = ""
-            print "Requesting actions: %s\ndesc: %s" % (actions, description)
+            print("Requesting actions: %s\ndesc: %s" % (actions, description))
             try:
                 result = self.obs.createRequest(
                     options_list=actions, description=description,
                     comment=comment, supersede=True,
                     opt_sourceupdate="cleanup")
             except HTTPError as e:
-                print "%s\n%s" % (e, e.read())
+                print("%s\n%s" % (e, e.read()))
                 result = None
 
             if not result:
                 raise RuntimeError(
                     "Something went wrong while creating project %s" % project)
 
-            print "Created submit request from %s/%s to %s/%s : %s" % (project, package, gated_project, package, description)
+            print("Created submit request from %s/%s to %s/%s : %s" % (project, package, gated_project, package, description))
         else:
-            print "No gated Project matching gated_project: %s" % (gated_project)
+            print("No gated Project matching gated_project: %s" % (gated_project))
         wid.result = True

@@ -16,7 +16,7 @@
 # along with this program; if not, write to the
 # Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-from __future__ import print_function
+
 
 import json
 import os
@@ -405,7 +405,7 @@ class BbPushV2(Payload):
                     tag_branches.add(branch['name'])
 
         # Handle commits in branches
-        for branch, (revision, commits) in branches.iteritems():
+        for branch, (revision, commits) in branches.items():
             mapobjs = WebHookMapping.objects.filter(
                 repourl=self.url, branch=branch,
             )
@@ -440,7 +440,7 @@ class BbPushV2(Payload):
                     notified = True
 
         # Handle tags
-        for tag, (revision, branches) in tags.iteritems():
+        for tag, (revision, branches) in tags.items():
             if not branches:
                 print("No branch found for tag '%s'" % tag)
                 continue

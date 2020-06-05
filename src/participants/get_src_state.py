@@ -85,12 +85,12 @@ class ParticipantHandler(BuildServiceParticipant):
         if f.project and f.package:
             project = f.project
             package = f.package
-            print "setting %s/%s from fields" % (project, package)
+            print("setting %s/%s from fields" % (project, package))
 
         if p.project and p.package:
             project = p.project
             package = p.package
-            print "setting %s/%s from params" % (project, package)
+            print("setting %s/%s from params" % (project, package))
 
         err = []
         if not project:
@@ -101,8 +101,8 @@ class ParticipantHandler(BuildServiceParticipant):
             raise RuntimeError(
                 "Missing mandatory field or parameter: %s" % ", ".join(err))
 
-        print "Checking service for %s/%s" % (project, package)
+        print("Checking service for %s/%s" % (project, package))
         f.service_state = self.obs.getServiceState(project, package)
-        print "State : %s" % f.service_state
+        print("State : %s" % f.service_state)
         if f.service_state == "succeeded":
             wid.result = True

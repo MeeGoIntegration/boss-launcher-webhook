@@ -32,6 +32,7 @@ from webhook_launcher.app.models import (
     VCSNameSpace, VCSService, WebHookMapping
 )
 from webhook_launcher.app.payload import get_payload
+from functools import reduce
 
 
 class LastSeenRevisionInline(admin.StackedInline):

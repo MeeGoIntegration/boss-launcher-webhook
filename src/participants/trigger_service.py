@@ -47,11 +47,11 @@
 """
 
 from boss.obs import BuildServiceParticipant
-from urlparse import urlparse
+from urllib.parse import urlparse
 from osc import core
-from StringIO import StringIO
+from io import StringIO
 from lxml import etree
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import yaml
 import re
 
@@ -110,7 +110,7 @@ def make_constraint(package):
     for elem in ["disk", "memory"]:
         if elem in constraint:
             node = etree.SubElement(hardware, elem)
-            etree.SubElement(node, "size", unit="G").text = unicode(constraint[elem])
+            etree.SubElement(node, "size", unit="G").text = str(constraint[elem])
 
     return etree.tostring(constraints, pretty_print=True)
 
@@ -263,9 +263,9 @@ class ParticipantHandler(BuildServiceParticipant):
             u = core.makeurl(self.obs.apiurl,
                              ['source', project, package, "_constraints"])
             core.http_PUT(u, data=constraint_xml)
-            print "New _constraints file:\n%s" % constraint_xml
+            print("New _constraints file:\n%s" % constraint_xml)
         else:
-            print "No _constraints for %s" % package
+            print("No _constraints for %s" % package)
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
@@ -274,7 +274,7 @@ class ParticipantHandler(BuildServiceParticipant):
             print("Trying to get _service file for %s/%s" % (project, package))
             services_xml = self.obs.getFile(
                 project, package, "_service", expand=0)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             print("Exception %s trying to get _service file for %s/%s" %
                   (e, project, package))
             if e.code == 404:

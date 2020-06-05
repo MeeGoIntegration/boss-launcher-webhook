@@ -32,7 +32,7 @@ WEBHOOK_TARGETS = [
 ]
 
 if len(sys.argv) != 3:
-    print 'Usage: {program} <orga> <repository>'.format(program=sys.argv[0])
+    print('Usage: {program} <orga> <repository>'.format(program=sys.argv[0]))
     sys.exit(1)
 
 orga, repository = sys.argv[1:]
@@ -53,13 +53,13 @@ patch = lambda url, data: cmd(curl('--request', 'PATCH', '--data', json.dumps(da
 # https://developer.github.com/v3/#pagination
 try:
     repo = get('https://api.github.com/repos/{orga}/{repository}')
-    print fmt('Repository exists: {repository}')
-except subprocess.CalledProcessError, exc:
+    print(fmt('Repository exists: {repository}'))
+except subprocess.CalledProcessError as exc:
     if "404 Not Found" in exc.output:
-        print fmt('Creating repository: {repository}')
+        print(fmt('Creating repository: {repository}'))
         post('https://api.github.com/orgs/{orga}/repos', {'name': repository})
     else:
-        print exc.output
+        print(exc.output)
         sys.exit(1)
 
 wait()
@@ -77,10 +77,10 @@ for url in WEBHOOK_TARGETS:
               'config': {'url': url, 'content_type': 'json', },
               'events': ['push', 'pull_request'], }
     if url not in existing_hooks:
-        print fmt('Adding hook: {url}')
+        print(fmt('Adding hook: {url}'))
         post('https://api.github.com/repos/{orga}/{repository}/hooks', config)
         wait()
     else:
-        print fmt('Updating existing hook: {url}')
+        print(fmt('Updating existing hook: {url}'))
         patch('https://api.github.com/repos/{orga}/{repository}/hooks/%s' % existing_hooks[url], config)
         wait()

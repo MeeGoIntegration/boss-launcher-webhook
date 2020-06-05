@@ -43,7 +43,7 @@
 
 from boss.obs import BuildServiceParticipant
 import osc
-from urlparse import urlparse
+from urllib.parse import urlparse
 import os
 from lxml import etree
 import json
@@ -135,14 +135,14 @@ class ParticipantHandler(BuildServiceParticipant):
             # TODO: deduce project name from "official" mappings of the same repo
             # for now just short circuit here
             wid.result = True
-            print "No project given. Continuing"
+            print("No project given. Continuing")
             return
 
         # events for official projects that are gated get diverted to a side
         # project
         prjobj = Project.get_matching(project, self.obs.apiurl)
         if prjobj and prjobj.gated:
-            print "%s is gated" % prjobj
+            print("%s is gated" % prjobj)
             linked_project = project
             f.gated_project = project
             project += ":gate:%s" % package
@@ -169,7 +169,7 @@ class ParticipantHandler(BuildServiceParticipant):
             linked_project = ":".join(prj_parts[0:-3])
             fea = "%s#%s" % (prj_parts[-2], prj_parts[-1])
             # Go through each bugzilla we support
-            for (bugzillaname, bugzilla) in self.bzs.iteritems():
+            for (bugzillaname, bugzilla) in self.bzs.items():
                 for match in bugzilla['compiled_re'].finditer(fea):
                     bugnum = match.group('key')
                     try:
@@ -177,9 +177,9 @@ class ParticipantHandler(BuildServiceParticipant):
                             bugnum)['summary']
                         desc = bugzilla['interface'].comment_get(
                             bugnum, 0)['text']
-                    except BugzillaError, error:
+                    except BugzillaError as error:
                         if error.code == 101:
-                            print "Bug %s not found" % bugnum
+                            print("Bug %s not found" % bugnum)
                         else:
                             raise
             if project not in project_list:
@@ -214,17 +214,17 @@ class ParticipantHandler(BuildServiceParticipant):
             if not result:
                 raise RuntimeError(
                     "Something went wrong while creating project %s" % project)
-            print "Created project %s" % project
+            print("Created project %s" % project)
         else:
-            print "Didn't need to create project %s" % project
+            print("Didn't need to create project %s" % project)
 
         wid.result = True
 
         try:
             self._set_blame_emails(
                 project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
-        except Exception, exc:
-            print "Ignoring exception: %s" % exc
+        except Exception as exc:
+            print("Ignoring exception: %s" % exc)
             pass
 
     def _set_blame_emails(self, project, package, lsr):

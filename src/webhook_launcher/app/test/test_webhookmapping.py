@@ -65,7 +65,7 @@ class WebHookMappingTestCase(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn(
             "already exists",
-            u"|".join(unicode(x) for x in form.errors.values())
+            "|".join(str(x) for x in list(form.errors.values()))
         )
 
         test_data = data.copy()
