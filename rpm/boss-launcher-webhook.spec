@@ -11,17 +11,21 @@ Source: %{name}-%{version}.tar.gz
 
 BuildArch: noarch
 
-BuildRequires: python-setuptools
-BuildRequires: python-rpm-macros
+BuildRequires: python3-setuptools
+BuildRequires: python3-rpm-macros
 
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.6
-Requires: python-Django
-Requires: python-boss-common >= 0.27.10
-Requires: python-djangorestframework
-Requires: python-requests
-Requires: python-xml
-Requires: python2-django-filter
+Requires(post): python3-boss-skynet >= 0.6.6
+Requires: python3-Django
+Requires: python3-boss-common >= 0.27.10
+Requires: python3-djangorestframework
+Requires: python3-requests
+Requires: python3-xml
+Requires: python3-django-filter
+Requires: python3-mysqlclient
+Requires: uwsgi-python3
+Recommends: boss-participant-create_project
+Recommends: boss-participant-auto_promote
 
 Summary: VCS webhook handler
 
@@ -37,60 +41,61 @@ This package provides the service to generate source from git inside an OBS sour
 
 %package -n obs-service-webhook
 Requires: obs-source_service
-Requires: python-argparse
-Requires: python-requests
+Requires: python3-argparse
+Requires: python3-requests
 Summary: OBS source service to manage webhooks
 %description -n obs-service-webhook
 This package provides the service to update webhooks from OBS. It ensures that only users who have access to a package can update the webhook for that package.
 
 %package -n boss-participant-trigger_service
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.6
-Requires: osc
-Requires: python-boss-common >= 0.27.10
-Requires: python-lxml
-Requires: python-yaml
+Requires(post): python3-boss-skynet >= 0.6.6
+Requires: osc3
+Requires: python3-boss-common >= 0.27.10
+Requires: python3-lxml
+Requires: python3-pyaml
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-trigger_service
 This package provides the participant that handles creating and/or triggering  _service files in OBS, in response to webhook triggers
 
 %package -n boss-participant-create_project
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.6
+Requires(post): python3-boss-skynet >= 0.6.6
 Requires: boss-launcher-webhook
-Requires: osc
-Requires: python-boss-common >= 0.27.10
-Requires: python-lxml
+Requires: osc3
+Requires: python3-boss-common >= 0.27.10
+Requires: python3-lxml
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
 This package provides the participant that handles creating project files in OBS, in response to webhook triggers
+It must run on the webhook server as it accesses the database.
 
 %package -n boss-participant-get_src_state
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.6
-Requires: python-boss-common >= 0.27.10
+Requires(post): python3-boss-skynet >= 0.6.6
+Requires: python3-boss-common >= 0.27.10
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-get_src_state
 This package provides the participant that checks that there is src is ready to build in OBS projects. Usually this means the service has succeeded.
 
 %package -n boss-participant-auto_promote
 Requires(post): boss-standard-workflow-common
-Requires(post): python-boss-skynet >= 0.6.6
+Requires(post): python3-boss-skynet >= 0.6.6
 Requires: boss-launcher-webhook
-Requires: python-boss-common >= 0.27.10
+Requires: python3-boss-common >= 0.27.10
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-auto_promote
 This package provides the participant that handles promotion of gated projects, in response to webhook triggers
-
+It must run on the webhook server as it accesses the database.
 
 %prep
 %setup -q %{name}-%{version}
 
 %build
-%python2_build
+%python3_build
 
 %install
-%python2_install
+%python3_install
 make PREFIX=%{_prefix} DESTDIR=%{buildroot} install
 
 
@@ -139,8 +144,8 @@ fi
 %config(noreplace) %{svdir}/delete_webhook.conf
 %config(noreplace) %{svdir}/handle_webhook.conf
 %config(noreplace) %{svdir}/relay_webhook.conf
-%{python_sitelib}/webhook_launcher
-%{python_sitelib}/*egg-info
+%{python3_sitelib}/webhook_launcher
+%{python3_sitelib}/*egg-info
 %{_datadir}/webhook_launcher
 %{_datadir}/boss-skynet/delete_webhook.py*
 %{_datadir}/boss-skynet/handle_webhook.py*
