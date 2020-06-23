@@ -296,7 +296,7 @@ TEMPLATES = [
     }
 ]
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -348,7 +348,7 @@ if USE_LDAP:
         'django.contrib.auth.backends.ModelBackend',
     )
 elif USE_REMOTE_AUTH:
-    MIDDLEWARE_CLASSES += (
+    MIDDLEWARE += (
         'django.contrib.auth.middleware.RemoteUserMiddleware',
     )
     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = (
