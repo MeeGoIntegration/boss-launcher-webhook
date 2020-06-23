@@ -21,7 +21,7 @@ import operator
 
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import models
 from django.forms import TextInput
 from django.http import HttpResponseRedirect
