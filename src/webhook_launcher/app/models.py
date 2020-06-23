@@ -82,6 +82,7 @@ class VCSNameSpace(models.Model):
     service = models.ForeignKey(
         VCSService,
         help_text="VCS service where this namespace is hosted",
+        on_delete=models.CASCADE,
     )
     path = models.CharField(
         max_length=200,
@@ -93,6 +94,7 @@ class VCSNameSpace(models.Model):
         blank=True,
         null=True,
         help_text="Default project for webhook placeholder creation",
+        on_delete=models.CASCADE,
     )
 
     def __unicode__(self):
@@ -115,6 +117,7 @@ class Project(models.Model):
     )
     obs = models.ForeignKey(
         BuildService,
+        on_delete=models.CASCADE,
     )
     official = models.BooleanField(
         default=True,
@@ -280,9 +283,11 @@ class WebHookMapping(models.Model):
     user = models.ForeignKey(
         User,
         editable=False,
+        on_delete=models.CASCADE,
     )
     obs = models.ForeignKey(
         BuildService,
+        on_delete=models.CASCADE,
     )
 
     def __unicode__(self):
@@ -569,6 +574,7 @@ class WebHookMapping(models.Model):
 class LastSeenRevision(models.Model):
     mapping = models.ForeignKey(
         WebHookMapping,
+        on_delete=models.CASCADE,
     )
     revision = models.CharField(
         max_length=250,
