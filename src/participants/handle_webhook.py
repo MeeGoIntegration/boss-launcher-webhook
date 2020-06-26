@@ -63,13 +63,18 @@ class ParticipantHandler(object):
         if wid.fields.payload is None:
             raise RuntimeError("Missing mandatory field: payload")
 
-        md5 = hashlib.md5(json.dumps(wid.fields.payload.as_dict(),
-                                     sort_keys=True)).hexdigest()
+        md5 = hashlib.md5(
+            json.dumps(wid.fields.payload.as_dict(),
+                       sort_keys=True).encode('utf8')).hexdigest()
         now = time.time()
-        # purge seen hashes
+        # purge seen hashes. Find then purge to avoid
+        # RuntimeError: dictionary changed size during iteration
+        aged = []
         for seen_md5, seen_time in self.seen.items():
             if now - seen_time > 30:
-                del self.seen[seen_md5]
+                aged.append(seen_md5)
+        for seen_md5 in aged:
+            del self.seen[seen_md5]
 
         if md5 in self.seen:
             print("Ignoring duplicate webhook (possible resend or "
