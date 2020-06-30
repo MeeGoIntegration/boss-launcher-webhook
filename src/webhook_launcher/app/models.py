@@ -52,7 +52,7 @@ class BuildService(models.Model):
         unique=True,
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.weburl
 
 
@@ -74,7 +74,7 @@ class VCSService(models.Model):
         help_text="Known IP adresses of this service (optional)",
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.netloc
 
 
@@ -97,8 +97,8 @@ class VCSNameSpace(models.Model):
         on_delete=models.CASCADE,
     )
 
-    def __unicode__(self):
-        return "%s%s" % (self.service, self.path)
+    def __str__(self):
+        return f"{self.service}{self.path}"
 
     @staticmethod
     def find(repourl):
@@ -156,8 +156,8 @@ class Project(models.Model):
     class Meta:
         unique_together = (("name", "obs"),)
 
-    def __unicode__(self):
-        return "%s on %s" % (self.name, self.obs)
+    def __str__(self):
+        return f"{self.name} on {self.obs}"
 
     def is_repourl_allowed(self, repourl):
 
@@ -290,10 +290,8 @@ class WebHookMapping(models.Model):
         on_delete=models.CASCADE,
     )
 
-    def __unicode__(self):
-        return "%s/%s -> %s/%s" % (
-            self.repourl, self.branch, self.project, self.package
-        )
+    def __str__(self):
+        return f"{self.repourl}/{self.branch} -> {self.project}/{self.package}"
 
     @property
     def tag(self):
@@ -602,10 +600,9 @@ class LastSeenRevision(models.Model):
         editable=False,
     )
 
-    def __unicode__(self):
-        return "%s @ %s/%s" % (
-            self.revision, self.mapping.repourl, self.mapping.branch
-        )
+    def __str__(self):
+        return(f"{self.revision} @ "
+               f"{self.mapping.repourl}/{self.mapping.branch}")
 
 
 class QueuePeriod(models.Model):
@@ -639,12 +636,11 @@ class QueuePeriod(models.Model):
             ("can_override_queueperiod", "Can override queue periods"),
         )
 
-    def __unicode__(self):
-        return "Queue period from %s %s to %s %s for %s" % (
-            self.start_date or "", self.start_time, self.end_date or "",
-            self.end_time,
-            ",".join([str(prj) for prj in self.projects.all()])
-        )
+    def __str__(self):
+        return(f"Queue period "
+               f"from {self.start_date or ''} {self.start_time} "
+               f"to {self.end_date or ''} {self.end_time} "
+               f"for {','.join([str(prj) for prj in self.projects.all()])}")
 
     def override(self, user):
         if not user:
@@ -699,5 +695,5 @@ class RelayTarget(models.Model):
                   "(for example github organization or gitlab groups)",
     )
 
-    def __unicode__(self):
-        return "%s webhook relay" % self.name
+    def __str__(self):
+        return f"{self.name} webhook relay"
