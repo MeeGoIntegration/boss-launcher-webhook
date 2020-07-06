@@ -204,6 +204,18 @@ sanitise_params () {
 
 }
 
+generate_spec_files () {
+
+    [[ -f "rpm/genspecs.sh" ]] || return 0
+
+    echo "Generating spec files from rpm/genspecs.sh"
+    pushd rpm >/dev/null
+    rm -f *.spec
+    sh genspecs.sh || error "Could not generate .spec files with genspecs.sh"
+    popd >/dev/null
+
+}
+
 find_spec_file () {
 
   [[ -d "$1" ]] || error "no packaging in this git clone"
@@ -1221,6 +1233,7 @@ main () {
     return
   fi
   pushd "$CLONE_NAME" >/dev/null
+  generate_spec_files
   # check for default manifest file
   if test -f default.xml; then
     run_android_repo_service
