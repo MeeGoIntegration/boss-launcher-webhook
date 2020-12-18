@@ -94,7 +94,6 @@ def find_service_repo(url):
     if url.endswith(".git"):
         url = url[:-4]
     u = urlparse(url)
-    print(u)
     if u.netloc.endswith("github.com"):  # github
         return "github", "/".join(u.path.split("/")[1:3])
     elif u.netloc.endswith("gitorious.org"):  # gitorious
@@ -220,21 +219,23 @@ class ParticipantHandler(BuildServiceParticipant):
             if "<entry" not in pkginfo:
                 # This is a link and it needs branching from the linked project
                 # so grab the meta and extract the project from the link
-                print("Found %s as a link in %s" % (package, project))
+                self.log.debug("Found %s as a link in %s" % (package, project))
                 x = etree.fromstring(
                     "".join(core.show_project_meta(self.obs.apiurl, project)))
                 link = x.find('link')
                 if link is None:
                     raise Exception(
                         "Expected a <link> in project %s." % project)
-                print("Got a link  %s" % link)
+                self.log.debug("Got a link  %s" % link)
                 linked_project = link.get('project')
-                print("Branching %s to overwrite _service" % package)
+                self.log.debug("Branching %s to overwrite _service" % package)
                 core.branch_pkg(self.obs.apiurl, linked_project,
                                 str(package), target_project=str(project))
         except Exception as exc:
-            print("Doing a metatype pkg add because I caught %s" % exc)
-            print("Creating package %s in project %s" % (package, project))
+            self.log.warn(
+                "Doing a metatype pkg add because I caught %s" % exc)
+            self.log.warn(
+                "Creating package %s in project %s" % (package, project))
             data = core.metatypes['pkg']['template']
             data = StringIO(
                 data % {
@@ -245,7 +246,7 @@ class ParticipantHandler(BuildServiceParticipant):
                 self.obs.apiurl,
                 ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
-            print("HTTP PUT result of pkg add : %s" % x)
+            self.log.debug("HTTP PUT result of pkg add : %s" % x)
 
         # Set any constraint before we set the service file
         constraint_xml = self.make_constraint(package)
@@ -255,27 +256,30 @@ class ParticipantHandler(BuildServiceParticipant):
             u = core.makeurl(self.obs.apiurl,
                              ['source', project, package, "_constraints"])
             core.http_PUT(u, data=constraint_xml)
-            print "New _constraints file:\n%s" % constraint_xml
+            self.log.info("New _constraints file:\n%s" % constraint_xml)
         else:
-            print "No _constraints for %s" % package
+            self.log.info("No _constraints for %s" % package)
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
             # We use expand=0 as otherwise a failed service run won't
             # return the _service file
-            print("Trying to get _service file for %s/%s" % (project, package))
+            self.log.debug(
+                "Trying to get _service file for %s/%s" % (project, package))
             services_xml = self.obs.getFile(
                 project, package, "_service", expand=0)
         except urllib2.HTTPError as e:
-            print("Exception %s trying to get _service file for %s/%s" %
-                  (e, project, package))
+            self.log.debug(
+                "Exception %s trying to get _service file for %s/%s" %
+                (e, project, package))
             if e.code == 404:
                 services_xml = empty_service
             elif e.code == 400:
                 # HTTP Error 400: service in progress error
                 wid.result = True
-                print("Service in progress, could not get _service file. "
-                      "Not triggering another run.")
+                self.log.warn(
+                    "Service in progress, could not get _service file. "
+                    "Not triggering another run.")
                 return
             else:
                 raise e
@@ -286,7 +290,7 @@ class ParticipantHandler(BuildServiceParticipant):
         try:
             services = etree.fromstring(services_xml)
         except etree.XMLSyntaxError as e:
-            print(e)
+            self.log.exception("Creating services xml failed")
             raise
 
         # Create our new service (not services anymore)
@@ -300,7 +304,7 @@ class ParticipantHandler(BuildServiceParticipant):
             services.append(new_service)
 
         svc_file = etree.tostring(services, pretty_print=True)
-        print("New _service file:\n%s" % svc_file)
+        self.log.debug("New _service file:\n%s" % svc_file)
 
         # And send our new service file
         self.obs.setupService(project, package, svc_file)
