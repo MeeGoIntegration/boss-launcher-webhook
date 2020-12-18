@@ -325,7 +325,7 @@ class WebHookMapping(models.Model):
     @property
     def project_disabled(self):
         # Just search all Projects for a match
-        for project in Project.objects.all():
+        for project in Project.objects.filter(obs=self.obs):
             if project.matches(self.project):
                 print "Project disable check: %s matches rules in %s" % (
                     self.project, project.name
@@ -382,7 +382,7 @@ class WebHookMapping(models.Model):
                 '%s is not an allowed service' % repourl.netloc
             )
 
-        project = get_or_none(Project, name=self.project)
+        project = get_or_none(Project, name=self.project, obs=self.obs)
 
         if project and not project.allowed:
             raise ValidationError(
