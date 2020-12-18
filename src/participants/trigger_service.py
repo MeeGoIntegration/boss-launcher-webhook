@@ -44,6 +44,15 @@
    :result (Boolean):
       True if the everything went OK, False otherwise
 
+
+:Configuration:
+Constraints can be defined in the configuration like
+
+[const:<package regex>]
+disk=<value in GB>
+memory=<value in GB>
+
+The package regex is wrapped explicitly in ^...$ to avoid partial matches.
 """
 
 from boss.obs import BuildServiceParticipant
@@ -52,8 +61,8 @@ from osc import core
 from StringIO import StringIO
 from lxml import etree
 import urllib2
-import yaml
 import re
+from ConfigParser import NoOptionError
 
 empty_service = "<services></services>"
 
@@ -76,43 +85,6 @@ git_pkg_service = """
 </service>
 """
 
-constraints_filename = '/etc/skynet/trigger_service_constraints.yaml'
-
-def make_constraint(package):
-    # lookup package/pattern in yaml file
-    # keys are patterns with implicit ^ and $ anchors to prevent
-    # partial matches.
-    # qtbase:
-    #    disk: 6
-    constraint = None
-    try:
-        with open(constraints_filename) as constraints_file:
-            constraints_y = yaml.load(constraints_file)
-            for pattern in constraints_y.keys():
-                # Add the required ^ and $ anchors
-                if re.search("^%s$" % pattern, package):
-                    constraint = constraints_y[pattern]
-                    print("Package %s matched constraint %s: %s" %
-                          (package, pattern, constraint))
-    except IOError as err:
-        print("Error opening %s: %s" % (constraints_filename, err))
-
-    if not constraint:
-        return None
-
-    # add constraints for ram and disk
-    constraints = etree.Element("constraints")
-    hardware = etree.SubElement(constraints, "hardware")
-    # make: <disk/memory>
-    #         <size unit="G">XXX</size> ...
-    # (Yes we could fully define the constraint in yaml but this keeps
-    # the syntax simple and clean for now)
-    for elem in ["disk", "memory"]:
-        if elem in constraint:
-            node = etree.SubElement(hardware, elem)
-            etree.SubElement(node, "size", unit="G").text = unicode(constraint[elem])
-
-    return etree.tostring(constraints, pretty_print=True)
 
 def find_service_repo(url):
     """
@@ -146,6 +118,26 @@ class ParticipantHandler(BuildServiceParticipant):
     @BuildServiceParticipant.get_oscrc
     def handle_lifecycle_control(self, ctrl):
         """ participant control thread """
+        if ctrl.message == 'start':
+            # Collect the constraint patterns and values from the config
+            self._constraints = []
+            for section in ctrl.config.sections():
+                if not section.startswith('const:'):
+                    continue
+                _, pattern = section.split(':', 1)
+                values = {}
+                for key in ['disk', 'memory']:
+                    try:
+                        value = ctrl.config.get(section, key, None)
+                        if value:
+                            values[key] = value
+                    except NoOptionError:
+                        pass
+                self.log.debug('Adding constraint: %s -> %s', pattern, values)
+
+                pattern = re.compile('^%s$' % pattern)
+                self._constraints.append((pattern, values))
+
         pass
 
     @BuildServiceParticipant.setup_obs
@@ -256,7 +248,7 @@ class ParticipantHandler(BuildServiceParticipant):
             print("HTTP PUT result of pkg add : %s" % x)
 
         # Set any constraint before we set the service file
-        constraint_xml = make_constraint(package)
+        constraint_xml = self.make_constraint(package)
         if constraint_xml:
             # obs module only exposed the putFile by filepath so
             # this is a reimplement to avoid writing a tmpfile
@@ -314,3 +306,35 @@ class ParticipantHandler(BuildServiceParticipant):
         self.obs.setupService(project, package, svc_file)
 
         wid.result = True
+
+    def make_constraint(self, package):
+        for pattern, values in self._constraints:
+            if pattern.search(package):
+                self.log.info(
+                    "Package %s matched constraint %s: %s",
+                    package, pattern, values
+                )
+                break
+        else:
+            # No match found
+            return None
+
+        # Construct xml with the format
+        #
+        # <constraints>
+        #   <hardware>
+        #     <KEY>
+        #       <size unit="G">VALUE</size>
+        #     </KEY>
+        #     ...
+        #
+        # Where KEY and VALUE come from the disk and memory options set for
+        # the matched pattern in the config
+
+        constraints = etree.Element("constraints")
+        hardware = etree.SubElement(constraints, "hardware")
+        for elem, value in values.items():
+            node = etree.SubElement(hardware, elem)
+            etree.SubElement(node, "size", unit="G").text = unicode(value)
+
+        return etree.tostring(constraints, pretty_print=True)
