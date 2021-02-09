@@ -6,7 +6,5 @@ install:
 	  install -D -m 644 conf/supervisor/$$p.conf $(DESTDIR)/etc/supervisor/conf.d/$$p.conf ; \
 	done
 
-	install -D -m 644 src/service/tar_git.service $(DESTDIR)/usr/lib/obs/service/tar_git.service
-	install -D -m 755 src/service/tar_git $(DESTDIR)/usr/lib/obs/service/tar_git
 	install -D -m 644 src/service/webhook.service $(DESTDIR)/usr/lib/obs/service/webhook.service
 	install -D -m 755 src/service/webhook $(DESTDIR)/usr/lib/obs/service/webhook
