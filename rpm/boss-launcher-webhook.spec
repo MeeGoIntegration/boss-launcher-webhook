@@ -28,13 +28,6 @@ Summary: VCS webhook handler
 %description
 Webhook handler for gitlab, github and bitbucket that receives data as a POST callback and launches a ruote process
 
-%package -n obs-service-tar-git
-Requires: git
-Requires: obs-source_service
-Summary: OBS source service to generate sources from git
-%description -n obs-service-tar-git
-This package provides the service to generate source from git inside an OBS source service
-
 %package -n obs-service-webhook
 Requires: obs-source_service
 Requires: python-argparse
@@ -165,13 +158,6 @@ fi
 %defattr(-,root,root,-)
 %config(noreplace) %{svdir}/trigger_service.conf
 %{_datadir}/boss-skynet/trigger_service.py*
-
-%files -n obs-service-tar-git
-%defattr(-,root,root,-)
-%dir /usr/lib/obs
-%dir /usr/lib/obs/service
-/usr/lib/obs/service/tar_git
-/usr/lib/obs/service/tar_git.service
 
 %files -n obs-service-webhook
 %defattr(-,root,root,-)
