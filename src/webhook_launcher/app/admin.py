@@ -94,12 +94,12 @@ class WebHookMappingAdmin(admin.ModelAdmin):
         }
 
     list_display = (
-        'repourl', 'branch', 'project', 'package',
+        'repourl', 'branch', 'obs', 'project', 'package',
         'placeholder', 'notify', 'build', 'user'
     )
     list_display_links = ('repourl',)
     list_filter = (
-        PlaceholderFilter, 'build', 'notify', 'project', 'user',
+        PlaceholderFilter, 'build', 'notify', 'obs', 'project', 'user',
     )
     search_fields = (
         'user__username', 'user__email', 'repourl', 'project', 'package'
