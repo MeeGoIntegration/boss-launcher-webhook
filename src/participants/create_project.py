@@ -145,7 +145,7 @@ class ParticipantHandler(BuildServiceParticipant):
             print "%s is gated" % prjobj
             linked_project = project
             f.gated_project = project
-            project += ":gate:%s" % package
+            project = "gate:%s:%s" % (project, package)
             f.project = project
             summary = "Gate entry for %s" % package
             desc = summary
