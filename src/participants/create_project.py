@@ -81,7 +81,7 @@ class ParticipantHandler(BuildServiceParticipant):
         for bzconfig in self.bzs.values():
             bzconfig['interface'].login()
 
-    def get_repolinks(self, wid, project):
+    def get_repolinks(self, wid, prjmeta):
         """Get a description of the repositories to link to.
            Returns a dictionary where the repository names are keys
            and the values are lists of architectures."""
@@ -89,7 +89,6 @@ class ParticipantHandler(BuildServiceParticipant):
         exclude_archs = wid.fields.exclude_archs or []
 
         repolinks = {}
-        prjmeta = etree.fromstring(self.obs.getProjectMeta(project))
 
         for repoelem in prjmeta.findall('repository'):
             repo = repoelem.get('name')
@@ -99,10 +98,6 @@ class ParticipantHandler(BuildServiceParticipant):
             for archelem in repoelem.findall('arch'):
                 arch = archelem.text
                 if arch in exclude_archs:
-                    continue
-                if arch == "armv8el" and not "armv7hl" in repo:
-                    continue
-                if arch == "i586" and not "i486" in repo:
                     continue
                 repolinks[repo].append(arch)
             if not repolinks[repo]:
@@ -121,8 +116,7 @@ class ParticipantHandler(BuildServiceParticipant):
         # Prime the maintainer list with the current obs user
         maintainers = [self.obs.getUserName()]
         linked_projects = []
-        repos = []
-        paths = []
+        flags = []
         repolinks = {}
         build = True
         create = False
@@ -187,7 +181,15 @@ class ParticipantHandler(BuildServiceParticipant):
 
         if linked_project and linked_project in project_list:
             linked_projects.append(linked_project)
-            repolinks.update(self.get_repolinks(wid, linked_project))
+            prjmeta = etree.fromstring(
+                self.obs.getProjectMeta(linked_project)
+            )
+            repolinks.update(self.get_repolinks(wid, prjmeta))
+            # Get the build flags from the original project meta to disable
+            # unnecessary cross architecture builds and such
+            build_element = prjmeta.find('build')
+            if build_element:
+                flags.append(build_element)
 
         if create:
             if not repolinks:
@@ -208,8 +210,16 @@ class ParticipantHandler(BuildServiceParticipant):
                     % project)
 
             result = self.obs.createProject(
-                project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                            links=linked_projects, maintainers=maintainers, build=build, block=block)
+                project, repolinks,
+                desc=desc,
+                title=summary,
+                mechanism=mechanism,
+                links=linked_projects,
+                maintainers=maintainers,
+                build=build,
+                block=block,
+                flags=flags,
+            )
 
             if not result:
                 raise RuntimeError(
