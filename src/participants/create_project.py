@@ -128,14 +128,14 @@ class ParticipantHandler(BuildServiceParticipant):
             # TODO: deduce project name from "official" mappings of the same repo
             # for now just short circuit here
             wid.result = True
-            print "No project given. Continuing"
+            self.log.warning("No project given. Continuing")
             return
 
         # events for official projects that are gated get diverted to a side
         # project
         prjobj = Project.get_matching(project, self.obs.apiurl)
         if prjobj and prjobj.gated:
-            print "%s is gated" % prjobj
+            self.log.info("%s is gated", prjobj)
             linked_project = project
             f.gated_project = project
             project = "gate:%s:%s" % (project, package)
@@ -172,7 +172,7 @@ class ParticipantHandler(BuildServiceParticipant):
                             bugnum, 0)['text']
                     except BugzillaError, error:
                         if error.code == 101:
-                            print "Bug %s not found" % bugnum
+                            self.log.warning("Bug %s not found" % bugnum)
                         else:
                             raise
             if project not in project_list:
@@ -223,24 +223,25 @@ class ParticipantHandler(BuildServiceParticipant):
             if not result:
                 raise RuntimeError(
                     "Something went wrong while creating project %s" % project)
-            print "Created project %s" % project
+            self.log.info("Created project %s", project)
         else:
-            print "Didn't need to create project %s" % project
+            self.log.info("Didn't need to create project %s", project)
 
         wid.result = True
 
         try:
             self._set_blame_emails(
                 project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
-        except Exception, exc:
-            print "Ignoring exception: %s" % exc
-            pass
+        except Exception:
+            self.log.exception("Failed to se blame emails, ignored")
 
     def _set_blame_emails(self, project, package, lsr):
         if not lsr or not lsr.emails:
             return
         emails = json.loads(lsr.emails)
-        self.log.info("Setting %s %s blame emails %s" %
-                      (project, package, ", ".join(emails)))
+        self.log.info(
+            "Setting %s %s blame emails %s",
+            project, package, ", ".join(emails)
+        )
         self.obs.createProjectAttribute(
             project, "BlameEmails", package=package, namespace="GIT", values=emails)
