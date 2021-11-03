@@ -31,7 +31,8 @@
 
 :Parameters:
    :project (string):
-      Optional OBS project in which the package lives, overrides the project field
+      Optional OBS project in which the package lives,
+      overrides the project field
 
 :term:`Workitem` fields OUT:
 
@@ -125,8 +126,8 @@ class ParticipantHandler(BuildServiceParticipant):
         summary = ""
         desc = ""
         if not project:
-            # TODO: deduce project name from "official" mappings of the same repo
-            # for now just short circuit here
+            # TODO: deduce project name from "official" mappings of the same
+            # repo for now just short circuit here
             wid.result = True
             self.log.warning("No project given. Continuing")
             return
@@ -147,9 +148,6 @@ class ParticipantHandler(BuildServiceParticipant):
             create = True
 
         project_list = self.obs.getProjectList()
-        # if project in project_list:
-            # project already exists, don't do anything
-        #    return
 
         prj_parts = project.split(":")
         if prj_parts[0] == "home" and len(prj_parts) > 1:
@@ -205,7 +203,8 @@ class ParticipantHandler(BuildServiceParticipant):
                 # purpose create_project then existing usage should be
                 # audited.
                 raise RuntimeError(
-                    "No suitable repos found in %s (must contain an arch in the name)"
+                    "No suitable repos found in %s "
+                    "(must contain an arch in the name)"
                     % project)
 
             result = self.obs.createProject(
@@ -231,7 +230,9 @@ class ParticipantHandler(BuildServiceParticipant):
 
         try:
             self._set_blame_emails(
-                project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
+                project, package,
+                get_or_none(LastSeenRevision, mapping_id=f.pk)
+            )
         except Exception:
             self.log.exception("Failed to se blame emails, ignored")
 
@@ -244,4 +245,8 @@ class ParticipantHandler(BuildServiceParticipant):
             project, package, ", ".join(emails)
         )
         self.obs.createProjectAttribute(
-            project, "BlameEmails", package=package, namespace="GIT", values=emails)
+            project, "BlameEmails",
+            package=package,
+            namespace="GIT",
+            values=emails,
+        )
