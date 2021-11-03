@@ -41,13 +41,11 @@
 
 """
 
-from boss.obs import BuildServiceParticipant
-import osc
-from urlparse import urlparse
 import os
-from lxml import etree
 import json
+from lxml import etree
 
+from boss.obs import BuildServiceParticipant
 from boss.bz.config import parse_bz_config
 from boss.bz.rest import BugzillaError
 
@@ -55,7 +53,8 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
 django.setup()
 
-from webhook_launcher.app.models import WebHookMapping, LastSeenRevision, Project, get_or_none
+from webhook_launcher.app.models import LastSeenRevision, Project
+from webhook_launcher.app.misc import get_or_none
 
 
 class ParticipantHandler(BuildServiceParticipant):
