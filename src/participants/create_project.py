@@ -43,7 +43,6 @@
 """
 
 import os
-import json
 from lxml import etree
 
 from boss.obs import BuildServiceParticipant
@@ -54,8 +53,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
 django.setup()
 
-from webhook_launcher.app.models import LastSeenRevision, Project
-from webhook_launcher.app.misc import get_or_none
+from webhook_launcher.app.models import Project
 
 
 class ParticipantHandler(BuildServiceParticipant):
@@ -227,26 +225,3 @@ class ParticipantHandler(BuildServiceParticipant):
             self.log.info("Didn't need to create project %s", project)
 
         wid.result = True
-
-        try:
-            self._set_blame_emails(
-                project, package,
-                get_or_none(LastSeenRevision, mapping_id=f.pk)
-            )
-        except Exception:
-            self.log.exception("Failed to se blame emails, ignored")
-
-    def _set_blame_emails(self, project, package, lsr):
-        if not lsr or not lsr.emails:
-            return
-        emails = json.loads(lsr.emails)
-        self.log.info(
-            "Setting %s %s blame emails %s",
-            project, package, ", ".join(emails)
-        )
-        self.obs.createProjectAttribute(
-            project, "BlameEmails",
-            package=package,
-            namespace="GIT",
-            values=emails,
-        )
