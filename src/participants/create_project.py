@@ -31,7 +31,8 @@
 
 :Parameters:
    :project (string):
-      Optional OBS project in which the package lives, overrides the project field
+      Optional OBS project in which the package lives,
+      overrides the project field
 
 :term:`Workitem` fields OUT:
 
@@ -41,13 +42,10 @@
 
 """
 
-from boss.obs import BuildServiceParticipant
-import osc
-from urlparse import urlparse
 import os
 from lxml import etree
-import json
 
+from boss.obs import BuildServiceParticipant
 from boss.bz.config import parse_bz_config
 from boss.bz.rest import BugzillaError
 
@@ -55,7 +53,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'webhook_launcher.settings'
 import django
 django.setup()
 
-from webhook_launcher.app.models import WebHookMapping, LastSeenRevision, Project, get_or_none
+from webhook_launcher.app.models import Project
 
 
 class ParticipantHandler(BuildServiceParticipant):
@@ -81,7 +79,7 @@ class ParticipantHandler(BuildServiceParticipant):
         for bzconfig in self.bzs.values():
             bzconfig['interface'].login()
 
-    def get_repolinks(self, wid, project):
+    def get_repolinks(self, wid, prjmeta):
         """Get a description of the repositories to link to.
            Returns a dictionary where the repository names are keys
            and the values are lists of architectures."""
@@ -89,7 +87,6 @@ class ParticipantHandler(BuildServiceParticipant):
         exclude_archs = wid.fields.exclude_archs or []
 
         repolinks = {}
-        prjmeta = etree.fromstring(self.obs.getProjectMeta(project))
 
         for repoelem in prjmeta.findall('repository'):
             repo = repoelem.get('name')
@@ -99,10 +96,6 @@ class ParticipantHandler(BuildServiceParticipant):
             for archelem in repoelem.findall('arch'):
                 arch = archelem.text
                 if arch in exclude_archs:
-                    continue
-                if arch == "armv8el" and not "armv7hl" in repo:
-                    continue
-                if arch == "i586" and not "i486" in repo:
                     continue
                 repolinks[repo].append(arch)
             if not repolinks[repo]:
@@ -121,8 +114,7 @@ class ParticipantHandler(BuildServiceParticipant):
         # Prime the maintainer list with the current obs user
         maintainers = [self.obs.getUserName()]
         linked_projects = []
-        repos = []
-        paths = []
+        flags = []
         repolinks = {}
         build = True
         create = False
@@ -132,17 +124,17 @@ class ParticipantHandler(BuildServiceParticipant):
         summary = ""
         desc = ""
         if not project:
-            # TODO: deduce project name from "official" mappings of the same repo
-            # for now just short circuit here
+            # TODO: deduce project name from "official" mappings of the same
+            # repo for now just short circuit here
             wid.result = True
-            print "No project given. Continuing"
+            self.log.warning("No project given. Continuing")
             return
 
         # events for official projects that are gated get diverted to a side
         # project
         prjobj = Project.get_matching(project, self.obs.apiurl)
         if prjobj and prjobj.gated:
-            print "%s is gated" % prjobj
+            self.log.info("%s is gated", prjobj)
             linked_project = project
             f.gated_project = project
             project = "gate:%s:%s" % (project, package)
@@ -154,9 +146,6 @@ class ParticipantHandler(BuildServiceParticipant):
             create = True
 
         project_list = self.obs.getProjectList()
-        # if project in project_list:
-            # project already exists, don't do anything
-        #    return
 
         prj_parts = project.split(":")
         if prj_parts[0] == "home" and len(prj_parts) > 1:
@@ -179,7 +168,7 @@ class ParticipantHandler(BuildServiceParticipant):
                             bugnum, 0)['text']
                     except BugzillaError, error:
                         if error.code == 101:
-                            print "Bug %s not found" % bugnum
+                            self.log.warning("Bug %s not found" % bugnum)
                         else:
                             raise
             if project not in project_list:
@@ -187,7 +176,15 @@ class ParticipantHandler(BuildServiceParticipant):
 
         if linked_project and linked_project in project_list:
             linked_projects.append(linked_project)
-            repolinks.update(self.get_repolinks(wid, linked_project))
+            prjmeta = etree.fromstring(
+                self.obs.getProjectMeta(linked_project)
+            )
+            repolinks.update(self.get_repolinks(wid, prjmeta))
+            # Get the build flags from the original project meta to disable
+            # unnecessary cross architecture builds and such
+            build_element = prjmeta.find('build')
+            if build_element is not None:
+                flags.append(build_element)
 
         if create:
             if not repolinks:
@@ -204,34 +201,27 @@ class ParticipantHandler(BuildServiceParticipant):
                 # purpose create_project then existing usage should be
                 # audited.
                 raise RuntimeError(
-                    "No suitable repos found in %s (must contain an arch in the name)"
+                    "No suitable repos found in %s "
+                    "(must contain an arch in the name)"
                     % project)
 
             result = self.obs.createProject(
-                project, repolinks, desc=desc, title=summary, mechanism=mechanism,
-                                            links=linked_projects, maintainers=maintainers, build=build, block=block)
+                project, repolinks,
+                desc=desc,
+                title=summary,
+                mechanism=mechanism,
+                links=linked_projects,
+                maintainers=maintainers,
+                build=build,
+                block=block,
+                flags=flags,
+            )
 
             if not result:
                 raise RuntimeError(
                     "Something went wrong while creating project %s" % project)
-            print "Created project %s" % project
+            self.log.info("Created project %s", project)
         else:
-            print "Didn't need to create project %s" % project
+            self.log.info("Didn't need to create project %s", project)
 
         wid.result = True
-
-        try:
-            self._set_blame_emails(
-                project, package, get_or_none(LastSeenRevision, mapping_id=f.pk))
-        except Exception, exc:
-            print "Ignoring exception: %s" % exc
-            pass
-
-    def _set_blame_emails(self, project, package, lsr):
-        if not lsr or not lsr.emails:
-            return
-        emails = json.loads(lsr.emails)
-        self.log.info("Setting %s %s blame emails %s" %
-                      (project, package, ", ".join(emails)))
-        self.obs.createProjectAttribute(
-            project, "BlameEmails", package=package, namespace="GIT", values=emails)
