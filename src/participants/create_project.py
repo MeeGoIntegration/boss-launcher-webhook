@@ -183,7 +183,7 @@ class ParticipantHandler(BuildServiceParticipant):
             # Get the build flags from the original project meta to disable
             # unnecessary cross architecture builds and such
             build_element = prjmeta.find('build')
-            if build_element:
+            if build_element is not None:
                 flags.append(build_element)
 
         if create:
