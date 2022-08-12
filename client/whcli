@@ -58,11 +58,15 @@ def curl(*args):
         sys.exit()
 
 json_header = "Content-Type: application/json"
-get = lambda url: curl(url)
-put = lambda url: curl('--request', 'PUT', url)
-delete = lambda url: curl('--request', 'DELETE', url)
-post = lambda url, data: curl('--request', 'POST', '--data', json.dumps(data), url)
-patch = lambda url, data: curl('--request', 'PATCH', '--data', json.dumps(data), url)
+get = curl
+def put(url):
+    curl('--request', 'PUT', url)
+def delete(url):
+    curl('--request', 'DELETE', url)
+def post(url, data):
+    curl('--request', 'POST', '--data', json.dumps(data), url)
+def patch(url, data):
+    curl('--request', 'PATCH', '--data', json.dumps(data), url)
 
 webhook_print_template = "%(id)5s | %(project)5s | %(package)5s | %(repourl)5s | %(branch)5s"
 
