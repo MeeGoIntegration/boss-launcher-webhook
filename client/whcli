@@ -22,7 +22,7 @@ def geturl(*arg):
 
 def curl(*args):
     cmd = ('curl', '--location', '--write-out', r'\n%{http_code}', '--header', json_header , '--show-error',  '--netrc', '--silent') + args
-    if debug: print " ".join(cmd)
+    if debug: print(" ".join(cmd))
     output = ""
     response = ""
     try:
@@ -45,16 +45,16 @@ def curl(*args):
         #    for key, val in response.items():
         #        sys.stderr.write("%s: %s\n" % (key, ",".join(val)))
         #    sys.exit()
-    except subprocess.CalledProcessError, exc:
+    except subprocess.CalledProcessError as exc:
         for line in exc.output.splitlines()[:-1]:
             if line.strip():
                 sys.stderr.write(line.strip() + '\n')
         sys.exit()
-    except ValueError, exc:
-        print exc
+    except ValueError as exc:
+        print(exc)
         sys.exit()
-    except RuntimeError, exc:
-        print exc
+    except RuntimeError as exc:
+        print(exc)
         sys.exit()
 
 json_header = "Content-Type: application/json"
@@ -68,12 +68,12 @@ webhook_print_template = "%(id)5s | %(project)5s | %(package)5s | %(repourl)5s |
 
 def print_hook(data, verbose=False):
     if verbose:
-        print json.dumps(data, indent=4)
+        print(json.dumps(data, indent=4))
     else:
         string = webhook_print_template % data
         if "lsr" in data:
             string = string + " | %(revision)5s" % data["lsr"]
-        print string
+        print(string)
 
 def _expand_search(field, search):
     """"
@@ -139,7 +139,7 @@ def get_hook(hook_id):
 
 def create_hook(opts):
     data = {}
-    for k,v in vars(opts).items():
+    for k,v in list(vars(opts).items()):
         if 'create' in k: # strip away the creation argument
             continue
         if v:
@@ -152,13 +152,13 @@ def patch_hook(hook_id, opts):
     data = {}
     url = geturl(str(hook_id))
 
-    for k, v in vars(opts).items():
+    for k, v in list(vars(opts).items()):
         if 'modify' in k or 'hook_id' in k or 'verbose' in k:
             continue
         if not v: continue
         # special case for last seen revision:
         if 'tag' in k or 'revision' in k:
-            if not 'lsr' in data.keys():
+            if not 'lsr' in list(data.keys()):
                 data['lsr'] = {}
             data['lsr'][k] = v
         elif v:
@@ -294,6 +294,6 @@ if __name__ == "__main__":
 
     if opts.trigger:
         for hook in hooks:
-            print trigger_hook(hook['id'])
+            print(trigger_hook(hook['id']))
 
     sys.exit(0)
