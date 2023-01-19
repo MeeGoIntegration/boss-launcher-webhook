@@ -312,16 +312,23 @@ class ParticipantHandler(BuildServiceParticipant):
         wid.result = True
 
     def make_constraint(self, package):
-        for pattern, values in self._constraints:
-            if pattern.search(package):
-                self.log.info(
-                    "Package %s matched constraint %s: %s",
-                    package, pattern, values
-                )
-                break
-        else:
+        values = {}
+        for regexp, match_values in self._constraints:
+            if not regexp.search(package):
+                continue
+
+            self.log.info(
+                "Package %s matched constraint %s: %s",
+                package, regexp.pattern, match_values
+            )
+            for key, value in match_values.items():
+                values[key] = max(value, values.get(key, value))
+
+        if not values:
             # No match found
             return None
+
+        self.log.info("Constraint values for %s: %s", package, values)
 
         # Construct xml with the format
         #
