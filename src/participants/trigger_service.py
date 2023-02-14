@@ -190,8 +190,17 @@ class ParticipantHandler(BuildServiceParticipant):
                 self.log.debug("Got a link  %s" % link)
                 linked_project = link.get('project')
                 self.log.debug("Branching %s to overwrite _service" % package)
-                core.branch_pkg(self.obs.apiurl, linked_project,
-                                str(package), target_project=str(project))
+                query = {
+                    'cmd': 'branch',
+                    'target_project': str(project),
+                    'noservice': '1',
+                }
+                u = core.makeurl(
+                    self.obs.apiurl,
+                    ['source', linked_project, str(package)],
+                    query=query
+                )
+                x = core.http_POST(u)
         except Exception as exc:
             self.log.warn(
                 "Doing a metatype pkg add because I caught %s" % exc)
@@ -208,18 +217,6 @@ class ParticipantHandler(BuildServiceParticipant):
                 ['source', str(project), str(package), "_meta"])
             x = core.http_PUT(u, data="".join(data))
             self.log.debug("HTTP PUT result of pkg add : %s" % x)
-
-        # Set any constraint before we set the service file
-        constraint_xml = self.make_constraint(package)
-        if constraint_xml:
-            # obs module only exposed the putFile by filepath so
-            # this is a reimplement to avoid writing a tmpfile
-            u = core.makeurl(self.obs.apiurl,
-                             ['source', project, package, "_constraints"])
-            core.http_PUT(u, data=constraint_xml)
-            self.log.info("New _constraints file:\n%s" % constraint_xml)
-        else:
-            self.log.info("No _constraints for %s" % package)
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
@@ -267,8 +264,35 @@ class ParticipantHandler(BuildServiceParticipant):
         svc_file = etree.tostring(services, pretty_print=True)
         self.log.debug("New _service file:\n%s" % svc_file)
 
-        # And send our new service file
-        self.obs.setupService(project, package, svc_file)
+        # Set any constraint before we set the service file
+        constraint_xml = self.make_constraint(package)
+        if constraint_xml:
+            self.log.info("New _constraints file:\n%s" % constraint_xml)
+            # obs module only exposed the putFile by filepath so
+            # this is a reimplement to avoid writing a tmpfile
+            u = core.makeurl(
+                self.obs.apiurl,
+                ['source', project, package, "_constraints"],
+                query={'rev': 'upload'},
+            )
+            core.http_PUT(u, data=constraint_xml)
+        else:
+            self.log.info("No _constraints for %s" % package)
+
+        # send our new service file
+        u = core.makeurl(
+            self.obs.apiurl,
+            ['source', project, package, "_service"],
+            query={'rev': 'upload'},
+        )
+        core.http_PUT(u, data=svc_file)
+
+        # And commit the changes
+        u = core.makeurl(
+            self.obs.apiurl, ['source', project, package],
+            query={'cmd': 'commit'},
+        )
+        core.http_POST(u)
 
         wid.result = True
 
