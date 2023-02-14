@@ -56,7 +56,6 @@ The package regex is wrapped explicitly in ^...$ to avoid partial matches.
 """
 
 from boss.obs import BuildServiceParticipant
-from urlparse import urlparse
 from osc import core
 from StringIO import StringIO
 from lxml import etree
@@ -76,34 +75,6 @@ tar_git_service = """
   <param name="dumb">%(dumb)s</param>
 </service>
 """
-
-git_pkg_service = """
-<service name="gitpkg">
-  <param name="repo">%(repo)s</param>
-  <param name="tag">%(revision)s</param>
-  <param name="service">%(service)s</param>
-</service>
-"""
-
-
-def find_service_repo(url):
-    """
-    Given url = 'https://github.com/mer-tools/git-pkg'
-    provides 'github', 'mer-tools/git-pkg'
-    """
-    if url.endswith(".git"):
-        url = url[:-4]
-    u = urlparse(url)
-    if u.netloc.endswith("github.com"):  # github
-        return "github", "/".join(u.path.split("/")[1:3])
-    elif u.netloc.endswith("gitorious.org"):  # gitorious
-        return "gitorious", "/".join(u.path.split("/")[1:3])
-    elif u.netloc.endswith("merproject.org"):  # Mer
-        return "Mer", "/".join(u.path.split("/")[1:3])
-    elif u.netloc.endswith("omprussia.ru"):  # omprussia
-        return "omprussia", "/".join(u.path.split("/")[1:3])
-
-    return None, None
 
 
 class ParticipantHandler(BuildServiceParticipant):
@@ -172,8 +143,6 @@ class ParticipantHandler(BuildServiceParticipant):
         if p.repourl:
             params["url"] = p.repourl
 
-        params["service"], params["repo"] = find_service_repo(params["url"])
-
         if f.branch:
             params["branch"] = f.branch
         if p.branch:
@@ -199,14 +168,6 @@ class ParticipantHandler(BuildServiceParticipant):
             params["dumb"] = p.dumb
         if f.dumb:
             params["dumb"] = f.dumb
-
-        if "branch" in params and params["branch"].startswith("pkg-"):
-            if "service" not in params or "repo" not in params:
-                raise RuntimeError(
-                    "Service/Repo not found in repourl %s " % p.repourl)
-            service = git_pkg_service
-        else:
-            service = tar_git_service
 
         # the simple approach doesn't work with project links
         # if self.obs.isNewPackage(project, package):
@@ -294,7 +255,7 @@ class ParticipantHandler(BuildServiceParticipant):
             raise
 
         # Create our new service (not services anymore)
-        new_service_xml = service % params
+        new_service_xml = tar_git_service % params
         new_service = etree.fromstring(new_service_xml)
         svcname = new_service.find(".").get("name")
         old_service = services.find("./service[@name='%s']" % svcname)
