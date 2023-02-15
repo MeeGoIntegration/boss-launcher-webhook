@@ -57,7 +57,6 @@ The package regex is wrapped explicitly in ^...$ to avoid partial matches.
 
 from boss.obs import BuildServiceParticipant
 from osc import core
-from StringIO import StringIO
 from lxml import etree
 import urllib2
 import re
@@ -169,54 +168,32 @@ class ParticipantHandler(BuildServiceParticipant):
         if f.dumb:
             params["dumb"] = f.dumb
 
-        # the simple approach doesn't work with project links
-        # if self.obs.isNewPackage(project, package):
-            # self.obs.getCreatePackage(str(project), str(package))
-        # else:
+        # Create the package if it doesn't exist
+        pkg_meta_url = core.makeurl(
+            self.obs.apiurl,
+            ['source', str(project), str(package), "_meta"],
+            query={'meta': '1'},
+        )
         try:
-            pkginfo = core.show_files_meta(
-                self.obs.apiurl, str(project), str(package),
-                expand=False, meta=True)
-            if "<entry" not in pkginfo:
-                # This is a link and it needs branching from the linked project
-                # so grab the meta and extract the project from the link
-                self.log.debug("Found %s as a link in %s" % (package, project))
-                x = etree.fromstring(
-                    "".join(core.show_project_meta(self.obs.apiurl, project)))
-                link = x.find('link')
-                if link is None:
-                    raise Exception(
-                        "Expected a <link> in project %s." % project)
-                self.log.debug("Got a link  %s" % link)
-                linked_project = link.get('project')
-                self.log.debug("Branching %s to overwrite _service" % package)
-                query = {
-                    'cmd': 'branch',
-                    'target_project': str(project),
-                    'noservice': '1',
-                }
-                u = core.makeurl(
-                    self.obs.apiurl,
-                    ['source', linked_project, str(package)],
-                    query=query
-                )
-                x = core.http_POST(u)
-        except Exception as exc:
-            self.log.warn(
-                "Doing a metatype pkg add because I caught %s" % exc)
-            self.log.warn(
-                "Creating package %s in project %s" % (package, project))
-            data = core.metatypes['pkg']['template']
-            data = StringIO(
-                data % {
-                    "name": str(package),
-                    "user": self.obs.getUserName()}
-            ).readlines()
-            u = core.makeurl(
-                self.obs.apiurl,
-                ['source', str(project), str(package), "_meta"])
-            x = core.http_PUT(u, data="".join(data))
-            self.log.debug("HTTP PUT result of pkg add : %s" % x)
+            x = core.http_GET(pkg_meta_url)
+            self.log.debug("Package exists: %s", x.fp.read())
+        except urllib2.HTTPError as exc:
+            if exc.code != 404:
+                raise
+
+            self.log.info(
+                "Creating package %s in project %s",
+                package, project,
+            )
+            template = core.metatypes['pkg']['template']
+            pkg_meta = template % {
+                "name": str(package),
+                "user": self.obs.getUserName()
+            }
+            x = core.http_PUT(pkg_meta_url, data=pkg_meta)
+            self.log.debug(
+                "Package created HTTP %s: %s", x.code, x.fp.read()
+            )
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
