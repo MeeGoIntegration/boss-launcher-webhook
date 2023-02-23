@@ -57,7 +57,6 @@ The package regex is wrapped explicitly in ^...$ to avoid partial matches.
 
 from boss.obs import BuildServiceParticipant
 from osc import core
-from StringIO import StringIO
 from lxml import etree
 import urllib2
 import re
@@ -169,57 +168,32 @@ class ParticipantHandler(BuildServiceParticipant):
         if f.dumb:
             params["dumb"] = f.dumb
 
-        # the simple approach doesn't work with project links
-        # if self.obs.isNewPackage(project, package):
-            # self.obs.getCreatePackage(str(project), str(package))
-        # else:
+        # Create the package if it doesn't exist
+        pkg_meta_url = core.makeurl(
+            self.obs.apiurl,
+            ['source', str(project), str(package), "_meta"],
+            query={'meta': '1'},
+        )
         try:
-            pkginfo = core.show_files_meta(
-                self.obs.apiurl, str(project), str(package),
-                expand=False, meta=True)
-            if "<entry" not in pkginfo:
-                # This is a link and it needs branching from the linked project
-                # so grab the meta and extract the project from the link
-                self.log.debug("Found %s as a link in %s" % (package, project))
-                x = etree.fromstring(
-                    "".join(core.show_project_meta(self.obs.apiurl, project)))
-                link = x.find('link')
-                if link is None:
-                    raise Exception(
-                        "Expected a <link> in project %s." % project)
-                self.log.debug("Got a link  %s" % link)
-                linked_project = link.get('project')
-                self.log.debug("Branching %s to overwrite _service" % package)
-                core.branch_pkg(self.obs.apiurl, linked_project,
-                                str(package), target_project=str(project))
-        except Exception as exc:
-            self.log.warn(
-                "Doing a metatype pkg add because I caught %s" % exc)
-            self.log.warn(
-                "Creating package %s in project %s" % (package, project))
-            data = core.metatypes['pkg']['template']
-            data = StringIO(
-                data % {
-                    "name": str(package),
-                    "user": self.obs.getUserName()}
-            ).readlines()
-            u = core.makeurl(
-                self.obs.apiurl,
-                ['source', str(project), str(package), "_meta"])
-            x = core.http_PUT(u, data="".join(data))
-            self.log.debug("HTTP PUT result of pkg add : %s" % x)
+            x = core.http_GET(pkg_meta_url)
+            self.log.debug("Package exists: %s", x.fp.read())
+        except urllib2.HTTPError as exc:
+            if exc.code != 404:
+                raise
 
-        # Set any constraint before we set the service file
-        constraint_xml = self.make_constraint(package)
-        if constraint_xml:
-            # obs module only exposed the putFile by filepath so
-            # this is a reimplement to avoid writing a tmpfile
-            u = core.makeurl(self.obs.apiurl,
-                             ['source', project, package, "_constraints"])
-            core.http_PUT(u, data=constraint_xml)
-            self.log.info("New _constraints file:\n%s" % constraint_xml)
-        else:
-            self.log.info("No _constraints for %s" % package)
+            self.log.info(
+                "Creating package %s in project %s",
+                package, project,
+            )
+            template = core.metatypes['pkg']['template']
+            pkg_meta = template % {
+                "name": str(package),
+                "user": self.obs.getUserName()
+            }
+            x = core.http_PUT(pkg_meta_url, data=pkg_meta)
+            self.log.debug(
+                "Package created HTTP %s: %s", x.code, x.fp.read()
+            )
 
         # Start with an empty XML doc
         try:  # to get any existing _service file.
@@ -267,8 +241,35 @@ class ParticipantHandler(BuildServiceParticipant):
         svc_file = etree.tostring(services, pretty_print=True)
         self.log.debug("New _service file:\n%s" % svc_file)
 
-        # And send our new service file
-        self.obs.setupService(project, package, svc_file)
+        # Set any constraint before we set the service file
+        constraint_xml = self.make_constraint(package)
+        if constraint_xml:
+            self.log.info("New _constraints file:\n%s" % constraint_xml)
+            # obs module only exposed the putFile by filepath so
+            # this is a reimplement to avoid writing a tmpfile
+            u = core.makeurl(
+                self.obs.apiurl,
+                ['source', project, package, "_constraints"],
+                query={'rev': 'upload'},
+            )
+            core.http_PUT(u, data=constraint_xml)
+        else:
+            self.log.info("No _constraints for %s" % package)
+
+        # send our new service file
+        u = core.makeurl(
+            self.obs.apiurl,
+            ['source', project, package, "_service"],
+            query={'rev': 'upload'},
+        )
+        core.http_PUT(u, data=svc_file)
+
+        # And commit the changes
+        u = core.makeurl(
+            self.obs.apiurl, ['source', project, package],
+            query={'cmd': 'commit'},
+        )
+        core.http_POST(u)
 
         wid.result = True
 
