@@ -31,7 +31,7 @@ TEST_WHM_DATA = {
     "project": "mer:core",
     "package": "test",
     "obs": "test",
-    "repourl": "https://exmaple.com",
+    "repourl": "https://exmaple.com/project.git",
     "token": "nnn",
     "branch": "master",
     "user": "admin",
@@ -108,7 +108,7 @@ class TestWebhookMappingApi(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         whm = WebHookMapping.objects.get(id=whm_data['id'])
-        self.assertEqual(whm.repourl, 'https://example.com/repo')
+        self.assertEqual(whm.repourl, 'https://example.com/repo.git')
         self.assertEqual(whm.lsr.revision, 'abc')
         self.assertEqual(whm.lsr.tag, '123')
 

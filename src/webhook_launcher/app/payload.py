@@ -82,7 +82,7 @@ class Payload(object):
 
         print("no mappings, create placeholders")
         mapobjs = []
-        user = User.objects.get(id=1)
+        user = User.objects.first()
         obs = BuildService.objects.all()[0]
         for package in packages:
             mapobj = WebHookMapping(
