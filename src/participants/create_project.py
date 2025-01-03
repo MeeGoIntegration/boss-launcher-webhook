@@ -120,6 +120,7 @@ class ParticipantHandler(BuildServiceParticipant):
         create = False
         mechanism = "localdep"
         block = "all"
+        rebuild = "transitive"
         linked_project = None
         summary = ""
         desc = ""
@@ -143,6 +144,7 @@ class ParticipantHandler(BuildServiceParticipant):
             desc = summary
             mechanism = "off"
             block = "local"
+            rebuild = "local"
             create = True
 
         project_list = self.obs.getProjectList()
@@ -214,6 +216,7 @@ class ParticipantHandler(BuildServiceParticipant):
                 maintainers=maintainers,
                 build=build,
                 block=block,
+                rebuild=rebuild,
                 flags=flags,
             )
 

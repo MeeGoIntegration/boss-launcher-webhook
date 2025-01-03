@@ -53,6 +53,7 @@ Requires(post): python-boss-skynet >= 0.6.6
 Requires: boss-launcher-webhook
 Requires: osc
 Requires: python-boss-common >= 0.27.10
+Requires: python-buildservice >= 0.5.9
 Requires: python-lxml
 Summary: BOSS participant to handle webhooks
 %description -n boss-participant-create_project
