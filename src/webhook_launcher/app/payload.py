@@ -185,7 +185,7 @@ class GhPush(Payload):
         except KeyError:
             try:
                 # github payload
-                url = data['repository']['url']
+                url = data['repository']['clone_url']
             except KeyError:
                 raise PayloadParsingError("Not a GhPush payload")
 
