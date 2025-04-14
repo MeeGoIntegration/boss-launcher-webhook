@@ -22,7 +22,7 @@ def geturl(*arg):
 
 def curl(*args):
     cmd = ('curl', '--location', '--write-out', r'\n%{http_code}', '--header', json_header , '--show-error',  '--netrc', '--silent') + args
-    if debug: print " ".join(cmd)
+    if debug: print(" ".join(cmd))
     output = ""
     response = ""
     try:
@@ -30,50 +30,54 @@ def curl(*args):
         code = output[-1].strip()
         if not code:
             raise RuntimeError("No response code from server, check your network connection")
-        elif code.startswith("4"):
+        elif code.startswith(b'4'):
             raise RuntimeError("Server replied with %s client error" % code)
-        elif code.startswith("5"):
+        elif code.startswith(b'5'):
             raise RuntimeError("Received %s server error" % code)
         #http://www.django-rest-framework.org/api-guide/status-codes/#successful-2xx
-        elif code in ["200", "201", "202", "203", "205", "206"]:
+        elif code.endswith((b'200', b'201', b'202', b'203', b'205', b'206')):
             response = json.loads(output[0].strip())
             return response
-        elif code in ["204"]:
+        elif b'204' in code:
             # DELETE responds with 204 No content
             return {}
         #else:
         #    for key, val in response.items():
         #        sys.stderr.write("%s: %s\n" % (key, ",".join(val)))
         #    sys.exit()
-    except subprocess.CalledProcessError, exc:
+    except subprocess.CalledProcessError as exc:
         for line in exc.output.splitlines()[:-1]:
             if line.strip():
                 sys.stderr.write(line.strip() + '\n')
         sys.exit()
-    except ValueError, exc:
-        print exc
+    except ValueError as exc:
+        print(exc)
         sys.exit()
-    except RuntimeError, exc:
-        print exc
+    except RuntimeError as exc:
+        print(exc)
         sys.exit()
 
 json_header = "Content-Type: application/json"
-get = lambda url: curl(url)
-put = lambda url: curl('--request', 'PUT', url)
-delete = lambda url: curl('--request', 'DELETE', url)
-post = lambda url, data: curl('--request', 'POST', '--data', json.dumps(data), url)
-patch = lambda url, data: curl('--request', 'PATCH', '--data', json.dumps(data), url)
+get = curl
+def put(url):
+    curl('--request', 'PUT', url)
+def delete(url):
+    curl('--request', 'DELETE', url)
+def post(url, data):
+    curl('--request', 'POST', '--data', json.dumps(data), url)
+def patch(url, data):
+    curl('--request', 'PATCH', '--data', json.dumps(data), url)
 
 webhook_print_template = "%(id)5s | %(project)5s | %(package)5s | %(repourl)5s | %(branch)5s"
 
 def print_hook(data, verbose=False):
     if verbose:
-        print json.dumps(data, indent=4)
+        print(json.dumps(data, indent=4))
     else:
         string = webhook_print_template % data
         if "lsr" in data:
             string = string + " | %(revision)5s" % data["lsr"]
-        print string
+        print(string)
 
 def _expand_search(field, search):
     """"
@@ -139,7 +143,7 @@ def get_hook(hook_id):
 
 def create_hook(opts):
     data = {}
-    for k,v in vars(opts).items():
+    for k,v in list(vars(opts).items()):
         if 'create' in k: # strip away the creation argument
             continue
         if v:
@@ -152,13 +156,13 @@ def patch_hook(hook_id, opts):
     data = {}
     url = geturl(str(hook_id))
 
-    for k, v in vars(opts).items():
+    for k, v in list(vars(opts).items()):
         if 'modify' in k or 'hook_id' in k or 'verbose' in k:
             continue
         if not v: continue
         # special case for last seen revision:
         if 'tag' in k or 'revision' in k:
-            if not 'lsr' in data.keys():
+            if not 'lsr' in list(data.keys()):
                 data['lsr'] = {}
             data['lsr'][k] = v
         elif v:
@@ -294,6 +298,6 @@ if __name__ == "__main__":
 
     if opts.trigger:
         for hook in hooks:
-            print trigger_hook(hook['id'])
+            print(trigger_hook(hook['id']))
 
     sys.exit(0)
