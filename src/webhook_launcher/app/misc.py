@@ -4,6 +4,17 @@ import requests
 from django.conf import settings
 
 
+def normalize_git_url(url):
+    dot_git = '.git'
+    parsed_url = giturlparse(url)
+    git_url = parsed_url.geturl()
+    git_url = git_url.rstrip('./\\')
+
+    if not git_url.endswith(dot_git):
+        git_url += dot_git
+    return git_url
+
+
 def giturlparse(repourl):
     parsed = urlparse.urlparse(repourl)
     if not parsed.scheme:
