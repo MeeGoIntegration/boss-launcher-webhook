@@ -214,8 +214,8 @@ class GhPush(Payload):
             # tag
             if 'base_refs' in payload:
                 branches = payload['base_refs']
-            elif 'base_ref' in payload and not payload['base_ref'] is None:
-                branches = [payload['base_ref'].split("/")[2]]
+            elif 'base_ref' in payload and payload['base_ref'] is not None:
+                branches = [payload['base_ref'].split("/", 2)[2]]
             else:
                 # unfortunately github doesn't send info about the branch that
                 # an annotated tag is in nor the commit sha1 it points at.
