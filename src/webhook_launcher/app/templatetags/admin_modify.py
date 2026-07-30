@@ -22,7 +22,7 @@ def submit_row(context):
         prefill = "?"
         data = model_to_dict(original, fields=[], exclude=[])
         for key, value in data.items():
-            if value is False:
+            if not value:
                 value = ""
             prefill += "%s=%s&" % (key, value)
         if original.revision:
