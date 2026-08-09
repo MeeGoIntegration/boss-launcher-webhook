@@ -27,6 +27,7 @@ from django.forms import TextInput
 from django.http import HttpResponseRedirect
 from django.utils.encoding import force_text
 
+from webhook_launcher.app.misc import normalize_git_url
 from webhook_launcher.app.models import (
     BuildService, LastSeenRevision, Project, QueuePeriod, RelayTarget,
     VCSNameSpace, VCSService, WebHookMapping

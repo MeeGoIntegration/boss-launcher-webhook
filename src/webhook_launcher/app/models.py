@@ -27,7 +27,8 @@ from django.db import models
 from django.utils import timezone
 
 from webhook_launcher.app.boss import launch_notify, launch_build
-from webhook_launcher.app.misc import get_or_none, giturlparse
+from webhook_launcher.app.misc import (
+    get_or_none, giturlparse, normalize_git_url)
 
 
 # FIXME: All null=True + blank=True text fields
@@ -420,6 +421,12 @@ class WebHookMapping(models.Model):
                     "Webhook mapping to %s not allowed for %s" %
                     (project, self.user)
                 )
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.repourl = normalize_git_url(self.repourl)
+        super(WebHookMapping, self).save(force_insert, force_update, using,
+                                         update_fields)
 
     def trigger_build(self, user=None, tag=None, force=False):
         if not self.pk:
