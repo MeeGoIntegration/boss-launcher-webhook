@@ -134,6 +134,12 @@ class ParticipantHandler(BuildServiceParticipant):
         if not f.repourl and not p.repourl:
             raise RuntimeError("Missing mandatory field or parameter: repourl")
 
+        # If doing a gate build, get existing services from the gated package
+        if f.gated_project:
+            src_project = f.gated_project
+        else:
+            src_project = project
+
         params = {}
 
         if f.repourl:
@@ -202,11 +208,11 @@ class ParticipantHandler(BuildServiceParticipant):
             self.log.debug(
                 "Trying to get _service file for %s/%s" % (project, package))
             services_xml = self.obs.getFile(
-                project, package, "_service", expand=0)
+                src_project, package, "_service", expand=0)
         except urllib2.HTTPError as e:
             self.log.debug(
                 "Exception %s trying to get _service file for %s/%s" %
-                (e, project, package))
+                (e, src_project, package))
             if e.code == 404:
                 services_xml = empty_service
             elif e.code == 400:
